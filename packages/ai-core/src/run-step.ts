@@ -51,6 +51,7 @@ export async function modelStep(
 	signal: AbortSignal,
 	emit: (event: AgentEvent) => void,
 ): Promise<GenerateResult> {
+	await notify(options.observers, 'onModelStart', { step });
 	const started = performance.now();
 	try {
 		const out = await generate(tee(options.model, emit), req, signal);

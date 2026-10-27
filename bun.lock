@@ -50,6 +50,22 @@
         "typescript": "^6.0.3 || ^7.0.0",
       },
     },
+    "packages/ai-telemetry": {
+      "name": "@nxgt/ai-telemetry",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "@nxgt/ai-testing": "workspace:^",
+        "@nxgt/telemetry": "^0.2.2",
+        "@types/bun": "^1.4.4",
+        "zod": "4.6.5",
+      },
+      "peerDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "@nxgt/telemetry": ">=0.2.2 <0.3.0",
+        "typescript": "^6.0.3 || ^7.0.0",
+      },
+    },
     "packages/ai-testing": {
       "name": "@nxgt/ai-testing",
       "version": "0.0.0",
@@ -140,7 +156,11 @@
 
     "@nxgt/ai-ollama": ["@nxgt/ai-ollama@workspace:packages/ai-ollama"],
 
+    "@nxgt/ai-telemetry": ["@nxgt/ai-telemetry@workspace:packages/ai-telemetry"],
+
     "@nxgt/ai-testing": ["@nxgt/ai-testing@workspace:packages/ai-testing"],
+
+    "@nxgt/telemetry": ["@nxgt/telemetry@0.2.2", "", { "peerDependencies": { "typescript": "^6.0.3" } }, "sha512-x2qzmdk6yKRK7rz2pDsIoD6wHDAmCyqXQbTh199N9epBufggBzU5WV4+31851Qy+8MRRY0qNC/k62F4erIBTlw=="],
 
     "@pnpm/deps.graph-sequencer": ["@pnpm/deps.graph-sequencer@1100.0.1", "", {}, "sha512-pOr5+q1fLYKwFN3LAJuGZEnfXDcQ73zqgDHMtGy+K+uIoUqyY+6MeDCWFwfu+4EFuq76I5EPFofoNAI+Bmmq4A=="],
 

@@ -108,6 +108,7 @@ export function runToolCalls(
 ): Promise<ToolResultPart[]> {
 	return Promise.all(
 		calls.map(async (call) => {
+			await notify(run.observers, 'onToolStart', { step: run.step, call });
 			const started = performance.now();
 			const result = await runOne(call, run);
 			run.emit({ type: 'tool-result', result });

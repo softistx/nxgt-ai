@@ -162,6 +162,32 @@ describe('runAgent', () => {
 		]);
 	});
 
+	test('start hooks fire before the work they precede', async () => {
+		const log: string[] = [];
+		const observer: AgentObserver = {
+			onModelStart: (i) => void log.push(`model-start ${i.step}`),
+			onModelCall: (i) => void log.push(`model ${i.step}`),
+			onToolStart: (i) => void log.push(`tool-start ${i.call.name}`),
+			onToolCall: (i) => void log.push(`tool ${i.call.name}`),
+		};
+		const model = fakeModel([{ toolCalls: [call('echo')] }, { text: 'k' }]);
+		const run = runAgent({
+			model,
+			messages: user,
+			tools: [echo],
+			observers: [observer],
+		});
+		await run.result;
+		expect(log).toEqual([
+			'model-start 1',
+			'model 1',
+			'tool-start echo',
+			'tool echo',
+			'model-start 2',
+			'model 2',
+		]);
+	});
+
 	test('context reaches the tools and the input messages are untouched', async () => {
 		const who = defineTool({
 			name: 'who',

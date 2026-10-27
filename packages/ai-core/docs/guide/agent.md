@@ -101,14 +101,19 @@ conversation; a model call cut short adds nothing. The run ends `aborted`.
 ```ts
 const logger: AgentObserver = {
 	onRunStart: ({ provider, model, tools }) => {},
+	onModelStart: ({ step }) => {},
 	onModelCall: ({ step, durationMs, usage, finishReason, error }) => {},
+	onToolStart: ({ step, call }) => {},
 	onToolCall: ({ step, call, result, durationMs }) => {},
 	onRunEnd: (result) => {},
 };
 ```
 
 Hooks are awaited in order. One that throws is ignored: telemetry never fails
-a run.
+a run. `onModelStart` and `onToolStart` fire before the work, so an observer
+can open a span that covers it; each is followed by its `onModelCall` or
+`onToolCall`, which carries the outcome. A hook has no run id: use one
+observer per run.
 
 ## AgentResult
 
