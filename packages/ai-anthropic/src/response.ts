@@ -1,6 +1,6 @@
 import type { FinishReason, ModelEvent, Usage } from '@nxgt/ai-core';
 
-interface WireUsage {
+export interface WireUsage {
 	input_tokens?: number;
 	output_tokens?: number;
 	cache_read_input_tokens?: number;
@@ -19,12 +19,15 @@ interface WireResponse {
 	usage?: WireUsage;
 }
 
-const FINISH: Record<string, FinishReason> = {
+export const FINISH: Record<string, FinishReason> = {
 	end_turn: 'end',
 	stop_sequence: 'end',
 	tool_use: 'tool-use',
 	max_tokens: 'max-tokens',
 	refusal: 'refusal',
+	// The server-tool loop paused: the caller may resend the turn to continue.
+	pause_turn: 'end',
+	model_context_window_exceeded: 'max-tokens',
 };
 
 export function toUsage(wire: WireUsage): Usage {
@@ -37,8 +40,8 @@ export function toUsage(wire: WireUsage): Usage {
 }
 
 /**
- * The events of one complete (non-streamed) response. S6b replaces this
- * with the SSE parser behind the same `ModelEvent` output.
+ * The events of one complete (non-streamed) response, for a gateway that
+ * answers `stream: true` with plain JSON.
  */
 export function* eventsFromMessage(body: WireResponse): Generator<ModelEvent> {
 	for (const block of body.content ?? []) {

@@ -23,8 +23,17 @@ Failures are `AnthropicError`s (an `AiError`): `error.kind` tells an expired
 key from an overloaded API. 429, 529, 5xx and network failures are retried
 twice, honouring `retry-after`.
 
-Streaming, thinking, prompt caching and `countTokens` arrive in the next slice;
-until then a call is one non-streamed request.
+Calls stream (SSE). `thinking: { budgetTokens }` turns on extended thinking and
+keeps each block's signature for the next turn; `cache: 'auto'` (the default)
+puts prompt-cache breakpoints on the tools, the system prompt and the last
+user turn; `model.countTokens(req)` asks `/v1/messages/count_tokens`.
+
+```ts
+const tokens = await model.countTokens?.({ messages, tools });
+```
+
+`bun run smoke:anthropic` in the repository tries it against the real API
+(local only, needs `ANTHROPIC_API_KEY`).
 
 ## Install
 

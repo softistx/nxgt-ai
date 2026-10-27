@@ -1,8 +1,10 @@
 import type { ModelAdapter, ModelEvent, ModelRequest } from '@nxgt/ai-core';
+import { countTokens } from './count-tokens';
 import { AnthropicError } from './errors';
 import { type HttpOptions, post } from './http';
 import { buildBody } from './request';
 import { eventsFromMessage } from './response';
+import { eventsFromStream } from './stream';
 
 export interface AnthropicOptions {
 	apiKey: string;
@@ -61,8 +63,17 @@ export function anthropic(options: AnthropicOptions): ModelAdapter {
 		req: ModelRequest,
 		signal: AbortSignal,
 	): AsyncGenerator<ModelEvent> {
-		const res = await post(http, buildBody(options.model, req), signal);
+		const res = await post(
+			http,
+			{ ...buildBody(options.model, req), stream: true },
+			signal,
+		);
 		if (res === undefined) return;
+		if (!res.headers.get('content-type')?.includes('application/json')) {
+			yield* eventsFromStream(res, signal);
+			return;
+		}
+		// A gateway that ignores `stream: true` answers with one JSON message.
 		let body: Parameters<typeof eventsFromMessage>[0];
 		try {
 			body = (await res.json()) as typeof body;
@@ -79,5 +90,13 @@ export function anthropic(options: AnthropicOptions): ModelAdapter {
 		yield* eventsFromMessage(body);
 	}
 
-	return { provider: 'anthropic', model: options.model, stream };
+	const countHttp: HttpOptions = { ...http, url: `${http.url}/count_tokens` };
+
+	return {
+		provider: 'anthropic',
+		model: options.model,
+		stream,
+		countTokens: (req, signal = new AbortController().signal) =>
+			countTokens(countHttp, options.model, req, signal),
+	};
 }

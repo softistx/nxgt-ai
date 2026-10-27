@@ -50,7 +50,7 @@ describe('error mapping', () => {
 	});
 
 	test('a 200 that is not JSON is a provider error', async () => {
-		const t = setup([new Response('<html>')]);
+		const t = setup([json('<html>')]);
 		const error = await events(t.model, req).catch((e) => e);
 		expect(error).toMatchObject({ kind: 'provider', code: 'MODEL_ERROR' });
 	});

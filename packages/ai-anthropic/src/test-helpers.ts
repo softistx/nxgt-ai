@@ -69,3 +69,31 @@ export async function events(
 	for await (const e of run(model, req, signal)) out.push(e);
 	return out;
 }
+
+export const sseFixture = (name: string): string =>
+	readFileSync(new URL(`./fixtures/${name}.sse`, import.meta.url), 'utf8');
+
+/** `text` as UTF-8 bytes cut into chunks of `size` bytes. */
+export function chunked(text: string, size: number): Uint8Array[] {
+	const bytes = new TextEncoder().encode(text);
+	const out: Uint8Array[] = [];
+	for (let i = 0; i < bytes.length; i += size)
+		out.push(bytes.slice(i, i + size));
+	return out;
+}
+
+export const bytesStream = (chunks: Uint8Array[]): ReadableStream<Uint8Array> =>
+	new ReadableStream({
+		start(controller) {
+			for (const c of chunks) controller.enqueue(c);
+			controller.close();
+		},
+	});
+
+/** A 200 `text/event-stream` response delivering `chunks`. */
+export const sse = (chunks: Uint8Array[], init: ResponseInit = {}): Response =>
+	new Response(bytesStream(chunks), {
+		status: 200,
+		headers: { 'content-type': 'text/event-stream' },
+		...init,
+	});

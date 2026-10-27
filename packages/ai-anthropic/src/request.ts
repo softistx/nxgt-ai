@@ -5,9 +5,11 @@ import type {
 	ToolResultPart,
 } from '@nxgt/ai-core';
 
-export const DEFAULT_MAX_TOKENS = 4096;
+import { type Block, placeBreakpoints } from './cache';
 
-type Block = Record<string, unknown>;
+export const DEFAULT_MAX_TOKENS = 4096;
+/** The API's minimum thinking budget; used when the request names none. */
+export const DEFAULT_THINKING_BUDGET = 1024;
 
 interface WireBody {
 	model: string;
@@ -16,6 +18,7 @@ interface WireBody {
 	system?: Block[];
 	tools?: Block[];
 	temperature?: number;
+	thinking?: { type: 'enabled'; budget_tokens: number };
 }
 interface WireMessage {
 	role: 'user' | 'assistant';
@@ -76,14 +79,25 @@ export function toWireMessages(messages: readonly Message[]): WireMessage[] {
 	return out;
 }
 
-/** The JSON body of `POST /v1/messages` for `req`. */
+/**
+ * The JSON body of `POST /v1/messages` for `req`. With `thinking`, the API
+ * allows no `temperature` and needs `max_tokens` above the budget, so the
+ * former is dropped and an absent `maxTokens` leaves room for the answer.
+ */
 export function buildBody(
 	model: string,
 	req: ModelRequest,
 ): Record<string, unknown> {
+	const budget = req.thinking
+		? Math.max(
+				req.thinking.budgetTokens ?? DEFAULT_THINKING_BUDGET,
+				DEFAULT_THINKING_BUDGET,
+			)
+		: undefined;
 	const body: WireBody = {
 		model,
-		max_tokens: req.maxTokens ?? DEFAULT_MAX_TOKENS,
+		max_tokens:
+			req.maxTokens ?? DEFAULT_MAX_TOKENS + (budget === undefined ? 0 : budget),
 		messages: toWireMessages(req.messages),
 	};
 	if (req.system !== undefined && req.system.length > 0) {
@@ -96,7 +110,9 @@ export function buildBody(
 			input_schema: t.inputSchema,
 		}));
 	}
-	if (req.temperature !== undefined) body.temperature = req.temperature;
-	// Seam for S6b: thinking, cache_control and `stream` are added here.
+	if (budget !== undefined)
+		body.thinking = { type: 'enabled', budget_tokens: budget };
+	else if (req.temperature !== undefined) body.temperature = req.temperature;
+	if (req.cache !== 'off') placeBreakpoints(body);
 	return { ...body, ...req.providerOptions };
 }
