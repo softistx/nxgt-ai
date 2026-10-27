@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    # `feat/**` too: an effort merges each slice into its integration branch
+    # `feat/<slug>`, and those slices are merged without waiting for a human;
+    # without this they would merge with no CI at all.
+    branches: [develop, main, "feat/**"]
+  # On `develop` as well, for the caches below: a cache written by a pull
+  # request is scoped to `refs/pull/<N>/merge` and no other branch can read it.
+  # One run per merge into `develop` fills `refs/heads/develop`, and every pull
+  # request after it starts warm.
+  push:
+    branches: [develop]
+
+# A pull request's new push supersedes its run in progress. A push to
+# `develop` never does: each one is in a group of its own, by run id, because
+# that run is what writes the caches every pull request reads.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref != 'refs/heads/develop' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    # GitHub-hosted: this repository is public, so the minutes are free.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # `changeset status --since=origin/develop` needs the base branch.
+          fetch-depth: 0
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Lint code
+        run: bunx biome ci
+      # Build FIRST: every package's `exports` points at `./dist/*`, so on a
+      # clean checkout a package that imports a sibling resolves it to nothing.
+      - name: Build packages
+        run: bun run build
+      - name: Type checking
+        run: bun run typecheck
+      # @nxgt/ai-memory's mongo and redis subpaths run their specs against a
+      # real mongod (single-node replica set) and a real Redis, started per
+      # spec file with no Docker. The binaries are cached, keyed on the files
+      # that pin their versions, so a run downloads or builds them once per
+      # version. Nothing hashes yet before slices S12 and S13 add those files.
+      - name: Cache the mongod binary
+        uses: actions/cache@v4
+        with:
+          path: .cache/mongodb
+          key: mongod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/ai-memory/test/mongo.ts') }}
+      - name: Cache the Redis build
+        uses: actions/cache@v4
+        with:
+          path: .cache/redis
+          key: redis-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/ai-memory/test/redis.ts') }}
+      - name: Run tests
+        run: bun run test
+      # The build exits 0 on packages that throw the instant they are imported.
+      # This packs them, installs them as a consumer does and imports every
+      # declared subpath.
+      - name: Verify the built artifacts load
+        run: bun run verify:artifacts
+      # A change to a package without a changeset never reaches a consumer.
+      # Not on the release branch: "Version packages" consumes the changesets.
+      - name: Changeset present
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.head_ref != 'changeset-release/develop'
+        run: bun run changeset:status
