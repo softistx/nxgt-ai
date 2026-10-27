@@ -44,6 +44,7 @@ const messages: Message[] = [
 describe('buildBody', () => {
 	test('maps system, messages, tools and sampling', () => {
 		const body = buildBody('claude-test', {
+			cache: 'off',
 			system: [{ text: 'Be brief.' }, { text: 'French.' }],
 			messages,
 			tools: [
@@ -116,6 +117,7 @@ describe('buildBody', () => {
 
 	test('defaults max_tokens, omits empty system and tools, drops proposed actions', () => {
 		const body = buildBody('m', {
+			cache: 'off',
 			system: [],
 			tools: [],
 			messages: [

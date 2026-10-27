@@ -95,23 +95,102 @@ Inject `fetch` (and `sleep`, so a retry takes no time):
 const model = anthropic({
 	apiKey: 'test',
 	model: 'claude-test',
-	fetch: async () => new Response(JSON.stringify(reply), { status: 200 }),
+	fetch: async () =>
+		new Response(sseText, { headers: { 'content-type': 'text/event-stream' } }),
 	sleep: async () => {},
 });
 ```
 
-For a scripted model with no HTTP at all, use `fakeModel` from
+For a stream, answer with a `text/event-stream` `Response`. For a scripted model with no HTTP at all, use `fakeModel` from
 `@nxgt/ai-testing`.
 
-## Not yet
+## Streaming
 
-Streaming (SSE), thinking requests, prompt-cache breakpoints (`cache`) and
-`countTokens` are the next slice. Until then `thinking` and `cache` in a
-request are ignored, and `stream` yields the events of one complete response.
+Every call sends `stream: true` and reads the Server-Sent Events as they
+arrive. The parser accepts chunks cut anywhere (inside a line, a `\r\n` or a
+UTF-8 character) and maps the events to the port's `ModelEvent`s:
+
+| SSE                                           | `ModelEvent`                                     |
+| --------------------------------------------- | ------------------------------------------------ |
+| `text_delta`                                  | `text-delta`                                     |
+| `thinking_delta`                              | `thinking-delta`                                 |
+| `signature_delta`                             | `thinking-delta` with `text: ''` and `signature` |
+| `input_json_delta`, then `content_block_stop` | one `tool-call` with the assembled, parsed input |
+| `message_start` + `message_delta` usage       | one `usage`, just before `finish`                |
+| `message_stop`                                | `finish`                                         |
+| `ping`, server-tool blocks, unknown events    | skipped                                          |
+
+An `error` event throws an `AnthropicError` (`overloaded_error` is
+`overloaded`, `rate_limit_error` is `rate-limited`, `authentication_error` and
+`permission_error` are `auth`, `invalid_request_error` is `bad-request`,
+anything else `provider`). A connection cut before `message_stop` throws a
+`network` error. Retries apply only before the first byte: once the response
+started, text may already have reached the user, so the error is thrown and
+the caller decides.
+
+A gateway that ignores `stream: true` and answers `application/json` is
+still understood; any other content type (or none) is read as SSE.
+
+## Thinking
+
+`thinking: { budgetTokens }` sends `thinking: { type: 'enabled', budget_tokens }`.
+The budget is at least 1024 (the API's minimum) and defaults to it. With
+thinking on, `temperature` is not sent (the API refuses it) and an absent
+`maxTokens` becomes `4096 + budget`; an explicit `maxTokens` not above the budget is raised to `budget + 1`, since `max_tokens` must exceed the budget.
+
+The model's thinking arrives as `thinking-delta` events; `generate` folds them
+into a `thinking` part that keeps its `signature`. Put that assistant message
+back in `messages` on the next turn and the part is sent as it came: the API
+needs the signed thinking block in front of a tool result. A thinking part
+without a signature is dropped. `redacted_thinking` blocks are not kept yet (the core thinking part has no field for them). A `thinking-delta` may carry only a `signature` (empty `text`); a UI must not render it as new text.
+
+## Prompt cache
+
+`cache` defaults to `'auto'`: the adapter adds `cache_control: { type:
+'ephemeral' }` to the last tool, the last system block and the last block of
+the last user (or tool result) message. That is three of the four breakpoints
+the API allows; the fourth stays free. Each call then reads the
+prefix the previous call wrote. `cache: 'off'` sends none. Prompts below the
+model's minimum cacheable length are simply not cached by the API.
+
+`usage.cacheWriteTokens` and `usage.cacheReadTokens` report what was written
+and read; `inputTokens` excludes both.
+
+## Counting tokens
+
+`model.countTokens(req, signal?)` calls `POST /v1/messages/count_tokens` with
+the same system, tools, messages and thinking as a call (not `max_tokens` or
+`temperature`) and returns `input_tokens`. It shares the retries and the error
+mapping; an aborted signal rejects with `ABORTED`.
+
+```ts
+const tokens = await model.countTokens?.({ system, messages, tools });
+```
+
+## Stop reasons
+
+| `stop_reason`                                 | `finish.reason` |
+| --------------------------------------------- | --------------- |
+| `end_turn`, `stop_sequence`                   | `end`           |
+| `tool_use`                                    | `tool-use`      |
+| `max_tokens`, `model_context_window_exceeded` | `max-tokens`    |
+| `refusal`                                     | `refusal`       |
+| `pause_turn`                                  | `end`           |
+
+`pause_turn` means a server-side tool loop paused; the port has no word for
+it, so it is `end`. To continue, send the assistant message back as the last
+message and call again.
+
+## Smoke test
+
+`bun run smoke:anthropic` (from the repository root) streams a short answer,
+runs a thinking and tool-call round trip against the real API, and counts
+tokens. It needs `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`), costs
+a few cents, and never runs in CI.
 
 ## Usage
 
 `inputTokens` is the API's `input_tokens`, which excludes the tokens read from
 or written to the prompt cache; those are `cacheReadTokens` and
-`cacheWriteTokens`. A `stop_reason` the port has no word for (such as
-`pause_turn`) is reported as `end`.
+`cacheWriteTokens`. The `message_delta` usage is cumulative and replaces the
+`message_start` counts it repeats.
