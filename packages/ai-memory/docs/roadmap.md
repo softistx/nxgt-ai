@@ -8,11 +8,13 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
   - `MemoryStore`, scoped by owner on every call: threads, messages, a rolling summary and proposed actions.
   - `memoryStore()`, an in-process store.
   - `memoryStoreContract` in `@nxgt/ai-memory/testing`, to test your own stores.
+- **Compaction** — you get:
+  - `compact`, which trims old tool results first, then keeps a rolling summary without splitting a tool call from its result.
+  - `summarizeWith(model)`, a summarizer over any model adapter.
 
 ## Next
 
 - **MongoDB and Redis stores** — `./mongo` and `./redis` subpaths that pass the same contract.
-- **Compaction** — trim old tool results first, then keep a rolling summary without splitting a tool call from its result.
 
 ## Later
 

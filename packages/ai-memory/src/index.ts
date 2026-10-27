@@ -1,4 +1,9 @@
 export {
+	type CompactOptions,
+	type CompactResult,
+	compact,
+} from './compact';
+export {
 	MEMORY_ERROR_CODES,
 	MemoryError,
 	type MemoryErrorCode,
@@ -10,6 +15,8 @@ export {
 	summarySchema,
 	threadSchema,
 } from './schemas';
+export { type SummarizeOptions, summarizeWith } from './summarize';
+export type { TruncatedOutput } from './truncate';
 export type {
 	ActionPatch,
 	CreateThreadInput,

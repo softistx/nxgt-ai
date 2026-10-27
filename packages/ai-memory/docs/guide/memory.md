@@ -56,6 +56,50 @@ rolling summary of the messages up to `throughMessageId`. `load` with
 `sinceSummary: true` then returns the summary and only the messages after it;
 with `false` it returns them all.
 
+## Compaction
+
+`compact` keeps a long thread under a token budget. It first cuts the tool
+results, oldest first, and stops as soon as the thread fits; if it still does
+not fit, it folds the oldest messages into a rolling summary and keeps the last
+`keepLast` (6) messages. A tool call and its result are never split: the cut
+moves back to keep both.
+
+```ts
+import { compact, summarizeWith } from '@nxgt/ai-memory';
+
+const loaded = await store.load(threadId, ownerId, { sinceSummary: true });
+const out = await compact(loaded.messages, {
+	budget: 8000,
+	summary: loaded.summary, // folded into the next summary
+	summarize: summarizeWith(model), // a ModelAdapter from @nxgt/ai-core
+});
+if (out.summary && out.throughMessageId) {
+	await store.setSummary(threadId, ownerId, {
+		text: out.summary,
+		throughMessageId: out.throughMessageId,
+		tokens: estimateTokens(out.summary),
+	});
+}
+// send `loaded.summary` or `out.summary`, then `out.messages`, to the model
+```
+
+- `messages` are the thread's messages after its stored summary. `compact`
+  returns `{ summary?, throughMessageId?, messages, tokens }`: `summary` and
+  `throughMessageId` are set only when this call folded messages; `tokens` is
+  the estimate of the kept summary and `messages`.
+- A cut tool output becomes `{ truncated: true, originalChars, preview }`
+  (`preview` is the first `truncateToolResultsTo` characters, default 2000). Error
+  results are left as they are. The store keeps the originals: only the
+  returned copy is cut.
+- `estimate` defaults to `estimateTokens` of `@nxgt/ai-core`, a rough count;
+  pass a provider's counter for a tight budget. A thread is under budget when
+  its tokens are at most `budget`.
+- `summarizeWith(model, { system?, maxTokens?, signal? })` calls the model
+  once, with a transcript of the messages (the previous summary first), and
+  returns its text. Pass your own `summarize` to use another way.
+- Compacting again an already compacted thread (its tail and stored summary)
+  changes nothing while it fits.
+
 ## Proposed actions
 
 When an appended message holds a `proposed-action` part, the store records a
