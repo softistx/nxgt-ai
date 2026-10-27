@@ -14,6 +14,7 @@ import {
 	type Message,
 	type ProposedActionPart,
 	type ToolCallPart,
+	type ToolResultPart,
 	type Usage,
 } from './message';
 import { notify } from './observers';
@@ -63,6 +64,31 @@ function limitEnding(
 	return undefined;
 }
 
+/**
+ * Tool calls on a step that did not end in `tool-use` never run. Each gets an
+ * error result, so the history stays valid for a provider that wants every
+ * call answered (Anthropic answers 400 to a `tool_use` with no `tool_result`).
+ */
+function answerCutOff(
+	calls: readonly ToolCallPart[],
+	finish: string,
+	state: RunState,
+	emit: Emit,
+): void {
+	const message = `The call was cut off (${finish}) and did not run.`;
+	const parts: ToolResultPart[] = calls.map((call) => ({
+		type: 'tool-result',
+		callId: call.id,
+		name: call.name,
+		isError: true,
+		error: { code: 'MODEL_ERROR', message },
+	}));
+	for (const result of parts) emit({ type: 'tool-result', result });
+	const toolMessage: Message = { role: 'tool', parts };
+	state.added.push(toolMessage);
+	emit({ type: 'message', message: toolMessage });
+}
+
 /** One model call and, if it asked for tools, their results. */
 async function step(
 	options: RunAgentOptions,
@@ -89,6 +115,7 @@ async function step(
 	if (out.finishReason !== 'tool-use' || calls.length === 0) {
 		state.added.push(out.message);
 		emit({ type: 'message', message: out.message });
+		if (calls.length > 0) answerCutOff(calls, out.finishReason, state, emit);
 		const reason = out.finishReason === 'tool-use' ? 'end' : out.finishReason;
 		return { reason };
 	}
