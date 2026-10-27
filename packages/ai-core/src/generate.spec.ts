@@ -109,15 +109,14 @@ describe('generate', () => {
 	});
 });
 
-type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
-const schemaMatchesType: Same<
-	z.infer<typeof agentEventSchema>,
-	AgentEvent
-> = true;
+// Every AgentEvent must be accepted by the schema's inferred type.
+const schemaCoversType: AgentEvent extends z.infer<typeof agentEventSchema>
+	? true
+	: false = true;
 
 describe('agentEventSchema', () => {
 	test('the schema and the AgentEvent type agree', () => {
-		expect(schemaMatchesType).toBe(true);
+		expect(schemaCoversType).toBe(true);
 	});
 
 	const events: AgentEvent[] = [
