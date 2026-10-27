@@ -108,3 +108,10 @@ For a scripted model with no HTTP at all, use `fakeModel` from
 Streaming (SSE), thinking requests, prompt-cache breakpoints (`cache`) and
 `countTokens` are the next slice. Until then `thinking` and `cache` in a
 request are ignored, and `stream` yields the events of one complete response.
+
+## Usage
+
+`inputTokens` is the API's `input_tokens`, which excludes the tokens read from
+or written to the prompt cache; those are `cacheReadTokens` and
+`cacheWriteTokens`. A `stop_reason` the port has no word for (such as
+`pause_turn`) is reported as `end`.
