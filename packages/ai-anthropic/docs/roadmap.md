@@ -4,13 +4,7 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Now
 
-- **`@nxgt/ai-anthropic` 0.1.0** — a `ModelAdapter` for the Anthropic Messages API on Bun `fetch`:
-  - `anthropic()`: system, messages, tool calls and results, tools and sampling mapped to a request.
-  - SSE streaming, robust to any byte split, with `error` events raised as `AnthropicError`.
-  - Extended thinking, with signatures and `redacted_thinking` blocks kept and sent back unchanged.
-  - `cache: 'auto'` prompt-cache breakpoints, and `countTokens`.
-  - HTTP failures classified, retries honouring `retry-after` and the abort signal.
-  - Stop reasons `pause_turn` and `model_context_window_exceeded` mapped.
+Nothing in progress.
 
 ## Next
 
@@ -26,4 +20,12 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-anthropic` 0.1.0** — A `ModelAdapter` for the Anthropic Messages API on Bun `fetch`:
+  - `anthropic()`: system, messages, tool calls and results, tools and sampling mapped to a request.
+  - SSE streaming, robust to any byte split, with `error` events raised as `AnthropicError`.
+  - Extended thinking, with signatures and `redacted_thinking` blocks kept and sent back unchanged.
+  - `cache: 'auto'` prompt-cache breakpoints, and `countTokens`.
+  - HTTP failures classified, retries honouring `retry-after` and the abort signal.
+  - Stop reasons `pause_turn` and `model_context_window_exceeded` mapped.
+
+Earlier releases are listed in `CHANGELOG.md`.

@@ -4,13 +4,7 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Now
 
-- **`@nxgt/ai-core` 0.1.0** — the provider-neutral core of the SDK:
-  - Messages and parts (text, thinking, tool calls and results), usage, and `AiError`.
-  - `defineTool` and `jsonSchemaTool`: Zod input validation and JSON Schema generation; `executeTool`.
-  - The model port (`ModelAdapter`, `ModelRequest`, `ModelEvent`), `generate` with abort, and the `AgentEvent` union with `agentEventSchema`.
-  - `runAgent`: parallel tool calls, `maxSteps`, a token `budget`, abort, tool errors returned to the model, and `AgentObserver` hooks with a stable `runId`.
-  - Proposed actions: `confirm: true` tools are proposed, then run or rejected later, with a TTL.
-  - Opaque `redacted` thinking data kept for the next turn, and `estimateTokens`.
+Nothing in progress.
 
 ## Next
 
@@ -27,4 +21,12 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-core` 0.1.0** — The provider-neutral core of the SDK:
+  - Messages and parts (text, thinking, tool calls and results), usage, and `AiError`.
+  - `defineTool` and `jsonSchemaTool`: Zod input validation and JSON Schema generation; `executeTool`.
+  - The model port (`ModelAdapter`, `ModelRequest`, `ModelEvent`), `generate` with abort, and the `AgentEvent` union with `agentEventSchema`.
+  - `runAgent`: parallel tool calls, `maxSteps`, a token `budget`, abort, tool errors returned to the model, and `AgentObserver` hooks with a stable `runId`.
+  - Proposed actions: `confirm: true` tools are proposed, then run or rejected later, with a TTL.
+  - Opaque `redacted` thinking data kept for the next turn, and `estimateTokens`.
+
+Earlier releases are listed in `CHANGELOG.md`.
