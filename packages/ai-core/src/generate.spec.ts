@@ -53,6 +53,21 @@ describe('generate', () => {
 		});
 	});
 
+	test('a redacted thinking block stays its own part', async () => {
+		const model = adapter(async function* () {
+			yield { type: 'thinking-delta', text: 'a' };
+			yield { type: 'thinking-delta', text: '', redacted: 'opaque' };
+			yield { type: 'thinking-delta', text: 'b', signature: 's' };
+			yield { type: 'finish', reason: 'end' };
+		});
+		const out = await generate(model, req);
+		expect(out.message.parts).toEqual([
+			{ type: 'thinking', text: 'a' },
+			{ type: 'thinking', text: '', redacted: 'opaque' },
+			{ type: 'thinking', text: 'b', signature: 's' },
+		]);
+	});
+
 	test('a stream without finish is a MODEL_ERROR', async () => {
 		const model = adapter(async function* () {
 			yield { type: 'text-delta', text: 'x' };

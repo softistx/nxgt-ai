@@ -31,7 +31,13 @@ export interface ModelRequest {
 /** What a model adapter streams. A call ends with exactly one `finish`. */
 export type ModelEvent =
 	| { type: 'text-delta'; text: string }
-	| { type: 'thinking-delta'; text: string; signature?: string }
+	| {
+			type: 'thinking-delta';
+			text: string;
+			signature?: string;
+			/** An opaque redacted block: becomes its own part, `text` is empty. */
+			redacted?: string;
+	  }
 	| { type: 'tool-call'; id: string; name: string; input: unknown }
 	| { type: 'usage'; usage: Usage }
 	| { type: 'finish'; reason: FinishReason };

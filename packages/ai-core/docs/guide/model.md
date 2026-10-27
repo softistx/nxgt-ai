@@ -50,7 +50,7 @@ const { message, usage, finishReason } = await generate(
 ## ModelEvent
 
 `text-delta`, `thinking-delta` (with the `signature` when the provider gives
-one), `tool-call` (complete: `id`, `name`, parsed `input`), `usage` and exactly
+one, or `redacted` for an opaque block that `generate` keeps as its own part), `tool-call` (complete: `id`, `name`, parsed `input`), `usage` and exactly
 one `finish` with a reason: `end`, `tool-use`, `max-tokens` or `refusal`.
 
 ## generate

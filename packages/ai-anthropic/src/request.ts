@@ -37,6 +37,9 @@ function toBlock(part: Part): Block | undefined {
 		case 'text':
 			return part.text === '' ? undefined : { type: 'text', text: part.text };
 		case 'thinking':
+			// Opaque redacted block: returned unchanged, it has no signature.
+			if (part.redacted !== undefined)
+				return { type: 'redacted_thinking', data: part.redacted };
 			// Anthropic rejects a thinking block without its signature.
 			return part.signature === undefined
 				? undefined
