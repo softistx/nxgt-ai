@@ -13,6 +13,11 @@
 - [Mongo store: expired threads and messages are still read](#mongo-store-expired-threads-and-messages-are-still-read)
 - [Mongo store: `findOneAndUpdate` returns a result object, not a document](#mongo-store-findoneandupdate-returns-a-result-object-not-a-document)
 - [Mongo store: a failed `append` leaves a gap in `seq`](#mongo-store-a-failed-append-leaves-a-gap-in-seq)
+- [Redis store: `ERR syntax error` when listing threads](#redis-store-err-syntax-error-when-listing-threads)
+- [Redis store: `CROSSSLOT Keys in request don't hash to the same slot`](#redis-store-crossslot-keys-in-request-dont-hash-to-the-same-slot)
+- [Redis store: `WRONGTYPE Operation against a key holding the wrong kind of value`](#redis-store-wrongtype-operation-against-a-key-holding-the-wrong-kind-of-value)
+- [Redis store: `ERR_REDIS_CONNECTION_CLOSED`](#redis-store-err_redis_connection_closed)
+- [Redis store: a thread is gone before its time](#redis-store-a-thread-is-gone-before-its-time)
 
 ## `MemoryError` THREAD_NOT_FOUND
 
@@ -130,3 +135,37 @@ await threads.updateOne(
 **When:** an `append` threw while inserting, and the next messages start at a higher `seq` than the last stored one.
 **Why:** the store reserves the `seq` range on the thread before inserting, so a failed insert keeps `messageCount` advanced.
 **Fix:** none needed. A retry of the `append` works, but the gap stays. It is harmless: `load` orders by `seq`.
+
+## Redis store: `ERR syntax error` when listing threads
+
+**When:** `listThreads` fails with `ERR syntax error`.
+**Why:** it pages with `ZRANGE ... BYLEX REV`, which Redis 6.2 added; an older server does not know the form.
+**Fix:** use Redis 6.2 or later.
+
+## Redis store: `CROSSSLOT Keys in request don't hash to the same slot`
+
+**When:** `append`, `setSummary` or `deleteThread` fails on a Redis Cluster.
+**Why:** each script touches the keys of a thread, which a cluster spreads over several slots, and builds the action keys inside the script instead of declaring them in `KEYS`. Redis Cluster is not supported. The store supports a single node, or one primary with replicas behind Sentinel.
+**Fix:** point the client at a non-cluster Redis.
+
+## Redis store: `WRONGTYPE Operation against a key holding the wrong kind of value`
+
+**When:** any call fails with `WRONGTYPE`.
+**Why:** another application, or a cache, writes keys that start with the same `prefix`.
+**Fix:** give the store a prefix of its own, and clear the keys that collide.
+
+```ts
+const store = redisMemory({ client, prefix: 'support-chat' });
+```
+
+## Redis store: `ERR_REDIS_CONNECTION_CLOSED`
+
+**When:** a call rejects with `ERR_REDIS_CONNECTION_CLOSED`.
+**Why:** the client was closed, by `connection.close()` or `closeRedis()` of `@nxgt/redis`, while the store still used it. The store never opens or closes a connection.
+**Fix:** close the connection after the last call, at shutdown, and build the store from a connection that is still open.
+
+## Redis store: a thread is gone before its time
+
+**When:** `getThread` returns `undefined` or `append` throws `THREAD_NOT_FOUND` for a thread you created.
+**Why:** `expireAfterSeconds` counts from the thread's last write, and the clock the expiry uses is `now`: a `now` that returns a time in the past, or a short TTL, expires the thread at once.
+**Fix:** leave `now` out (it is `Date.now`) or give it epoch milliseconds, and set `expireAfterSeconds` longer than the idle time you accept.

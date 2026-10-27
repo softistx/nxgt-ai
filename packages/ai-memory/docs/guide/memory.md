@@ -226,6 +226,70 @@ for a foreign or absent owner. A crash in between leaves an empty thread, which
 a retry removes. An `append` racing a delete can leave unreachable messages;
 the TTL (`expiresAt`) removes them.
 
+## Redis store
+
+`redisMemory` from `@nxgt/ai-memory/redis` stores threads and messages in Redis
+keys. Give it the client of `@nxgt/redis`: the `client` of a `connectRedis`
+connection, or of an instance of `openRedis`. The store calls only
+`client.send(command, args)`, so it opens no connection of its own and closes
+nothing. It needs Redis 6.2 or later, and a single node or a replica set with
+Sentinel: Redis Cluster is not supported, because one script touches several
+keys.
+
+```ts
+import { connectRedis } from '@nxgt/redis';
+import { redisMemory } from '@nxgt/ai-memory/redis';
+
+const redis = await connectRedis(process.env.REDIS_URL ?? 'redis://localhost');
+const store = redisMemory({ client: redis.client });
+```
+
+### Keys
+
+Every key starts with `prefix` (default `ai-memory`); give each application
+that shares a Redis its own.
+
+| key                                  | type       | holds                                                                  |
+| ------------------------------------ | ---------- | ---------------------------------------------------------------------- |
+| `<prefix>:thread:<id>`               | hash       | the thread: `ownerId`, `title`, `meta`, `messageCount`, `summary`, ... |
+| `<prefix>:messages:<id>`             | sorted set | the messages of a thread, scored by `seq`                              |
+| `<prefix>:ids:<id>`                  | hash       | message id to `seq`, to find the summary's last message                |
+| `<prefix>:actions:<id>`              | set        | the keys of the actions the thread proposed                            |
+| `<prefix>:action:<n>:<ownerId>:<id>` | hash       | one proposed action: its `status`, its `body` and its `result`         |
+| `<prefix>:owner:<ownerId>`           | sorted set | the ids of the owner's threads, which pages `listThreads` newest first |
+
+`<n>` is the length of the owner id, so owner ids may hold `:` without their action keys meeting. Thread ids are time-ordered UUIDs. Reads need no index and no setup.
+
+### Expiry
+
+`expireAfterSeconds` sets an expiry on a thread's keys at every write that
+touches the thread (`append`, `setSummary`): the thread, its messages and its
+indexes go together, that long after the last write, and so do its
+proposed actions (`updateAction` slides them too). Unlike the Mongo store,
+messages do not expire one by one: the whole thread expires from its last
+write, so a thread you keep writing to never expires and an idle one
+disappears whole. The `now` option is the clock the expiry is computed from.
+
+Redis deletes an expired key on access or in the background; a read after
+the time never sees it. The owner index is not given an expiry: `listThreads`
+skips the ids of expired threads and removes them as it goes.
+
+### Concurrency
+
+`append` is one Lua script: it checks the owner, reserves the `seq` range with
+an atomic increment, and writes the messages and the new actions, so
+concurrent appends never share a position and a reader never sees a gap.
+`updateAction` is one script that matches only an action still `pending`; of
+two concurrent confirmations one gets the action and the other `undefined`. An
+action id is recorded once per owner, as in the other stores.
+
+### Deleting
+
+`deleteThread` is one script: it removes the messages, the actions, the thread
+and its entry in the owner index together, and returns `false` for a foreign
+or absent owner. It never leaves unreachable keys; an `append` racing it
+finds the thread gone and throws `THREAD_NOT_FOUND`.
+
 ## Write your own store
 
 Implement `MemoryStore` and run the contract suite against it:

@@ -27,8 +27,14 @@ export function contractOwner(
 				tokens: 1,
 			}),
 		];
-		for (const call of denied) {
-			await expect(call).rejects.toMatchObject({ code: 'THREAD_NOT_FOUND' });
+		// Settled together: a store may answer the second call before the
+		// first, and a rejection nobody awaits yet is reported as unhandled.
+		const settled = await Promise.allSettled(denied);
+		for (const outcome of settled) {
+			expect(outcome.status).toBe('rejected');
+			expect((outcome as PromiseRejectedResult).reason).toMatchObject({
+				code: 'THREAD_NOT_FOUND',
+			});
 		}
 		expect((await store.findAction('act-1', 'a'))?.status).toBe('pending');
 		expect(

@@ -46,7 +46,7 @@ jobs:
       # real mongod (single-node replica set) and a real Redis, started per
       # spec file with no Docker. The binaries are cached, keyed on the files
       # that pin their versions, so a run downloads or builds them once per
-      # version. Nothing hashes yet before slices S12 and S13 add those files.
+      # version.
       - name: Cache the mongod binary
         uses: actions/cache@v4
         with:
