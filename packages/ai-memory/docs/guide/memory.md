@@ -65,9 +65,11 @@ not fit, it folds the oldest messages into a rolling summary and keeps the last
 moves back to keep both.
 
 ```ts
+import { estimateTokens } from '@nxgt/ai-core';
 import { compact, summarizeWith } from '@nxgt/ai-memory';
 
 const loaded = await store.load(threadId, ownerId, { sinceSummary: true });
+if (!loaded) throw new Error('thread not found');
 const out = await compact(loaded.messages, {
 	budget: 8000,
 	summary: loaded.summary, // folded into the next summary

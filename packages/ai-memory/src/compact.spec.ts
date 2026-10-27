@@ -166,3 +166,57 @@ describe('compact', () => {
 		);
 	});
 });
+
+describe('compact pairs and truncation', () => {
+	it('keeps parallel calls with all their results', async () => {
+		const parallel: Message = {
+			role: 'assistant',
+			parts: [
+				{ type: 'tool-call', id: 'a', name: 'search', input: {} },
+				{ type: 'tool-call', id: 'b', name: 'search', input: {} },
+			],
+		};
+		const msgs = await stored([
+			say(1),
+			parallel,
+			result('a', 'ok'),
+			result('b', 'ok'),
+			say(2),
+		]);
+		const out = await compact(msgs, opts(1, { keepLast: 2 }));
+		expect(out.messages.map((m) => m.id)).toEqual(
+			msgs.slice(1).map((m) => m.id),
+		);
+	});
+
+	it('neither cuts an error result nor cuts an output twice', async () => {
+		const error: Message = {
+			role: 'tool',
+			parts: [
+				{
+					type: 'tool-result',
+					callId: 'e',
+					name: 'search',
+					isError: true,
+					error: { code: 'TOOL_ERROR', message: 'x'.repeat(100) },
+				} as Message['parts'][number],
+			],
+		};
+		const msgs = await stored([
+			call('e'),
+			error,
+			call('a'),
+			result('a', 'y'.repeat(100)),
+		]);
+		const once = await compact(
+			msgs,
+			opts(1, { keepLast: 9, truncateToolResultsTo: 10 }),
+		);
+		expect(once.messages[1]).toEqual(msgs[1] as StoredMessage);
+		const twice = await compact(
+			once.messages,
+			opts(1, { keepLast: 9, truncateToolResultsTo: 5 }),
+		);
+		expect(twice.messages).toEqual(once.messages);
+	});
+});

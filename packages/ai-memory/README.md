@@ -29,9 +29,11 @@ gets `undefined`.
 ## Compact a long thread
 
 ```ts
+import { estimateTokens } from '@nxgt/ai-core';
 import { compact, summarizeWith } from '@nxgt/ai-memory';
 
 const loaded = await store.load(threadId, ownerId, { sinceSummary: true });
+if (!loaded) throw new Error('thread not found');
 const out = await compact(loaded.messages, {
 	budget: 8000,
 	summary: loaded.summary,
