@@ -129,20 +129,20 @@ started, text may already have reached the user, so the error is thrown and
 the caller decides.
 
 A gateway that ignores `stream: true` and answers `application/json` is
-still understood.
+still understood; any other content type (or none) is read as SSE.
 
 ## Thinking
 
 `thinking: { budgetTokens }` sends `thinking: { type: 'enabled', budget_tokens }`.
 The budget is at least 1024 (the API's minimum) and defaults to it. With
 thinking on, `temperature` is not sent (the API refuses it) and an absent
-`maxTokens` becomes `4096 + budget`, since `max_tokens` must exceed the budget.
+`maxTokens` becomes `4096 + budget`; an explicit `maxTokens` not above the budget is raised to `budget + 1`, since `max_tokens` must exceed the budget.
 
 The model's thinking arrives as `thinking-delta` events; `generate` folds them
 into a `thinking` part that keeps its `signature`. Put that assistant message
 back in `messages` on the next turn and the part is sent as it came: the API
 needs the signed thinking block in front of a tool result. A thinking part
-without a signature is dropped. `redacted_thinking` blocks are not kept yet.
+without a signature is dropped. `redacted_thinking` blocks are not kept yet (the core thinking part has no field for them). A `thinking-delta` may carry only a `signature` (empty `text`); a UI must not render it as new text.
 
 ## Prompt cache
 

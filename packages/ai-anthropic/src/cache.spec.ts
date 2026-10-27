@@ -78,6 +78,16 @@ describe('thinking', () => {
 		expect(body).not.toHaveProperty('temperature');
 	});
 
+	test('raises max_tokens above the budget when maxTokens is too small', () => {
+		const body = buildBody('m', {
+			messages: [user('hi')],
+			maxTokens: 500,
+			thinking: { budgetTokens: 2000 },
+			cache: 'off',
+		});
+		expect(body).toMatchObject({ max_tokens: 2001 });
+	});
+
 	test('raises a budget below the API minimum to 1024', () => {
 		const body = buildBody('m', {
 			messages: [user('hi')],

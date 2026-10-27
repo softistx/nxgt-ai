@@ -79,6 +79,12 @@ export function toWireMessages(messages: readonly Message[]): WireMessage[] {
 	return out;
 }
 
+/** `max_tokens` must exceed the thinking budget, so it is raised to fit. */
+function maxTokens(asked: number | undefined, budget: number | undefined) {
+	if (budget === undefined) return asked ?? DEFAULT_MAX_TOKENS;
+	return Math.max(asked ?? DEFAULT_MAX_TOKENS + budget, budget + 1);
+}
+
 /**
  * The JSON body of `POST /v1/messages` for `req`. With `thinking`, the API
  * allows no `temperature` and needs `max_tokens` above the budget, so the
@@ -96,8 +102,7 @@ export function buildBody(
 		: undefined;
 	const body: WireBody = {
 		model,
-		max_tokens:
-			req.maxTokens ?? DEFAULT_MAX_TOKENS + (budget === undefined ? 0 : budget),
+		max_tokens: maxTokens(req.maxTokens, budget),
 		messages: toWireMessages(req.messages),
 	};
 	if (req.system !== undefined && req.system.length > 0) {
