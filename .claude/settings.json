@@ -1,0 +1,12 @@
+{
+	"extraKnownMarketplaces": {
+		"nxgt-core": {
+			"source": { "source": "github", "repo": "softistx/nxgt-core" }
+		}
+	},
+	"enabledPlugins": {
+		"nxgt-base@nxgt-core": true,
+		"nxgt-workflow@nxgt-core": true,
+		"nxgt-package@nxgt-core": true
+	}
+}
