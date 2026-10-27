@@ -124,7 +124,15 @@ describe('buildBody', () => {
 				{ role: 'user', parts: [{ type: 'text', text: 'hi' }] },
 				{
 					role: 'assistant',
-					parts: [{ type: 'proposed-action', id: 'a', tool: 't', input: {} }],
+					parts: [
+						{
+							type: 'proposed-action',
+							id: 'a',
+							tool: 't',
+							input: {},
+							expiresAt: 9,
+						},
+					],
 				},
 			],
 		});
@@ -177,11 +185,12 @@ describe('headers and response', () => {
 	test('maps a text response with cache usage', async () => {
 		const t = setup([json(fixture('message-text'))]);
 		expect(await events(t.model, { messages })).toEqual([
-			{ type: 'text-delta', text: 'It is 18 degrees.' },
+			{ type: 'text-delta', text: 'It is 18 degrees.', start: true },
 			{
 				type: 'usage',
 				usage: {
-					inputTokens: 12,
+					// 12 plain + 3 cache read + 1 cache write
+					inputTokens: 16,
 					outputTokens: 7,
 					cacheReadTokens: 3,
 					cacheWriteTokens: 1,

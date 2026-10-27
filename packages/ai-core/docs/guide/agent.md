@@ -38,19 +38,19 @@ you may await `run.result` alone. `result` never rejects.
 
 ## Options
 
-| option          | meaning                                                                      |
-| --------------- | ---------------------------------------------------------------------------- |
-| `model`         | the `ModelAdapter`                                                           |
-| `system`        | a string, or `SystemBlock[]` a cache-aware adapter may cache                 |
-| `messages`      | the conversation so far; never mutated                                       |
-| `tools`         | the tools the model may call                                                 |
-| `context`       | passed to every tool                                                         |
-| `signal`        | aborts the run                                                               |
-| `maxSteps`      | model calls allowed, default `8`                                             |
-| `budget`        | `{ maxInputTokens?, maxOutputTokens?, maxTotalTokens? }` summed over the run |
-| `observers`     | `AgentObserver[]`, see below                                                 |
-| `proposalTtlMs` | how long a proposed action can be confirmed, default one hour                |
-| `now`           | the clock in epoch ms, default `Date.now`; tests pass a fixed one            |
+| option          | meaning                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| `model`         | the `ModelAdapter`                                                                                           |
+| `system`        | a string, or `SystemBlock[]` a cache-aware adapter may cache                                                 |
+| `messages`      | the conversation so far; never mutated                                                                       |
+| `tools`         | the tools the model may call                                                                                 |
+| `context`       | passed to every tool                                                                                         |
+| `signal`        | aborts the run                                                                                               |
+| `maxSteps`      | model calls allowed, default `8`                                                                             |
+| `budget`        | `{ maxInputTokens?, maxOutputTokens?, maxTotalTokens? }` summed over the run; input counts cached tokens too |
+| `observers`     | `AgentObserver[]`, see below                                                                                 |
+| `proposalTtlMs` | how long a proposed action can be confirmed, default one hour                                                |
+| `now`           | the clock in epoch ms, default `Date.now`; tests pass a fixed one                                            |
 
 ## Events
 
@@ -59,7 +59,9 @@ the model streams, `usage` (that step's), `message` (the assistant message).
 When tools ran, each `tool-result` is emitted as its tool finishes and a
 `message` with role `tool` follows. The run ends with an `error` event (only
 for `max-steps`, `budget` and `error`) and one `done { reason, usage }`.
-`agentEventSchema` validates any of them.
+`agentEventSchema` validates any of them; it accepts an unknown error code or
+`done.reason` (typed `WireErrorCode` / `WireRunEndReason`), so keep a `default`
+branch when you switch on them.
 
 ## Tools
 
@@ -78,6 +80,12 @@ for the model. See [Proposed actions](actions.md).
 
 Limits are checked before each model call, so the tools of the last allowed
 step still run and their results are in `result.messages`.
+
+A step that ends `max-tokens`, `end` or `refusal` while holding complete tool
+calls does not run them. Each call gets an error result (`MODEL_ERROR`, "The
+call was cut off ...") in a `tool` message right after the assistant message,
+so the history stays valid: Anthropic answers 400 to a `tool_use` with no
+`tool_result` on the next turn.
 
 | `reason`     | when                                        | `error.code`      |
 | ------------ | ------------------------------------------- | ----------------- |

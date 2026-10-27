@@ -1,21 +1,31 @@
+/** Every code of an error the SDK raises or reports; later slices add codes. */
+export const AI_ERROR_CODES = [
+	'INVALID_TOOL_DEFINITION',
+	'INVALID_TOOL_INPUT',
+	'INVALID_TOOL_OUTPUT',
+	'TOOL_FAILED',
+	'UNKNOWN_TOOL',
+	'MODEL_ERROR',
+	'RATE_LIMITED',
+	'AUTHENTICATION',
+	'ABORTED',
+	'MAX_STEPS',
+	'BUDGET_EXCEEDED',
+	'ACTION_EXPIRED',
+	'ACTION_NOT_PENDING',
+] as const;
+
 /**
- * The codes of every error the SDK raises or reports. Later slices add codes;
- * adding one is not a breaking change, so switch with a default branch.
+ * The code of an error the SDK raises or reports. Adding one is not a breaking
+ * change, so switch with a default branch.
  */
-export type AiErrorCode =
-	| 'INVALID_TOOL_DEFINITION'
-	| 'INVALID_TOOL_INPUT'
-	| 'INVALID_TOOL_OUTPUT'
-	| 'TOOL_FAILED'
-	| 'UNKNOWN_TOOL'
-	| 'MODEL_ERROR'
-	| 'RATE_LIMITED'
-	| 'AUTHENTICATION'
-	| 'ABORTED'
-	| 'MAX_STEPS'
-	| 'BUDGET_EXCEEDED'
-	| 'ACTION_EXPIRED'
-	| 'ACTION_NOT_PENDING';
+export type AiErrorCode = (typeof AI_ERROR_CODES)[number];
+
+/**
+ * An error code as read from the wire: a known code, or any string a newer
+ * server sent. Autocomplete keeps the known ones; keep a `default` branch.
+ */
+export type WireErrorCode = AiErrorCode | (string & {});
 
 /** One problem found in a tool's input, located by a dotted path. */
 export interface AiIssue {

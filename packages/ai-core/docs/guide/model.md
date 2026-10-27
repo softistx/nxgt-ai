@@ -53,6 +53,11 @@ const { message, usage, finishReason } = await generate(
 one, or `redacted` for an opaque block that `generate` keeps as its own part), `tool-call` (complete: `id`, `name`, parsed `input`), `usage` and exactly
 one `finish` with a reason: `end`, `tool-use`, `max-tokens` or `refusal`.
 
+`text-delta` and `thinking-delta` may carry `start: true`: the delta opens a new
+part even when the last part has the same type, so two consecutive thinking
+blocks keep their own signatures. A provider that sends one block per call
+may leave it out.
+
 ## generate
 
 `generate(model, req, signal?)` folds one call into `{ message, usage,
@@ -70,7 +75,7 @@ are summed.
 
 ## AgentEvent
 
-`runAgent` (a later slice) emits `AgentEvent`s: `step-start`, `text-delta`,
+`runAgent` emits `AgentEvent`s: `step-start`, `text-delta`,
 `thinking-delta`, `tool-call`, `tool-result`, `proposed-action`, `message`,
 `usage`, `error` and a final `done` with a `reason`. `agentEventSchema` is the
 Zod schema of the union, for reading events back from a stream:

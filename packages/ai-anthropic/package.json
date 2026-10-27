@@ -51,6 +51,7 @@
 	},
 	"devDependencies": {
 		"@nxgt/ai-core": "workspace:^",
+		"@nxgt/ai-testing": "workspace:^",
 		"@types/bun": "^1.4.4",
 		"zod": "4.6.5"
 	},

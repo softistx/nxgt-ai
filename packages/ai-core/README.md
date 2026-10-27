@@ -44,7 +44,10 @@ A `Message` is a `role` (`'user' | 'assistant' | 'tool'`) and `parts`. A `Part`
 is one of `text`, `thinking`, `tool-call`, `tool-result` or `proposed-action`,
 told apart by `type`. Messages are plain JSON: store them as they are.
 `Usage` counts `inputTokens`, `outputTokens`, `cacheReadTokens` and
-`cacheWriteTokens`; `addUsage` sums two, `emptyUsage()` starts a total.
+`cacheWriteTokens`; `inputTokens` counts all input, the cached tokens included.
+`addUsage` sums two, `emptyUsage()` starts a total. `AI_ERROR_CODES` lists the
+error codes; events and tool errors read from the wire type their code as
+`WireErrorCode`, open to newer codes (keep a `default` branch).
 See [Messages](docs/guide/messages.md).
 
 ## Tools
@@ -61,7 +64,8 @@ result the model can correct. See [Tools](docs/guide/tools.md).
 
 `ModelAdapter` (`provider`, `model`, `stream(req, signal)`) is what providers
 implement; it streams `ModelEvent`s (`text-delta`, `thinking-delta`,
-`tool-call`, `usage`, `finish`). `generate(model, req, signal)` folds one call
+`tool-call`, `usage`, `finish`); a text or thinking delta may carry
+`start: true` to open a new part. `generate(model, req, signal)` folds one call
 into an assistant `Message`, its `Usage` and a finish reason, and throws
 `AiError` `ABORTED` when the signal aborts. `agentEventSchema` validates the
 `AgentEvent`s the agent loop emits. See [Model port](docs/guide/model.md).

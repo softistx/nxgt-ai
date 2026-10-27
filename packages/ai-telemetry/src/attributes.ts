@@ -18,6 +18,7 @@ const FINISH: Record<string, string> = {
 export const finishReason = (reason: string): string =>
 	FINISH[reason] ?? reason;
 
+/** `inputTokens` counts all input, cached included, as `gen_ai.usage.input_tokens` does. */
 export const usageAttributes = (usage: Usage) => ({
 	'gen_ai.usage.input_tokens': usage.inputTokens,
 	'gen_ai.usage.output_tokens': usage.outputTokens,

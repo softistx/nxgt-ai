@@ -138,4 +138,29 @@ describe('runAgent limits and abort', () => {
 		});
 		expect(types(events).slice(-2)).toEqual(['error', 'done']);
 	});
+
+	test.each(['max-tokens', 'end', 'refusal'] as const)(
+		'tool calls on a step that finished %s are answered with error results',
+		async (finish) => {
+			const model = fakeModel([{ toolCalls: [call('echo')], finish }]);
+			const run = runAgent({ model, messages: user, tools: [echo] });
+			const events = await collect(run);
+			const result = await run.result;
+			expect(result.reason).toBe(finish);
+			expect(result.messages.map((m) => m.role)).toEqual(['assistant', 'tool']);
+			expect(result.messages[1]?.parts).toEqual([
+				{
+					type: 'tool-result',
+					callId: 'call_0_0',
+					name: 'echo',
+					isError: true,
+					error: {
+						code: 'MODEL_ERROR',
+						message: `The call was cut off (the step ended ${finish}) and did not run.`,
+					},
+				},
+			]);
+			expect(types(events)).toContain('tool-result');
+		},
+	);
 });

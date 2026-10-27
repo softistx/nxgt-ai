@@ -1,4 +1,4 @@
-import type { AiErrorCode } from './errors';
+import type { WireErrorCode } from './errors';
 import type { AgentEvent, RunEndReason } from './events';
 import type { Message, ToolCallPart, ToolResultPart, Usage } from './message';
 import type { FinishReason, ModelAdapter, SystemBlock } from './model';
@@ -6,6 +6,7 @@ import type { AnyTool } from './tool';
 
 /** Token limits of one run; each is checked between model calls. */
 export interface RunBudget {
+	/** All input tokens, the cached ones included. */
 	maxInputTokens?: number;
 	maxOutputTokens?: number;
 	/** Input plus output. */
@@ -14,7 +15,7 @@ export interface RunBudget {
 
 /** The coded error a run ended with, when it did not end normally. */
 export interface RunError {
-	code: AiErrorCode;
+	code: WireErrorCode;
 	message: string;
 }
 

@@ -5,6 +5,7 @@ import type {
 	RunBudget,
 	RunError,
 } from './agent-types';
+import { answerCutOff } from './cut-off';
 import { AiError } from './errors';
 import { createChannel } from './event-channel';
 import type { AgentEvent, RunEndReason } from './events';
@@ -63,6 +64,37 @@ function limitEnding(
 	return undefined;
 }
 
+/** Runs the calls of a step and records the assistant and tool messages. */
+async function runTools(
+	options: RunAgentOptions,
+	state: RunState,
+	calls: ToolCallPart[],
+	assistant: Message,
+	signal: AbortSignal,
+	emit: Emit,
+): Promise<void> {
+	const tools = new Map((options.tools ?? []).map((t) => [t.name, t]));
+	const proposals: ProposedActionPart[] = [];
+	const results = await runToolCalls(calls, {
+		tools,
+		ttlMs: options.proposalTtlMs ?? DEFAULT_PROPOSAL_TTL_MS,
+		now: options.now ?? Date.now,
+		proposals,
+		context: options.context,
+		signal,
+		step: state.steps,
+		runId: state.runId,
+		observers: options.observers,
+		emit,
+	});
+	const toolMessage: Message = {
+		role: 'tool',
+		parts: [...results, ...proposals],
+	};
+	state.added.push(assistant, toolMessage);
+	emit({ type: 'message', message: toolMessage });
+}
+
 /** One model call and, if it asked for tools, their results. */
 async function step(
 	options: RunAgentOptions,
@@ -89,30 +121,12 @@ async function step(
 	if (out.finishReason !== 'tool-use' || calls.length === 0) {
 		state.added.push(out.message);
 		emit({ type: 'message', message: out.message });
+		if (calls.length > 0) answerCutOff(calls, out.finishReason, state, emit);
 		const reason = out.finishReason === 'tool-use' ? 'end' : out.finishReason;
 		return { reason };
 	}
 	emit({ type: 'message', message: out.message });
-	const tools = new Map((options.tools ?? []).map((t) => [t.name, t]));
-	const proposals: ProposedActionPart[] = [];
-	const results = await runToolCalls(calls, {
-		tools,
-		ttlMs: options.proposalTtlMs ?? DEFAULT_PROPOSAL_TTL_MS,
-		now: options.now ?? Date.now,
-		proposals,
-		context: options.context,
-		signal,
-		step: state.steps,
-		runId: state.runId,
-		observers: options.observers,
-		emit,
-	});
-	const toolMessage: Message = {
-		role: 'tool',
-		parts: [...results, ...proposals],
-	};
-	state.added.push(out.message, toolMessage);
-	emit({ type: 'message', message: toolMessage });
+	await runTools(options, state, calls, out.message, signal, emit);
 	return signal.aborted ? { reason: 'aborted' } : undefined;
 }
 
