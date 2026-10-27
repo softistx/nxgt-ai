@@ -51,6 +51,40 @@ if (out.summary && out.throughMessageId) {
 Tool results are cut first (oldest first), then the oldest messages are folded
 into a rolling summary; the last 6 are kept and a tool call never loses its result.
 
+## MongoDB store
+
+`@nxgt/ai-memory/mongo` keeps threads and messages in two collections. It takes
+any object with the few collection methods it calls: a `Collection` of the
+`mongodb` driver, or a scoped collection of `@nxgt/mongo`. It imports no client.
+It needs the `mongodb` driver 6 or later.
+
+```ts
+import {
+	expiresAtIndex,
+	messageIndexes,
+	mongoMemory,
+	threadIndexes,
+} from '@nxgt/ai-memory/mongo';
+
+// Once, at start-up: the indexes the store relies on.
+for (const { key, ...options } of [...threadIndexes, expiresAtIndex]) {
+	await db.collection('threads').createIndex(key, options);
+}
+for (const { key, ...options } of [...messageIndexes, expiresAtIndex]) {
+	await db.collection('messages').createIndex(key, options);
+}
+
+const store = mongoMemory({
+	threads: db.collection('threads'),
+	messages: db.collection('messages'),
+	expireAfterSeconds: 60 * 60 * 24 * 30, // optional; omit it to keep everything
+});
+```
+
+It passes `memoryStoreContract`. `updateAction` is one atomic write that
+matches only a `pending` action. Without `expireAfterSeconds`, leave
+`expiresAtIndex` out. See the [guide](docs/guide/memory.md#mongodb-store).
+
 ## Test your own store
 
 ```ts
@@ -73,10 +107,13 @@ The factory returns a fresh, empty store each time. The suite runs under
 | `summarizeWith(model, { system?, maxTokens?, signal? })`                                           | a `summarize` for `compact` backed by an `@nxgt/ai-core` model adapter                                                                                      |
 | `MemoryError`, `MEMORY_ERROR_CODES`                                                                | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR`, `INVALID_OWNER` or `EMPTY_SUMMARY`                        |
 | `messageSchema`, `threadSchema`, `storedMessageSchema`, `summarySchema`                            | the zod shapes of a message, a thread, a stored message and a summary                                                                                       |
+| `mongoMemory({ threads, messages, expireAfterSeconds?, now? })`                                    | from `@nxgt/ai-memory/mongo`: a store over two MongoDB collections                                                                                          |
+| `threadFields`, `messageFields`, `threadIndexes`, `messageIndexes`, `expiresAtIndex`               | from `@nxgt/ai-memory/mongo`: the stored field names and the indexes to create                                                                              |
 | `memoryStoreContract(make)`                                                                        | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `memoryStore`                                                                          |
 
 ## Traps
 
+- Mongo store: create the indexes first (a missing unique index is not caught), and mind that a TTL monitor deletes expired documents up to a minute late.
 - A foreign owner reads as absent, never as forbidden.
 - `updateAction` returns `undefined` when the action is absent, foreign or no longer `pending`.
 - The store never checks `expiresAt`; the core checks it when the action is confirmed.

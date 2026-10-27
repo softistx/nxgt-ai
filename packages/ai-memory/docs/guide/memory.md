@@ -143,6 +143,89 @@ compare-and-set), so two concurrent confirmations cannot both run the tool.
 Patch `status` to `confirmed`, `rejected`, `expired` or `failed`, with the
 tool's `result` when there is one.
 
+## MongoDB store
+
+`mongoMemory` from `@nxgt/ai-memory/mongo` stores threads and messages in two
+collections you give it. The collections only need `insertOne`, `insertMany`,
+`findOne`, `find` (with `sort`, `limit`, `toArray`), `findOneAndUpdate`,
+`updateOne`, `deleteOne` and `deleteMany`: a `mongodb` driver `Collection`
+(version 6 or later) has them, and so does a scoped collection of `@nxgt/mongo`.
+
+```ts
+import { mongoMemory } from '@nxgt/ai-memory/mongo';
+
+const store = mongoMemory({
+	threads: db.collection('threads'),
+	messages: db.collection('messages'),
+});
+```
+
+### Indexes
+
+Create them once; the store does not.
+
+```ts
+import { messageIndexes, threadIndexes } from '@nxgt/ai-memory/mongo';
+
+for (const { key, ...options } of threadIndexes) {
+	await db.collection('threads').createIndex(key, options);
+}
+for (const { key, ...options } of messageIndexes) {
+	await db.collection('messages').createIndex(key, options);
+}
+```
+
+The messages' unique index on `ownerId, threadId, seq` is what keeps two
+appends from sharing a position.
+
+### Stored fields
+
+`threadFields` and `messageFields` list the fields of each document, for
+projections, migrations or a schema validator. `_id` is the thread or message
+id (a time-ordered UUID, which is what pages `listThreads` newest first).
+Every message document also carries its `ownerId`, and a message that proposes
+actions carries an `actions` array with their current status.
+
+### Expiry
+
+`expireAfterSeconds` makes the store write an `expiresAt` date: a thread
+expires that long after its last write, a message that long after it was
+appended. Create `expiresAtIndex` on both collections so MongoDB deletes them.
+
+```ts
+import { expiresAtIndex } from '@nxgt/ai-memory/mongo';
+
+const threads = db.collection('threads');
+const messages = db.collection('messages');
+
+await threads.createIndex(expiresAtIndex.key, { expireAfterSeconds: 0 });
+await messages.createIndex(expiresAtIndex.key, { expireAfterSeconds: 0 });
+const store = mongoMemory({
+	threads,
+	messages,
+	expireAfterSeconds: 30 * 86400,
+});
+```
+
+MongoDB removes expired documents about once a minute, so they can be read for
+a little after their time. A long-lived thread loses its oldest messages first;
+`messageCount` keeps counting them.
+
+### Concurrency
+
+`append` reserves its `seq` range with one atomic increment on the thread, so
+concurrent appends never collide. `updateAction` is one `findOneAndUpdate`
+that matches only an action still `pending`; of two concurrent confirmations
+one gets the action and the other `undefined`. A failed insert in `append`
+leaves a gap in `seq`; `load` still orders by it.
+
+#### Deleting
+
+`deleteThread` deletes the messages first, then the thread. It returns `false`
+for a foreign or absent owner. A crash in between leaves an empty thread, which
+a retry removes. An `append` racing a delete can leave unreachable messages;
+the TTL (`expiresAt`) removes them.
+
 ## Write your own store
 
 Implement `MemoryStore` and run the contract suite against it:
