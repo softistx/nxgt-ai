@@ -64,3 +64,5 @@ An effort has an integration branch (`feat/ai-core`, `feat/ai-memory-graphql`,
 - `ci.yml` has no Meilisearch/SeaweedFS caches and no newest-peers job.
 - `CLAUDE.md` is the one-line import `@AGENTS.md`; the comments in the
   workflow files are condensed from nxgt-data's.
+- `biome.json` also excludes `.changeset/*.md`: Biome 2.6.3 (locked here) reformats a
+  changeset's front matter into a heading; nxgt-data's 2.5.15 did not.
