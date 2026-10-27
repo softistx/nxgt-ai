@@ -4,11 +4,7 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Now
 
-- **`@nxgt/ai-telemetry` 0.1.0** — see an agent run in your traces:
-  - `aiTelemetry()`, an `AgentObserver` that writes `@nxgt/telemetry` spans: `ai.agent.run`, `ai.model.call` and `ai.tool.call`, with `gen_ai.*` attributes.
-  - Spans keyed by run id, so one observer serves concurrent runs.
-  - An abort recorded as cancelled.
-  - Prompts and tool content recorded only with `recordContent`.
+Nothing in progress.
 
 ## Next
 
@@ -24,4 +20,10 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-telemetry` 0.1.0** — See an agent run in your traces:
+  - `aiTelemetry()`, an `AgentObserver` that writes `@nxgt/telemetry` spans: `ai.agent.run`, `ai.model.call` and `ai.tool.call`, with `gen_ai.*` attributes.
+  - Spans keyed by run id, so one observer serves concurrent runs.
+  - An abort recorded as cancelled.
+  - Prompts and tool content recorded only with `recordContent`.
+
+Earlier releases are listed in `CHANGELOG.md`.

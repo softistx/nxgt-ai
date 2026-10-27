@@ -4,11 +4,7 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Now
 
-- **`@nxgt/ai-ollama` 0.1.0** — a `ModelAdapter` for a local Ollama server on Bun `fetch`:
-  - `ollama()` over `/api/chat` NDJSON streaming, robust to any byte split, with text and thinking deltas.
-  - Whole tool calls with generated ids, and tool results sent back.
-  - `done_reason` and token usage mapped; `keepAlive` and `think` options.
-  - `OllamaError` classification: server unreachable, model not found, HTTP failures; abort support.
+Nothing in progress.
 
 ## Next
 
@@ -25,4 +21,10 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-ollama` 0.1.0** — A `ModelAdapter` for a local Ollama server on Bun `fetch`:
+  - `ollama()` over `/api/chat` NDJSON streaming, robust to any byte split, with text and thinking deltas.
+  - Whole tool calls with generated ids, and tool results sent back.
+  - `done_reason` and token usage mapped; `keepAlive` and `think` options.
+  - `OllamaError` classification: server unreachable, model not found, HTTP failures; abort support.
+
+Earlier releases are listed in `CHANGELOG.md`.

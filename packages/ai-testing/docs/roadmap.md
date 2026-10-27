@@ -4,11 +4,7 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Now
 
-- **`@nxgt/ai-testing` 0.1.0** — test agents without a network:
-  - `fakeModel`: a scripted `ModelAdapter` (an array of turns, or a function), with text, thinking, tool calls, usage and finish reason per turn, deterministic `chunk` splitting, `delayMs`, and every request recorded in `requests`.
-  - Injected errors: a turn can throw an `AiError` to test failure paths.
-  - `collect`: drain a run's events into an array.
-  - Tool-call assertions on a list of events.
+Nothing in progress.
 
 ## Next
 
@@ -25,4 +21,10 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-testing` 0.1.0** — Test agents without a network:
+  - `fakeModel`: a scripted `ModelAdapter` (an array of turns, or a function), with text, thinking, tool calls, usage and finish reason per turn, deterministic `chunk` splitting, `delayMs`, and every request recorded in `requests`.
+  - Injected errors: a turn can throw an `AiError` to test failure paths.
+  - `collect`: drain a run's events into an array.
+  - Tool-call assertions on a list of events.
+
+Earlier releases are listed in `CHANGELOG.md`.
