@@ -15,7 +15,7 @@
     },
     "packages/ai-anthropic": {
       "name": "@nxgt/ai-anthropic",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
@@ -29,7 +29,7 @@
     },
     "packages/ai-core": {
       "name": "@nxgt/ai-core",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@types/bun": "^1.4.4",
         "zod": "4.6.5",
@@ -41,7 +41,7 @@
     },
     "packages/ai-ollama": {
       "name": "@nxgt/ai-ollama",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@types/bun": "^1.4.4",
@@ -53,7 +53,7 @@
     },
     "packages/ai-telemetry": {
       "name": "@nxgt/ai-telemetry",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
@@ -69,7 +69,7 @@
     },
     "packages/ai-testing": {
       "name": "@nxgt/ai-testing",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@types/bun": "^1.4.4",
