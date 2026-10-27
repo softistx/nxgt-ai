@@ -100,11 +100,11 @@ conversation; a model call cut short adds nothing. The run ends `aborted`.
 
 ```ts
 const logger: AgentObserver = {
-	onRunStart: ({ provider, model, tools }) => {},
-	onModelStart: ({ step }) => {},
-	onModelCall: ({ step, durationMs, usage, finishReason, error }) => {},
-	onToolStart: ({ step, call }) => {},
-	onToolCall: ({ step, call, result, durationMs }) => {},
+	onRunStart: ({ runId, provider, model, tools }) => {},
+	onModelStart: ({ runId, step }) => {},
+	onModelCall: ({ runId, step, durationMs, usage, finishReason, error }) => {},
+	onToolStart: ({ runId, step, call }) => {},
+	onToolCall: ({ runId, step, call, result, durationMs }) => {},
 	onRunEnd: (result) => {},
 };
 ```
@@ -112,11 +112,13 @@ const logger: AgentObserver = {
 Hooks are awaited in order. One that throws is ignored: telemetry never fails
 a run. `onModelStart` and `onToolStart` fire before the work, so an observer
 can open a span that covers it; each is followed by its `onModelCall` or
-`onToolCall`, which carries the outcome. A hook has no run id: use one
-observer per run.
+`onToolCall`, which carries the outcome. Every hook receives the run's
+`runId` (also on `AgentResult` and on each `step-start` event), so one observer
+built once can serve concurrent runs: key its state by `runId`. The id is a
+`crypto.randomUUID()`; a test passes `newId` to `runAgent` for a fixed one.
 
 ## AgentResult
 
-`reason`, `messages` (what the run added after your input; append them to
+`runId`, `reason`, `messages` (what the run added after your input; append them to
 continue the conversation), `text` (the last assistant text), `usage`
 (summed over every model call), `steps` and `error`.

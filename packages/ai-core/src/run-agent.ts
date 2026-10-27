@@ -27,6 +27,7 @@ interface Ending {
 }
 
 interface RunState {
+	runId: string;
 	added: Message[];
 	usage: Usage;
 	steps: number;
@@ -70,9 +71,16 @@ async function step(
 	emit: Emit,
 ): Promise<Ending | undefined> {
 	state.steps += 1;
-	emit({ type: 'step-start', step: state.steps });
+	emit({ type: 'step-start', step: state.steps, runId: state.runId });
 	const req = buildRequest(options, [...options.messages, ...state.added]);
-	const out = await modelStep(options, req, state.steps, signal, emit);
+	const out = await modelStep(
+		options,
+		state.runId,
+		req,
+		state.steps,
+		signal,
+		emit,
+	);
 	state.usage = addUsage(state.usage, out.usage);
 	emit({ type: 'usage', usage: out.usage });
 	const calls = out.message.parts.filter(
@@ -95,6 +103,7 @@ async function step(
 		context: options.context,
 		signal,
 		step: state.steps,
+		runId: state.runId,
 		observers: options.observers,
 		emit,
 	});
@@ -156,8 +165,10 @@ async function execute(
 	signal: AbortSignal,
 	emit: Emit,
 ): Promise<AgentResult> {
-	const state: RunState = { added: [], usage: emptyUsage(), steps: 0 };
+	const runId = (options.newId ?? (() => crypto.randomUUID()))();
+	const state: RunState = { runId, added: [], usage: emptyUsage(), steps: 0 };
 	await notify(options.observers, 'onRunStart', {
+		runId,
 		provider: options.model.provider,
 		model: options.model.model,
 		messages: options.messages,
@@ -169,6 +180,7 @@ async function execute(
 	}
 	emit({ type: 'done', reason: ending.reason, usage: state.usage });
 	const result: AgentResult = {
+		runId,
 		reason: ending.reason,
 		messages: state.added,
 		text: lastText(state.added),

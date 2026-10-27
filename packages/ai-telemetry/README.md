@@ -13,7 +13,7 @@ const run = runAgent({
 	model,
 	messages,
 	tools,
-	observers: [aiTelemetry()], // one observer per run
+	observers: [aiTelemetry()], // one observer can serve every run
 });
 ```
 

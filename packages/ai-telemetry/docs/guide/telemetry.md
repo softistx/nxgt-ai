@@ -28,9 +28,10 @@ await telemetry.close();
 | `telemetry`     | the one in scope or installed | where the spans go; with none anywhere, nothing is emitted      |
 | `recordContent` | `false`                       | also record prompts, tool arguments and results, and the answer |
 
-Build **one observer per `runAgent` call**: ai-core's hooks carry no run id, so
-the observer keeps the state of a single run. If the run happens inside a span
-(a request), `ai.agent.run` nests under it.
+Build the observer **once** (at server start) and pass it to every `runAgent`
+call: ai-core's hooks carry the run's `runId`, and the observer keys its open
+spans by it (and by call id for tools), so concurrent runs get separate span
+trees. If a run happens inside a span (a request), `ai.agent.run` nests under it.
 
 ## Spans
 

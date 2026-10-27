@@ -16,6 +16,7 @@ export interface ToolRunContext {
 	context: unknown;
 	signal: AbortSignal;
 	step: number;
+	runId: string;
 	/** How long a proposal can be confirmed, in ms. */
 	ttlMs: number;
 	now(): number;
@@ -108,11 +109,16 @@ export function runToolCalls(
 ): Promise<ToolResultPart[]> {
 	return Promise.all(
 		calls.map(async (call) => {
-			await notify(run.observers, 'onToolStart', { step: run.step, call });
+			await notify(run.observers, 'onToolStart', {
+				runId: run.runId,
+				step: run.step,
+				call,
+			});
 			const started = performance.now();
 			const result = await runOne(call, run);
 			run.emit({ type: 'tool-result', result });
 			await notify(run.observers, 'onToolCall', {
+				runId: run.runId,
 				step: run.step,
 				call,
 				result,

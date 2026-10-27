@@ -135,7 +135,7 @@ describe('agentEventSchema', () => {
 	});
 
 	const events: AgentEvent[] = [
-		{ type: 'step-start', step: 1 },
+		{ type: 'step-start', step: 1, runId: 'r1' },
 		{ type: 'text-delta', text: 'a' },
 		{ type: 'thinking-delta', text: 'b', signature: 's' },
 		{ type: 'tool-call', id: 'c1', name: 'w', input: { x: 1 } },
