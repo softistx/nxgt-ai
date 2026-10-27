@@ -195,12 +195,11 @@ appended. Create `expiresAtIndex` on both collections so MongoDB deletes them.
 ```ts
 import { expiresAtIndex } from '@nxgt/ai-memory/mongo';
 
-await db
-	.collection('threads')
-	.createIndex(expiresAtIndex.key, { expireAfterSeconds: 0 });
-await db
-	.collection('messages')
-	.createIndex(expiresAtIndex.key, { expireAfterSeconds: 0 });
+const threads = db.collection('threads');
+const messages = db.collection('messages');
+
+await threads.createIndex(expiresAtIndex.key, { expireAfterSeconds: 0 });
+await messages.createIndex(expiresAtIndex.key, { expireAfterSeconds: 0 });
 const store = mongoMemory({
 	threads,
 	messages,
@@ -217,7 +216,15 @@ a little after their time. A long-lived thread loses its oldest messages first;
 `append` reserves its `seq` range with one atomic increment on the thread, so
 concurrent appends never collide. `updateAction` is one `findOneAndUpdate`
 that matches only an action still `pending`; of two concurrent confirmations
-one gets the action and the other `undefined`.
+one gets the action and the other `undefined`. A failed insert in `append`
+leaves a gap in `seq`; `load` still orders by it.
+
+#### Deleting
+
+`deleteThread` deletes the messages first, then the thread. It returns `false`
+for a foreign or absent owner. A crash in between leaves an empty thread, which
+a retry removes. An `append` racing a delete can leave unreachable messages;
+the TTL (`expiresAt`) removes them.
 
 ## Write your own store
 

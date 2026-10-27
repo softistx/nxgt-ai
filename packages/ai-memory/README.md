@@ -56,6 +56,7 @@ into a rolling summary; the last 6 are kept and a tool call never loses its resu
 `@nxgt/ai-memory/mongo` keeps threads and messages in two collections. It takes
 any object with the few collection methods it calls: a `Collection` of the
 `mongodb` driver, or a scoped collection of `@nxgt/mongo`. It imports no client.
+It needs the `mongodb` driver 6 or later.
 
 ```ts
 import {
