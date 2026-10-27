@@ -71,6 +71,10 @@ export interface RunAgentOptions {
 	maxSteps?: number;
 	budget?: RunBudget;
 	observers?: readonly AgentObserver[];
+	/** How long a proposed action can be confirmed, in ms; default one hour. */
+	proposalTtlMs?: number;
+	/** The clock, in epoch ms; default `Date.now`. A test passes a fixed one. */
+	now?: () => number;
 }
 
 /** One running agent: iterate it for events, await `result` for the outcome. */

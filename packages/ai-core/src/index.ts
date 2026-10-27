@@ -12,6 +12,7 @@ export {
 	type AiErrorOptions,
 	type AiIssue,
 } from './errors';
+export { estimateTokens } from './estimate-tokens';
 export { type AgentEvent, agentEventSchema, type RunEndReason } from './events';
 export { executeTool } from './execute-tool';
 export { type GenerateResult, generate } from './generate';
@@ -38,6 +39,15 @@ export type {
 	SystemBlock,
 	ThinkingOptions,
 } from './model';
+export {
+	type ConfirmContext,
+	type ConfirmOptions,
+	type ProposedAction,
+	type ProposedActionStatus,
+	rejectAction,
+	runConfirmedAction,
+	toProposedAction,
+} from './proposed-action';
 export { runAgent } from './run-agent';
 export type { JsonSchema, ToolInputSchema } from './schema';
 export {

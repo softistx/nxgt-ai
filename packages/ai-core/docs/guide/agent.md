@@ -38,17 +38,19 @@ you may await `run.result` alone. `result` never rejects.
 
 ## Options
 
-| option      | meaning                                                                      |
-| ----------- | ---------------------------------------------------------------------------- |
-| `model`     | the `ModelAdapter`                                                           |
-| `system`    | a string, or `SystemBlock[]` a cache-aware adapter may cache                 |
-| `messages`  | the conversation so far; never mutated                                       |
-| `tools`     | the tools the model may call                                                 |
-| `context`   | passed to every tool                                                         |
-| `signal`    | aborts the run                                                               |
-| `maxSteps`  | model calls allowed, default `8`                                             |
-| `budget`    | `{ maxInputTokens?, maxOutputTokens?, maxTotalTokens? }` summed over the run |
-| `observers` | `AgentObserver[]`, see below                                                 |
+| option          | meaning                                                                      |
+| --------------- | ---------------------------------------------------------------------------- |
+| `model`         | the `ModelAdapter`                                                           |
+| `system`        | a string, or `SystemBlock[]` a cache-aware adapter may cache                 |
+| `messages`      | the conversation so far; never mutated                                       |
+| `tools`         | the tools the model may call                                                 |
+| `context`       | passed to every tool                                                         |
+| `signal`        | aborts the run                                                               |
+| `maxSteps`      | model calls allowed, default `8`                                             |
+| `budget`        | `{ maxInputTokens?, maxOutputTokens?, maxTotalTokens? }` summed over the run |
+| `observers`     | `AgentObserver[]`, see below                                                 |
+| `proposalTtlMs` | how long a proposed action can be confirmed, default one hour                |
+| `now`           | the clock in epoch ms, default `Date.now`; tests pass a fixed one            |
 
 ## Events
 
@@ -67,8 +69,10 @@ the model invented and an invalid input each become an `isError` tool result
 (`TOOL_FAILED`, `UNKNOWN_TOOL`, `INVALID_TOOL_INPUT`); the loop carries on and
 the model can correct itself.
 
-A tool with `confirm: true` is **not executed** by the loop; the model gets an
-error result for it. Proposed actions arrive in a later release.
+A tool with `confirm: true` is **never executed** by the loop. A valid call is
+proposed instead: a `proposed-action` event, a `proposed-action` part after the
+results in the tool message, and a tool result `{ status: 'pending', actionId }`
+for the model. See [Proposed actions](actions.md).
 
 ## Limits
 

@@ -33,8 +33,8 @@ const findNotes = defineTool({
   result carries the parsed value, and a mismatch is an `INVALID_TOOL_OUTPUT`
   result. Return JSON-serializable values either way.
 - `confirm` (default `false`): marks a mutation. `executeTool` does not look at
-  it; the agent loop (a later slice) proposes such a call for confirmation
-  instead of running it.
+  it; the agent loop proposes such a call for confirmation instead of
+  running it; see [Proposed actions](actions.md).
 
 ## What the model is told
 

@@ -85,6 +85,22 @@ for await (const event of run) {
 const { reason, usage } = await run.result;
 ```
 
+## Proposed actions
+
+A tool with `confirm: true` is never run by the loop: it emits a
+`proposed-action` event and the model gets `{ status: 'pending', actionId }`.
+Store the action, ask the user, then run it once:
+
+```ts
+const action = toProposedAction(part); // from the event or the tool message
+const done = await runConfirmedAction(action, tools, { context }); // 'confirmed' | 'failed'
+// or: rejectAction(action)
+```
+
+An expired (`ACTION_EXPIRED`) or non-pending (`ACTION_NOT_PENDING`) action is
+refused, and the input is validated again. `estimateTokens(text | messages)` is
+a characters / 4 estimate. See [Proposed actions](docs/guide/actions.md).
+
 ## Errors
 
 `AiError` has a `code` (`INVALID_TOOL_INPUT`, `TOOL_FAILED`, …) and `issues`.
