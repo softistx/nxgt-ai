@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import type { ModelEvent, ModelRequest } from '@nxgt/ai-core';
+import { generate, type ModelEvent, type ModelRequest } from '@nxgt/ai-core';
 import { AnthropicError } from './errors';
-import { chunked, events, setup, sse, sseFixture } from './test-helpers';
+import { chunked, events, json, setup, sse, sseFixture } from './test-helpers';
 
 const req: ModelRequest = {
 	messages: [{ role: 'user', parts: [{ type: 'text', text: 'Lyon?' }] }],
@@ -135,5 +135,83 @@ describe('streaming', () => {
 			new Response(body, { headers: { 'content-type': 'text/event-stream' } }),
 		]);
 		expect(await events(model, req, controller.signal)).toEqual([]);
+	});
+
+	test('keeps a redacted_thinking block and sends it back unchanged', async () => {
+		const { model, calls } = setup([
+			sse(chunked(sseFixture('stream-redacted-tool'), 33)),
+			sse(chunked(sseFixture('stream-thinking-tool'), 64)),
+		]);
+		const first = await generate(model, req, new AbortController().signal);
+		expect(first.message.parts).toEqual([
+			{ type: 'thinking', text: '', redacted: 'EmwKAhgBEgy3va3pzix/LafPsn4=' },
+			{
+				type: 'tool-call',
+				id: 'toolu_02',
+				name: 'weather',
+				input: { city: 'Lyon' },
+			},
+		]);
+		await generate(
+			model,
+			{
+				messages: [
+					...req.messages,
+					first.message,
+					{
+						role: 'tool',
+						parts: [
+							{
+								type: 'tool-result',
+								callId: 'toolu_02',
+								name: 'weather',
+								isError: false,
+								output: 'sunny',
+							},
+						],
+					},
+				],
+			},
+			new AbortController().signal,
+		);
+		const sent = calls[1]?.body['messages'] as Array<{ content: unknown[] }>;
+		expect(sent[1]?.content).toEqual([
+			{ type: 'redacted_thinking', data: 'EmwKAhgBEgy3va3pzix/LafPsn4=' },
+			{
+				type: 'tool_use',
+				id: 'toolu_02',
+				name: 'weather',
+				input: { city: 'Lyon' },
+			},
+		]);
+	});
+
+	test('a redacted block is not merged with the thinking around it', async () => {
+		const { model } = setup([
+			sse(chunked(sseFixture('stream-redacted-tool'), 1)),
+		]);
+		expect((await events(model, req))[0]).toEqual({
+			type: 'thinking-delta',
+			text: '',
+			redacted: 'EmwKAhgBEgy3va3pzix/LafPsn4=',
+		});
+	});
+
+	test('a non-streamed response keeps thinking and redacted_thinking blocks', async () => {
+		const body = JSON.stringify({
+			content: [
+				{ type: 'thinking', thinking: 'hm', signature: 'sig' },
+				{ type: 'redacted_thinking', data: 'opaque' },
+				{ type: 'text', text: 'ok' },
+			],
+			stop_reason: 'end_turn',
+		});
+		const { model } = setup([json(body)]);
+		const got = await generate(model, req, new AbortController().signal);
+		expect(got.message.parts).toEqual([
+			{ type: 'thinking', text: 'hm', signature: 'sig' },
+			{ type: 'thinking', text: '', redacted: 'opaque' },
+			{ type: 'text', text: 'ok' },
+		]);
 	});
 });

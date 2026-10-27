@@ -30,17 +30,18 @@ const model = anthropic({
 
 ## What is sent
 
-| Core                      | Anthropic                                                               |
-| ------------------------- | ----------------------------------------------------------------------- |
-| `system` blocks           | `system: [{ type: 'text', text }]`                                      |
-| `maxTokens`               | `max_tokens`, `4096` when absent (the API requires one)                 |
-| `temperature`             | `temperature`                                                           |
-| tool specs                | `tools: [{ name, description, input_schema }]` (the core's JSON Schema) |
-| `text`, `tool-call` parts | `text`, `tool_use` blocks                                               |
-| `thinking` part           | `thinking` block with its signature; dropped when it has none           |
-| `tool-result` part        | `tool_result` block (`is_error: true` on failure), in a user message    |
-| `proposed-action` part    | not sent: it is for the user, not the model                             |
-| `providerOptions`         | merged into the body last, so it can override any field                 |
+| Core                            | Anthropic                                                               |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `system` blocks                 | `system: [{ type: 'text', text }]`                                      |
+| `maxTokens`                     | `max_tokens`, `4096` when absent (the API requires one)                 |
+| `temperature`                   | `temperature`                                                           |
+| tool specs                      | `tools: [{ name, description, input_schema }]` (the core's JSON Schema) |
+| `text`, `tool-call` parts       | `text`, `tool_use` blocks                                               |
+| `thinking` part                 | `thinking` block with its signature; dropped when it has none           |
+| `thinking` part with `redacted` | `redacted_thinking` block with its `data`                               |
+| `tool-result` part              | `tool_result` block (`is_error: true` on failure), in a user message    |
+| `proposed-action` part          | not sent: it is for the user, not the model                             |
+| `providerOptions`               | merged into the body last, so it can override any field                 |
 
 Consecutive messages of one role are merged, as the API requires; a `tool`
 message becomes a user message. A tool output that is not a string is sent as
@@ -115,6 +116,7 @@ UTF-8 character) and maps the events to the port's `ModelEvent`s:
 | `text_delta`                                  | `text-delta`                                     |
 | `thinking_delta`                              | `thinking-delta`                                 |
 | `signature_delta`                             | `thinking-delta` with `text: ''` and `signature` |
+| `redacted_thinking` block                     | `thinking-delta` with `text: ''` and `redacted`  |
 | `input_json_delta`, then `content_block_stop` | one `tool-call` with the assembled, parsed input |
 | `message_start` + `message_delta` usage       | one `usage`, just before `finish`                |
 | `message_stop`                                | `finish`                                         |
@@ -142,7 +144,7 @@ The model's thinking arrives as `thinking-delta` events; `generate` folds them
 into a `thinking` part that keeps its `signature`. Put that assistant message
 back in `messages` on the next turn and the part is sent as it came: the API
 needs the signed thinking block in front of a tool result. A thinking part
-without a signature is dropped. `redacted_thinking` blocks are not kept yet (the core thinking part has no field for them). A `thinking-delta` may carry only a `signature` (empty `text`); a UI must not render it as new text.
+without a signature is dropped. A `redacted_thinking` block (the API encrypts that reasoning) arrives as a `thinking-delta` with an empty `text` and `redacted` set to the block's `data`; `generate` keeps it as its own `thinking` part and the adapter sends it back as a `redacted_thinking` block, unchanged. Do not read, edit or drop it: the API refuses a tool-use continuation that lacks it. Non-streamed responses map the same way. A `thinking-delta` may carry only a `signature` (empty `text`); a UI must not render it as new text.
 
 ## Prompt cache
 

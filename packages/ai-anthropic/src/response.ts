@@ -11,6 +11,9 @@ interface WireResponse {
 	content?: Array<{
 		type: string;
 		text?: string;
+		thinking?: string;
+		signature?: string;
+		data?: string;
 		id?: string;
 		name?: string;
 		input?: unknown;
@@ -47,6 +50,14 @@ export function* eventsFromMessage(body: WireResponse): Generator<ModelEvent> {
 	for (const block of body.content ?? []) {
 		if (block.type === 'text' && block.text)
 			yield { type: 'text-delta', text: block.text };
+		else if (block.type === 'thinking' && block.signature !== undefined)
+			yield {
+				type: 'thinking-delta',
+				text: block.thinking ?? '',
+				signature: block.signature,
+			};
+		else if (block.type === 'redacted_thinking')
+			yield { type: 'thinking-delta', text: '', redacted: block.data ?? '' };
 		else if (block.type === 'tool_use')
 			yield {
 				type: 'tool-call',
