@@ -27,7 +27,7 @@ async function runOne(
 		);
 	}
 	if (tool.confirm) {
-		// Temporary: confirm-gated tools become proposed actions in a later slice.
+		// Temporary, until nxgt-ai#6: confirm-gated tools become proposed actions.
 		return errorResult(
 			call,
 			new AiError(
