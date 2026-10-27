@@ -22,7 +22,12 @@ export type RunEndReason =
 export type AgentEvent =
 	| { type: 'step-start'; step: number }
 	| { type: 'text-delta'; text: string }
-	| { type: 'thinking-delta'; text: string; signature?: string }
+	| {
+			type: 'thinking-delta';
+			text: string;
+			signature?: string;
+			redacted?: string;
+	  }
 	| { type: 'tool-call'; id: string; name: string; input: unknown }
 	| { type: 'tool-result'; result: ToolResultPart }
 	| { type: 'proposed-action'; action: ProposedActionPart }
@@ -91,6 +96,7 @@ const partSchema = z.union([
 		type: z.literal('thinking'),
 		text: z.string(),
 		signature: z.string().optional(),
+		redacted: z.string().optional(),
 	}),
 	z.object({
 		type: z.literal('tool-call'),
@@ -115,6 +121,7 @@ export const agentEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('thinking-delta'),
 		text: z.string(),
 		signature: z.string().optional(),
+		redacted: z.string().optional(),
 	}),
 	z.object({
 		type: z.literal('tool-call'),

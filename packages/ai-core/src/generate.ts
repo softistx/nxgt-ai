@@ -24,9 +24,18 @@ function pushDelta(
 	type: 'text' | 'thinking',
 	text: string,
 	signature?: string,
+	redacted?: string,
 ) {
+	if (redacted !== undefined) {
+		// An opaque block stands alone: never merged with what comes before or after.
+		parts.push({ type: 'thinking', text: '', redacted });
+		return;
+	}
 	const last = parts[parts.length - 1];
-	if (last?.type === type) {
+	if (
+		last?.type === type &&
+		!(last.type === 'thinking' && last.redacted !== undefined)
+	) {
 		last.text += text;
 		if (last.type === 'thinking' && signature) last.signature = signature;
 		return;
@@ -60,7 +69,13 @@ export async function generate(
 					pushDelta(parts, 'text', event.text);
 					break;
 				case 'thinking-delta':
-					pushDelta(parts, 'thinking', event.text, event.signature);
+					pushDelta(
+						parts,
+						'thinking',
+						event.text,
+						event.signature,
+						event.redacted,
+					);
 					break;
 				case 'tool-call':
 					parts.push({

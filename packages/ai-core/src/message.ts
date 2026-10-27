@@ -12,6 +12,11 @@ export interface ThinkingPart {
 	text: string;
 	/** The provider's proof of the block; send it back unchanged. */
 	signature?: string;
+	/**
+	 * A provider's opaque, encrypted thinking (Anthropic `redacted_thinking`),
+	 * with an empty `text`. Never read or edited; send it back unchanged.
+	 */
+	redacted?: string;
 }
 
 export interface ToolCallPart {

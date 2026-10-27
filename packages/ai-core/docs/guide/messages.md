@@ -33,13 +33,13 @@ const conversation: Message[] = [
 
 ## Parts
 
-| `type`            | Fields                                                                           | Notes                                                                |
-| ----------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `text`            | `text`                                                                           |                                                                      |
-| `thinking`        | `text`, `signature?`                                                             | Send `signature` back unchanged; a provider checks it.               |
-| `tool-call`       | `id`, `name`, `input`                                                            | `input` is what the model sent, **not validated**.                   |
-| `tool-result`     | `callId`, `name`, then `isError: false` + `output`, or `isError: true` + `error` | `callId` is the call's `id`.`error` is `{ code, message, issues? }`. |
-| `proposed-action` | `id`, `tool`, `input`, `summary?`                                                | A mutation waiting for a confirmation.                               |
+| `type`            | Fields                                                                           | Notes                                                                                                             |
+| ----------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `text`            | `text`                                                                           |                                                                                                                   |
+| `thinking`        | `text`, `signature?`, `redacted?`                                                | Send `signature` and `redacted` (a provider's opaque data, `text` empty) back unchanged; never read or edit them. |
+| `tool-call`       | `id`, `name`, `input`                                                            | `input` is what the model sent, **not validated**.                                                                |
+| `tool-result`     | `callId`, `name`, then `isError: false` + `output`, or `isError: true` + `error` | `callId` is the call's `id`.`error` is `{ code, message, issues? }`.                                              |
+| `proposed-action` | `id`, `tool`, `input`, `summary?`                                                | A mutation waiting for a confirmation.                                                                            |
 
 Switch on `part.type`; the compiler narrows each branch, and a `default` branch
 with `part satisfies never` tells you when a new part type is added.
