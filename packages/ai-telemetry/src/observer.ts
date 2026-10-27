@@ -36,11 +36,32 @@ function fail(handle: SpanHandle, error: RunError): void {
 	}
 }
 
+/** The open spans of one run, so concurrent runs never share state. */
+class RunSpans {
+	run: SpanHandle | undefined;
+	provider = '';
+	model = '';
+	readonly calls = new Map<string, SpanHandle>();
+
+	open(key: string, handle: SpanHandle): void {
+		this.calls.get(key)?.end();
+		this.calls.set(key, handle);
+	}
+
+	take(key: string): SpanHandle | undefined {
+		const handle = this.calls.get(key);
+		this.calls.delete(key);
+		return handle;
+	}
+
+	endAll(): void {
+		for (const handle of this.calls.values()) handle.end();
+		this.calls.clear();
+	}
+}
+
 class SpanObserver implements AgentObserver {
-	private run: SpanHandle | undefined;
-	private provider = '';
-	private model = '';
-	private readonly calls = new Map<string, SpanHandle>();
+	private readonly runs = new Map<string, RunSpans>();
 
 	constructor(
 		private readonly options: AiTelemetryOptions,
@@ -51,36 +72,27 @@ class SpanObserver implements AgentObserver {
 		return this.options.telemetry ?? resolveTelemetry();
 	}
 
-	private child(name: string, attributes: Record<string, unknown>) {
-		return openSpan(name, attributes, this.run?.context, this.target());
-	}
-
-	private endAll(): void {
-		for (const handle of this.calls.values()) handle.end();
-		this.calls.clear();
-	}
-
-	private open(key: string, handle: SpanHandle): void {
-		this.calls.get(key)?.end();
-		this.calls.set(key, handle);
-	}
-
-	private take(key: string): SpanHandle | undefined {
-		const handle = this.calls.get(key);
-		this.calls.delete(key);
-		return handle;
+	private child(
+		state: RunSpans,
+		name: string,
+		attributes: Record<string, unknown>,
+	) {
+		return openSpan(name, attributes, state.run?.context, this.target());
 	}
 
 	onRunStart: Hook<'onRunStart'> = (info) => {
-		this.endAll();
-		this.run?.end();
-		this.provider = info.provider;
-		this.model = info.model;
-		this.run = openSpan(
+		const previous = this.runs.get(info.runId);
+		previous?.endAll();
+		previous?.run?.end();
+		const state = new RunSpans();
+		this.runs.set(info.runId, state);
+		state.provider = info.provider;
+		state.model = info.model;
+		state.run = openSpan(
 			'ai.agent.run',
 			{
 				[OPERATION]: 'invoke_agent',
-				...providerAttributes(this.provider, this.model),
+				...providerAttributes(state.provider, state.model),
 				'ai.agent.tools': [...info.tools],
 				...(this.recordContent
 					? messagesContent('gen_ai.input.messages', info.messages)
@@ -91,19 +103,21 @@ class SpanObserver implements AgentObserver {
 		);
 	};
 
-	onModelStart: Hook<'onModelStart'> = ({ step }) => {
-		this.open(
+	onModelStart: Hook<'onModelStart'> = ({ runId, step }) => {
+		const state = this.runs.get(runId);
+		if (!state) return;
+		state.open(
 			`model:${step}`,
-			this.child('ai.model.call', {
+			this.child(state, 'ai.model.call', {
 				[OPERATION]: 'chat',
-				...providerAttributes(this.provider, this.model),
+				...providerAttributes(state.provider, state.model),
 				'ai.step': step,
 			}),
 		);
 	};
 
 	onModelCall: Hook<'onModelCall'> = (info) => {
-		const handle = this.take(`model:${info.step}`);
+		const handle = this.runs.get(info.runId)?.take(`model:${info.step}`);
 		if (!handle) return;
 		handle.scope.attributes({
 			...usageAttributes(info.usage),
@@ -118,15 +132,17 @@ class SpanObserver implements AgentObserver {
 		handle.end();
 	};
 
-	onToolStart: Hook<'onToolStart'> = ({ step, call }) => {
-		this.open(
+	onToolStart: Hook<'onToolStart'> = ({ runId, step, call }) => {
+		const state = this.runs.get(runId);
+		if (!state) return;
+		state.open(
 			`tool:${call.id}`,
-			this.child('ai.tool.call', toolAttributes(call, step)),
+			this.child(state, 'ai.tool.call', toolAttributes(call, step)),
 		);
 	};
 
-	onToolCall: Hook<'onToolCall'> = ({ call, result, durationMs }) => {
-		const handle = this.take(`tool:${call.id}`);
+	onToolCall: Hook<'onToolCall'> = ({ runId, call, result, durationMs }) => {
+		const handle = this.runs.get(runId)?.take(`tool:${call.id}`);
 		if (!handle) return;
 		handle.scope.attribute('ai.duration_ms', Math.round(durationMs));
 		if (this.recordContent) {
@@ -137,9 +153,11 @@ class SpanObserver implements AgentObserver {
 	};
 
 	onRunEnd: Hook<'onRunEnd'> = (result: AgentResult) => {
-		this.endAll();
-		const run = this.run;
-		this.run = undefined;
+		const state = this.runs.get(result.runId);
+		this.runs.delete(result.runId);
+		if (!state) return;
+		state.endAll();
+		const run = state.run;
 		if (!run) return;
 		run.scope.attributes({
 			...usageAttributes(result.usage),
@@ -157,7 +175,8 @@ class SpanObserver implements AgentObserver {
 /**
  * An `AgentObserver` that writes the run as spans: `ai.agent.run` with an
  * `ai.model.call` per model call and an `ai.tool.call` per tool call under it.
- * It keeps the state of one run, so build one per `runAgent` call.
+ * Its open spans are keyed by the run id the hooks carry, so one observer,
+ * built once, serves any number of concurrent runs.
  */
 export function aiTelemetry(options: AiTelemetryOptions = {}): AgentObserver {
 	return new SpanObserver(options, options.recordContent ?? false);

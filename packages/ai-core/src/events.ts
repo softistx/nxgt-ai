@@ -20,7 +20,7 @@ export type RunEndReason =
 
 /** What `runAgent` emits, in order, one run. */
 export type AgentEvent =
-	| { type: 'step-start'; step: number }
+	| { type: 'step-start'; step: number; runId: string }
 	| { type: 'text-delta'; text: string }
 	| {
 			type: 'thinking-delta';
@@ -115,7 +115,11 @@ const messageSchema = z.object({
 
 /** Validates an `AgentEvent`, e.g. one read back from an SSE stream. */
 export const agentEventSchema = z.discriminatedUnion('type', [
-	z.object({ type: z.literal('step-start'), step: z.number().int() }),
+	z.object({
+		type: z.literal('step-start'),
+		step: z.number().int(),
+		runId: z.string(),
+	}),
 	z.object({ type: z.literal('text-delta'), text: z.string() }),
 	z.object({
 		type: z.literal('thinking-delta'),

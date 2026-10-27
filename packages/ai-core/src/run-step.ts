@@ -46,16 +46,18 @@ export function buildRequest(
 /** One model call, streamed to `emit`, reported to the observers. */
 export async function modelStep(
 	options: RunAgentOptions,
+	runId: string,
 	req: ModelRequest,
 	step: number,
 	signal: AbortSignal,
 	emit: (event: AgentEvent) => void,
 ): Promise<GenerateResult> {
-	await notify(options.observers, 'onModelStart', { step });
+	await notify(options.observers, 'onModelStart', { runId, step });
 	const started = performance.now();
 	try {
 		const out = await generate(tee(options.model, emit), req, signal);
 		await notify(options.observers, 'onModelCall', {
+			runId,
 			step,
 			durationMs: performance.now() - started,
 			usage: out.usage,
@@ -64,6 +66,7 @@ export async function modelStep(
 		return out;
 	} catch (error) {
 		await notify(options.observers, 'onModelCall', {
+			runId,
 			step,
 			durationMs: performance.now() - started,
 			usage: {
