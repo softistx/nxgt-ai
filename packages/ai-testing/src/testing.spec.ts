@@ -109,6 +109,44 @@ describe('fakeModel', () => {
 	});
 });
 
+describe('turn options', () => {
+	test('chunks thinking, ignores chunk below 1, honours finish and usage', async () => {
+		const usage = {
+			inputTokens: 1,
+			outputTokens: 1,
+			cacheReadTokens: 0,
+			cacheWriteTokens: 0,
+		};
+		const a = await drain(
+			fakeModel([
+				{
+					thinking: 'abcd',
+					text: 'xyz',
+					chunk: 2,
+					usage,
+					finish: 'max-tokens',
+				},
+			]),
+		);
+		expect(a).toEqual([
+			{ type: 'thinking-delta', text: 'ab' },
+			{ type: 'thinking-delta', text: 'cd' },
+			{ type: 'text-delta', text: 'xyz' },
+			{ type: 'usage', usage },
+			{ type: 'finish', reason: 'max-tokens' },
+		]);
+		const b = await drain(fakeModel([{ text: 'xyz', chunk: 0 }]));
+		expect(b[0]).toEqual({ type: 'text-delta', text: 'xyz' });
+	});
+
+	test('error after a delay', async () => {
+		const err = new AiError('AUTHENTICATION', 'no');
+		await expect(drain(fakeModel([{ error: err, delayMs: 1 }]))).rejects.toBe(
+			err,
+		);
+	});
+});
+
 describe('collect and assertions', () => {
 	const events: AgentEvent[] = [
 		{ type: 'text-delta', text: 'a' },
@@ -138,5 +176,8 @@ describe('collect and assertions', () => {
 			expectToolCalls(events, [{ name: 'w', input: { city: 'Paris' } }]),
 		).toThrow('Expected tool calls');
 		expect(() => expectToolCalls(events, [])).toThrow();
+		expect(() =>
+			expectToolCalls(events, [{ name: 'w' }, { name: 'w' }]),
+		).toThrow();
 	});
 });

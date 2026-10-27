@@ -2,7 +2,7 @@ import type { AgentEvent } from '@nxgt/ai-core';
 
 export interface ExpectedCall {
 	name: string;
-	/** Compared deeply with the call's input; omit to check the name only. */
+	/** Compared as JSON with the call's input; omit to check the name only. */
 	input?: unknown;
 }
 
