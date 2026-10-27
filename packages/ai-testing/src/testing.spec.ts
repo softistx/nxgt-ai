@@ -131,7 +131,8 @@ describe('turn options', () => {
 		expect(a).toEqual([
 			{ type: 'thinking-delta', text: 'ab' },
 			{ type: 'thinking-delta', text: 'cd' },
-			{ type: 'text-delta', text: 'xyz' },
+			{ type: 'text-delta', text: 'xy' },
+			{ type: 'text-delta', text: 'z' },
 			{ type: 'usage', usage },
 			{ type: 'finish', reason: 'max-tokens' },
 		]);
