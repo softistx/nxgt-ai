@@ -1,3 +1,11 @@
+export type {
+	AgentObserver,
+	AgentResult,
+	AgentRun,
+	RunAgentOptions,
+	RunBudget,
+	RunError,
+} from './agent-types';
 export {
 	AiError,
 	type AiErrorCode,
@@ -30,6 +38,7 @@ export type {
 	SystemBlock,
 	ThinkingOptions,
 } from './model';
+export { runAgent } from './run-agent';
 export type { JsonSchema, ToolInputSchema } from './schema';
 export {
 	type AnyTool,
