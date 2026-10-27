@@ -11,10 +11,11 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 - **Compaction** — you get:
   - `compact`, which trims old tool results first, then keeps a rolling summary without splitting a tool call from its result.
   - `summarizeWith(model)`, a summarizer over any model adapter.
+- **MongoDB store** — `@nxgt/ai-memory/mongo`: `mongoMemory` over two collections, with optional expiry; it passes the same contract.
 
 ## Next
 
-- **MongoDB and Redis stores** — `./mongo` and `./redis` subpaths that pass the same contract.
+- **Redis store** — a `./redis` subpath that passes the same contract.
 
 ## Later
 

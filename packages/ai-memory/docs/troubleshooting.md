@@ -86,3 +86,33 @@ try {
 	else throw e;
 }
 ```
+
+## Mongo store: `E11000 duplicate key` on `ownerId_1_threadId_1_seq_1`
+
+**When:** `append` on the Mongo store fails with a duplicate key error.
+**Why:** two documents got the same `seq` in a thread: the messages were written by something other than the store, or `messageCount` of the thread was changed by hand.
+**Fix:** let only the store write these collections. Set the thread's `messageCount` to the highest `seq` of its messages again.
+
+```ts
+const last = await messages
+	.find({ threadId })
+	.sort({ seq: -1 })
+	.limit(1)
+	.toArray();
+await threads.updateOne(
+	{ _id: threadId },
+	{ $set: { messageCount: last[0]?.seq ?? 0 } },
+);
+```
+
+## Mongo store: expired threads and messages are still read
+
+**When:** a thread past its `expireAfterSeconds` still loads.
+**Why:** MongoDB's TTL monitor runs about once a minute, and it only runs for a collection that has `expiresAtIndex`.
+**Fix:** create `expiresAtIndex` on both collections (see the guide), and do not rely on the exact second of expiry.
+
+## Mongo store: `findOneAndUpdate` returns a result object, not a document
+
+**When:** `append` stores `NaN` as a `seq`, or `updateAction` returns `undefined` for a pending action that exists.
+**Why:** the collection resolves `findOneAndUpdate` to `{ value }`, as `mongodb` 5 and earlier do; the store needs the document itself.
+**Fix:** use `mongodb` 6 or later, or wrap the collection so `findOneAndUpdate` resolves to the document.
