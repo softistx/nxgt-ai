@@ -4,7 +4,9 @@ export {
 	type AiErrorOptions,
 	type AiIssue,
 } from './errors';
+export { type AgentEvent, agentEventSchema, type RunEndReason } from './events';
 export { executeTool } from './execute-tool';
+export { type GenerateResult, generate } from './generate';
 export {
 	addUsage,
 	emptyUsage,
@@ -20,6 +22,14 @@ export {
 	type ToolResultPart,
 	type Usage,
 } from './message';
+export type {
+	FinishReason,
+	ModelAdapter,
+	ModelEvent,
+	ModelRequest,
+	SystemBlock,
+	ThinkingOptions,
+} from './model';
 export type { JsonSchema, ToolInputSchema } from './schema';
 export {
 	type AnyTool,

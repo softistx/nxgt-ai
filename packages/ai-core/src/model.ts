@@ -1,0 +1,50 @@
+import type { Message, Usage } from './message';
+import type { ToolSpec } from './tool';
+
+/** Why one model call stopped. */
+export type FinishReason = 'end' | 'tool-use' | 'max-tokens' | 'refusal';
+
+/** One system prompt block; a cache-aware adapter may cache each block. */
+export interface SystemBlock {
+	text: string;
+}
+
+/** Extended thinking; an adapter ignores it when its model has none. */
+export interface ThinkingOptions {
+	/** Tokens the model may spend thinking. */
+	budgetTokens?: number;
+}
+
+export interface ModelRequest {
+	system?: readonly SystemBlock[];
+	messages: readonly Message[];
+	tools?: readonly ToolSpec[];
+	maxTokens?: number;
+	temperature?: number;
+	/** `'auto'` (default) lets the adapter place prompt-cache breakpoints. */
+	cache?: 'auto' | 'off';
+	thinking?: ThinkingOptions;
+	/** Passed to the adapter as is, for what the port does not model. */
+	providerOptions?: Record<string, unknown>;
+}
+
+/** What a model adapter streams. A call ends with exactly one `finish`. */
+export type ModelEvent =
+	| { type: 'text-delta'; text: string }
+	| { type: 'thinking-delta'; text: string; signature?: string }
+	| { type: 'tool-call'; id: string; name: string; input: unknown }
+	| { type: 'usage'; usage: Usage }
+	| { type: 'finish'; reason: FinishReason };
+
+/**
+ * The port every provider implements. `stream` throws an `AiError`
+ * (`MODEL_ERROR`, `RATE_LIMITED`, `AUTHENTICATION`) on a provider failure and
+ * ends the stream when `signal` aborts.
+ */
+export interface ModelAdapter {
+	readonly provider: string;
+	readonly model: string;
+	stream(req: ModelRequest, signal: AbortSignal): AsyncIterable<ModelEvent>;
+	/** Tokens `req` would use as input, when the provider can tell. */
+	countTokens?(req: ModelRequest, signal?: AbortSignal): Promise<number>;
+}
