@@ -37,7 +37,7 @@ export function toProposedAction(part: ProposedActionPart): ProposedAction {
 		tool: part.tool,
 		input: part.input,
 		status: 'pending',
-		expiresAt: part.expiresAt ?? Number.POSITIVE_INFINITY,
+		expiresAt: part.expiresAt ?? Number.MAX_SAFE_INTEGER,
 		...(part.summary === undefined ? {} : { summary: part.summary }),
 	};
 }
@@ -89,7 +89,7 @@ export async function runConfirmedAction(
 	if (!validation.ok) {
 		throw new AiError(
 			'INVALID_TOOL_INPUT',
-			`Invalid input for tool "${tool.name}".`,
+			`Invalid input for tool "${tool.name}": ${validation.issues.map((i) => i.message).join('; ')}`,
 			{ issues: validation.issues },
 		);
 	}

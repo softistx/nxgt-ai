@@ -95,6 +95,32 @@ describe('runConfirmedAction', () => {
 	});
 });
 
+describe('abort', () => {
+	test('an abort rejects and leaves the action untouched', async () => {
+		const slow = defineTool({
+			name: 'slow',
+			description: 'Waits',
+			input: z.object({}),
+			confirm: true,
+			execute: (_input, { signal }) =>
+				new Promise((_resolve, reject) =>
+					signal.addEventListener('abort', () => reject(signal.reason)),
+				),
+		});
+		const action = pending({ tool: 'slow', input: {} });
+		const controller = new AbortController();
+		const run = runConfirmedAction(
+			action,
+			[slow],
+			{ signal: controller.signal },
+			at(1),
+		);
+		controller.abort(new Error('stop'));
+		await expect(run).rejects.toThrow('stop');
+		expect(action.status).toBe('pending');
+	});
+});
+
 describe('rejectAction and toProposedAction', () => {
 	test('reject marks a pending action, only once', () => {
 		const rejected = rejectAction(pending(), at(1));
