@@ -111,16 +111,17 @@ Every call sends `stream: true` and reads the Server-Sent Events as they
 arrive. The parser accepts chunks cut anywhere (inside a line, a `\r\n` or a
 UTF-8 character) and maps the events to the port's `ModelEvent`s:
 
-| SSE                                           | `ModelEvent`                                     |
-| --------------------------------------------- | ------------------------------------------------ |
-| `text_delta`                                  | `text-delta`                                     |
-| `thinking_delta`                              | `thinking-delta`                                 |
-| `signature_delta`                             | `thinking-delta` with `text: ''` and `signature` |
-| `redacted_thinking` block                     | `thinking-delta` with `text: ''` and `redacted`  |
-| `input_json_delta`, then `content_block_stop` | one `tool-call` with the assembled, parsed input |
-| `message_start` + `message_delta` usage       | one `usage`, just before `finish`                |
-| `message_stop`                                | `finish`                                         |
-| `ping`, server-tool blocks, unknown events    | skipped                                          |
+| SSE                                           | `ModelEvent`                                                                             |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `text_delta`                                  | `text-delta`                                                                             |
+| `thinking_delta`                              | `thinking-delta`                                                                         |
+| `content_block_start` of text or thinking     | `start: true` on the block's first delta                                                 |
+| `signature_delta`                             | `thinking-delta` with `text: ''` and `signature`                                         |
+| `redacted_thinking` block                     | `thinking-delta` with `text: ''` and `redacted`                                          |
+| `input_json_delta`, then `content_block_stop` | one `tool-call` with the assembled, parsed input; a block cut by `max_tokens` is dropped |
+| `message_start` + `message_delta` usage       | one `usage`, just before `finish`                                                        |
+| `message_stop`                                | `finish`                                                                                 |
+| `ping`, server-tool blocks, unknown events    | skipped                                                                                  |
 
 An `error` event throws an `AnthropicError` (`overloaded_error` is
 `overloaded`, `rate_limit_error` is `rate-limited`, `authentication_error` and
@@ -156,7 +157,7 @@ prefix the previous call wrote. `cache: 'off'` sends none. Prompts below the
 model's minimum cacheable length are simply not cached by the API.
 
 `usage.cacheWriteTokens` and `usage.cacheReadTokens` report what was written
-and read; `inputTokens` excludes both.
+and read; `inputTokens` includes both (it is all the input of the call).
 
 ## Counting tokens
 
@@ -192,7 +193,9 @@ a few cents, and never runs in CI.
 
 ## Usage
 
-`inputTokens` is the API's `input_tokens`, which excludes the tokens read from
-or written to the prompt cache; those are `cacheReadTokens` and
-`cacheWriteTokens`. The `message_delta` usage is cumulative and replaces the
-`message_start` counts it repeats.
+`inputTokens` is all the input of the call: the API's `input_tokens`, which
+excludes the prompt cache, plus `cache_read_input_tokens` and
+`cache_creation_input_tokens`. `cacheReadTokens` and `cacheWriteTokens` say how
+many of them were cached, so do not add them again. A `maxInputTokens` or
+`maxTotalTokens` budget counts the same way. The `message_delta` usage is
+cumulative and replaces the `message_start` counts it repeats, before the sum.

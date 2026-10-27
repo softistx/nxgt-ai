@@ -20,10 +20,10 @@ const merged = (list: ModelEvent[]) => {
 };
 
 const expected: ModelEvent[] = [
-	{ type: 'thinking-delta', text: 'Lyon, so ' },
+	{ type: 'thinking-delta', text: 'Lyon, so ', start: true },
 	{ type: 'thinking-delta', text: 'the weather tool.' },
 	{ type: 'thinking-delta', text: '', signature: 'EqQBCgIYAhIM' },
-	{ type: 'text-delta', text: 'Je vérifie à Lyon.' },
+	{ type: 'text-delta', text: 'Je vérifie à Lyon.', start: true },
 	{
 		type: 'tool-call',
 		id: 'toolu_01',
@@ -33,7 +33,8 @@ const expected: ModelEvent[] = [
 	{
 		type: 'usage',
 		usage: {
-			inputTokens: 25,
+			// 25 plain + 40 cache read + 100 cache write
+			inputTokens: 165,
 			outputTokens: 57,
 			cacheReadTokens: 40,
 			cacheWriteTokens: 100,
@@ -76,7 +77,7 @@ describe('streaming', () => {
 		} catch (e) {
 			error = e;
 		}
-		expect(seen).toEqual([{ type: 'text-delta', text: 'Par' }]);
+		expect(seen).toEqual([{ type: 'text-delta', text: 'Par', start: true }]);
 		expect(error).toBeInstanceOf(AnthropicError);
 		expect((error as AnthropicError).kind).toBe('overloaded');
 	});

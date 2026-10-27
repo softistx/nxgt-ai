@@ -33,9 +33,16 @@ export const FINISH: Record<string, FinishReason> = {
 	model_context_window_exceeded: 'max-tokens',
 };
 
+/**
+ * Anthropic's `input_tokens` leaves out the cache; `Usage.inputTokens` is all
+ * input, so the cache read and write tokens are added to it.
+ */
 export function toUsage(wire: WireUsage): Usage {
 	return {
-		inputTokens: wire.input_tokens ?? 0,
+		inputTokens:
+			(wire.input_tokens ?? 0) +
+			(wire.cache_read_input_tokens ?? 0) +
+			(wire.cache_creation_input_tokens ?? 0),
 		outputTokens: wire.output_tokens ?? 0,
 		cacheReadTokens: wire.cache_read_input_tokens ?? 0,
 		cacheWriteTokens: wire.cache_creation_input_tokens ?? 0,
@@ -49,10 +56,11 @@ export function toUsage(wire: WireUsage): Usage {
 export function* eventsFromMessage(body: WireResponse): Generator<ModelEvent> {
 	for (const block of body.content ?? []) {
 		if (block.type === 'text' && block.text)
-			yield { type: 'text-delta', text: block.text };
+			yield { type: 'text-delta', text: block.text, start: true };
 		else if (block.type === 'thinking' && block.signature !== undefined)
 			yield {
 				type: 'thinking-delta',
+				start: true,
 				text: block.thinking ?? '',
 				signature: block.signature,
 			};

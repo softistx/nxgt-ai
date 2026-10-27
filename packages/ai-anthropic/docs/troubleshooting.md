@@ -125,9 +125,9 @@ All have `kind: 'provider'` and code `MODEL_ERROR`. Usually a gateway or proxy i
 
 ### `Anthropic streamed invalid JSON input for tool <name>`
 
-**When:** the model's tool call arguments do not parse (for example cut by `max_tokens`).
-**Why:** the streamed arguments were incomplete.
-**Fix:** raise `maxTokens` in the request, or simplify the tool's input.
+**When:** the model's tool call arguments do not parse and the response did not stop on `max_tokens`.
+**Why:** the streamed arguments were corrupt. An input cut off by `max_tokens` (or `model_context_window_exceeded`) is not an error: the adapter drops that tool block and the call finishes `max-tokens`, which `runAgent` ends as `reason: 'max-tokens'`.
+**Fix:** if the run ended `max-tokens`, raise `maxTokens` in the request or simplify the tool's input; otherwise retry.
 
 ### `Anthropic count_tokens returned a body that is not JSON` / `Anthropic count_tokens returned no input_tokens`
 

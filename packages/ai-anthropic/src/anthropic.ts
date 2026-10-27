@@ -4,6 +4,7 @@ import { AnthropicError } from './errors';
 import { type HttpOptions, post } from './http';
 import { buildBody } from './request';
 import { eventsFromMessage } from './response';
+import { realSleep } from './sleep';
 import { eventsFromStream } from './stream';
 
 export interface AnthropicOptions {
@@ -26,19 +27,6 @@ export interface AnthropicOptions {
 	/** For tests: replaces `Math.random`, the backoff jitter. */
 	random?: () => number;
 }
-
-const realSleep = (ms: number, signal: AbortSignal): Promise<void> =>
-	new Promise((resolve, reject) => {
-		const timer = setTimeout(resolve, ms);
-		signal.addEventListener(
-			'abort',
-			() => {
-				clearTimeout(timer);
-				reject(signal.reason);
-			},
-			{ once: true },
-		);
-	});
 
 /** A `ModelAdapter` for the Anthropic Messages API. */
 export function anthropic(options: AnthropicOptions): ModelAdapter {
