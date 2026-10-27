@@ -62,3 +62,5 @@ An effort has an integration branch (`feat/ai-core`, `feat/ai-memory-graphql`,
 - No `examples/` workspace, no service scripts yet (the Mongo and Redis test
   scripts arrive with `@nxgt/ai-memory`).
 - `ci.yml` has no Meilisearch/SeaweedFS caches and no newest-peers job.
+- `CLAUDE.md` is the one-line import `@AGENTS.md`; the comments in the
+  workflow files are condensed from nxgt-data's.
