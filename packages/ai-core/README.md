@@ -2,7 +2,7 @@
 
 Messages, Zod tools, the model port and the agent loop of nxgt-ai, a
 Bun-native AI agents SDK. Not published yet; this page covers what exists:
-messages and parts, usage, tools and their errors. It has no dependency; `zod`
+messages and parts, usage, tools, the model port and their errors. It has no dependency; `zod`
 is a peer.
 
 ```ts
@@ -58,6 +58,15 @@ the schema's JSON Schema (`z.toJSONSchema` with `io: 'input'`). `jsonSchemaTool`
 wraps a JSON Schema you already have. `executeTool` validates and runs a call
 and **always returns a result part**: bad input is an `INVALID_TOOL_INPUT`
 result the model can correct. See [Tools](docs/guide/tools.md).
+
+## Model port
+
+`ModelAdapter` (`provider`, `model`, `stream(req, signal)`) is what providers
+implement; it streams `ModelEvent`s (`text-delta`, `thinking-delta`,
+`tool-call`, `usage`, `finish`). `generate(model, req, signal)` folds one call
+into an assistant `Message`, its `Usage` and a finish reason, and throws
+`AiError` `ABORTED` when the signal aborts. `agentEventSchema` validates the
+`AgentEvent`s the agent loop will emit. See [Model port](docs/guide/model.md).
 
 ## Errors
 
