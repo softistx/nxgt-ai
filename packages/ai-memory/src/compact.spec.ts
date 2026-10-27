@@ -1,44 +1,13 @@
 import { describe, expect, it } from 'bun:test';
-import { estimateTokens, type Message } from '@nxgt/ai-core';
+import { estimateTokens } from '@nxgt/ai-core';
 import { fakeModel } from '@nxgt/ai-testing';
+import { call, chars, opts, result, say, stored } from './compact-fixtures';
 import {
-	type CompactOptions,
 	compact,
 	memoryStore,
 	type StoredMessage,
 	summarizeWith,
 } from './index';
-
-const chars = (input: string | readonly Message[]) =>
-	typeof input === 'string' ? input.length : JSON.stringify(input).length;
-
-const say = (i: number, role: Message['role'] = 'user'): Message => ({
-	role,
-	parts: [{ type: 'text', text: `m${i}` }],
-});
-const call = (id: string): Message => ({
-	role: 'assistant',
-	parts: [{ type: 'tool-call', id, name: 'search', input: {} }],
-});
-const result = (id: string, output: unknown): Message => ({
-	role: 'tool',
-	parts: [
-		{ type: 'tool-result', callId: id, name: 'search', isError: false, output },
-	],
-});
-
-async function stored(messages: Message[]): Promise<StoredMessage[]> {
-	const store = memoryStore();
-	const t = await store.createThread({ ownerId: 'o' });
-	return store.append(t.id, 'o', messages);
-}
-
-const opts = (budget: number, extra: Partial<CompactOptions> = {}) => ({
-	budget,
-	estimate: chars,
-	summarize: async () => 'SUMMARY',
-	...extra,
-});
 
 describe('compact', () => {
 	it('returns the messages untouched at the budget', async () => {
@@ -81,16 +50,16 @@ describe('compact', () => {
 	it('keeps a call with its result when the cut would split them', async () => {
 		const msgs = await stored([
 			say(1),
-			say(2),
 			call('a'),
 			result('a', 'ok'),
 			say(3),
+			say(4),
 		]);
-		const out = await compact(msgs, opts(1, { keepLast: 2 }));
+		const out = await compact(msgs, opts(1, { keepLast: 3 }));
 		expect(out.messages.map((m) => m.id)).toEqual(
-			msgs.slice(2).map((m) => m.id),
+			msgs.slice(1).map((m) => m.id),
 		);
-		expect(out.throughMessageId).toBe(msgs[1]?.id as string);
+		expect(out.throughMessageId).toBe(msgs[0]?.id as string);
 	});
 
 	it('folds nothing when every message is kept', async () => {
@@ -164,59 +133,5 @@ describe('compact', () => {
 		expect(loaded?.messages.map((m) => m.id)).toEqual(
 			out.messages.map((m) => m.id),
 		);
-	});
-});
-
-describe('compact pairs and truncation', () => {
-	it('keeps parallel calls with all their results', async () => {
-		const parallel: Message = {
-			role: 'assistant',
-			parts: [
-				{ type: 'tool-call', id: 'a', name: 'search', input: {} },
-				{ type: 'tool-call', id: 'b', name: 'search', input: {} },
-			],
-		};
-		const msgs = await stored([
-			say(1),
-			parallel,
-			result('a', 'ok'),
-			result('b', 'ok'),
-			say(2),
-		]);
-		const out = await compact(msgs, opts(1, { keepLast: 2 }));
-		expect(out.messages.map((m) => m.id)).toEqual(
-			msgs.slice(1).map((m) => m.id),
-		);
-	});
-
-	it('neither cuts an error result nor cuts an output twice', async () => {
-		const error: Message = {
-			role: 'tool',
-			parts: [
-				{
-					type: 'tool-result',
-					callId: 'e',
-					name: 'search',
-					isError: true,
-					error: { code: 'TOOL_ERROR', message: 'x'.repeat(100) },
-				} as Message['parts'][number],
-			],
-		};
-		const msgs = await stored([
-			call('e'),
-			error,
-			call('a'),
-			result('a', 'y'.repeat(100)),
-		]);
-		const once = await compact(
-			msgs,
-			opts(1, { keepLast: 9, truncateToolResultsTo: 10 }),
-		);
-		expect(once.messages[1]).toEqual(msgs[1] as StoredMessage);
-		const twice = await compact(
-			once.messages,
-			opts(1, { keepLast: 9, truncateToolResultsTo: 5 }),
-		);
-		expect(twice.messages).toEqual(once.messages);
 	});
 });

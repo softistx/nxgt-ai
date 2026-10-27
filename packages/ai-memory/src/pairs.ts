@@ -11,6 +11,18 @@ export function safeCut(messages: readonly StoredMessage[], from: number) {
 	return cut;
 }
 
+/**
+ * `safeCut`, then moved back until the kept messages start on a user turn,
+ * which providers require of a conversation. When no user turn lies before the
+ * cut, the pair-safe cut stands and the kept messages start on another role.
+ */
+export function userCut(messages: readonly StoredMessage[], from: number) {
+	const safe = safeCut(messages, from);
+	let cut = safe;
+	while (cut > 0 && messages[cut]?.message.role !== 'user') cut--;
+	return cut > 0 ? cut : safe;
+}
+
 function splitsPair(messages: readonly StoredMessage[], cut: number): boolean {
 	const folded = new Set<string>();
 	for (const m of messages.slice(0, cut)) {

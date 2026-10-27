@@ -71,7 +71,7 @@ The factory returns a fresh, empty store each time. The suite runs under
 | `memoryStore({ now? })`                                                                            | an in-process store; `now` is the clock in epoch ms                                                                                                         |
 | `compact(messages, { budget, summarize, keepLast?, truncateToolResultsTo?, summary?, estimate? })` | cuts old tool results, then folds the oldest messages into a summary; returns `{ summary?, throughMessageId?, messages, tokens }`                           |
 | `summarizeWith(model, { system?, maxTokens?, signal? })`                                           | a `summarize` for `compact` backed by an `@nxgt/ai-core` model adapter                                                                                      |
-| `MemoryError`, `MEMORY_ERROR_CODES`                                                                | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR` or `INVALID_OWNER`                                         |
+| `MemoryError`, `MEMORY_ERROR_CODES`                                                                | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR`, `INVALID_OWNER` or `EMPTY_SUMMARY`                        |
 | `messageSchema`, `threadSchema`, `storedMessageSchema`, `summarySchema`                            | the zod shapes of a message, a thread, a stored message and a summary                                                                                       |
 | `memoryStoreContract(make)`                                                                        | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `memoryStore`                                                                          |
 
@@ -84,6 +84,7 @@ The factory returns a fresh, empty store each time. The suite runs under
 - `load` with `sinceSummary` returns every message when the summary's `throughMessageId` is no longer found.
 - `compact` still returns more than `budget` when the kept messages alone are over it; raise `budget` or lower `keepLast`.
 - A cut tool output is replaced by `{ truncated: true, originalChars, preview }` in the returned copy only; the store keeps the original.
+- The summary is not a message: send it in the system prompt (see the guide). The kept messages start on a user turn when the thread has one before the cut.
 - Pass the stored `summary` to `compact`, or the next summary forgets the previous one.
 - `append` strips keys a message part does not declare.
 

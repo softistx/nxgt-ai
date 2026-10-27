@@ -99,6 +99,30 @@ if (out.summary && out.throughMessageId) {
 - `summarizeWith(model, { system?, maxTokens?, signal? })` calls the model
   once, with a transcript of the messages (the previous summary first), and
   returns its text. Pass your own `summarize` to use another way.
+- The kept messages start on a user turn: the cut moves back past assistant
+  and tool messages, as the Anthropic Messages API needs a conversation that
+  opens with the user and refuses a tool result without its call. When no user
+  turn lies before the cut, the cut stays where it keeps call and result
+  together and the tail may start on another role.
+- `compact` throws `MemoryError('EMPTY_SUMMARY')` when `summarize` returns an
+  empty or whitespace-only string, and folds nothing, so a blank summary is
+  never stored.
+- Send the summary in the system prompt, never as a message of its own, so the
+  request keeps opening with the user's turn:
+
+```ts
+const summary = out.summary ?? loaded.summary?.text;
+await generate(model, {
+	system: [
+		{ text: basePrompt },
+		...(summary
+			? [{ text: `Summary of the earlier conversation:\n${summary}` }]
+			: []),
+	],
+	messages: out.messages.map((m) => m.message),
+});
+```
+
 - Compacting again an already compacted thread (its tail and stored summary)
   changes nothing while it fits.
 

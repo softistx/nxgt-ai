@@ -1,5 +1,6 @@
 import { estimateTokens, type Message } from '@nxgt/ai-core';
-import { safeCut } from './pairs';
+import { MemoryError } from './errors';
+import { userCut } from './pairs';
 import { plain, truncateAt } from './truncate';
 import type { StoredMessage } from './types';
 
@@ -32,7 +33,9 @@ export interface CompactResult {
 /**
  * Brings a thread under `budget`: first it cuts the tool results, oldest
  * first; if that is not enough it folds the oldest messages into a rolling
- * summary. A tool call and its result stay together. `messages` are the
+ * summary. A tool call and its result stay together, and the kept messages
+ * start on a user turn when the thread has one before the cut. Throws
+ * `MemoryError` `EMPTY_SUMMARY` when `summarize` returns blank text. `messages` are the
  * thread's messages after its stored summary (`load` with `sinceSummary`).
  */
 export async function compact(
@@ -51,7 +54,7 @@ export async function compact(
 		(list) => size(list, summary?.text) <= budget,
 	);
 	const kept = cut.length - keepLast;
-	const at = size(cut, summary?.text) <= budget ? 0 : safeCut(cut, kept);
+	const at = size(cut, summary?.text) <= budget ? 0 : userCut(cut, kept);
 	if (at === 0) return { messages: cut, tokens: size(cut, summary?.text) };
 
 	const folded = cut.slice(0, at);
@@ -64,6 +67,12 @@ export async function compact(
 			]
 		: [];
 	const text = await summarize([...previous, ...plain(folded)]);
+	if (text.trim() === '') {
+		throw new MemoryError(
+			'EMPTY_SUMMARY',
+			'summarize returned an empty summary; nothing was folded.',
+		);
+	}
 	const tail = cut.slice(at);
 	return {
 		summary: text,

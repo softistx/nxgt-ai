@@ -71,3 +71,18 @@ await compact(loaded.messages, { budget, summary: loaded.summary, summarize });
 That is a tool output cut by `compact` because it was longer than
 `truncateToolResultsTo` characters. The stored message is unchanged. Raise
 `truncateToolResultsTo`, or have the tool return less.
+
+## `MemoryError` EMPTY_SUMMARY
+
+`summarize` returned an empty or whitespace-only string, so `compact` folded
+nothing rather than let a blank summary replace the messages. Check the model's
+reply (a refusal or a `maxTokens` too low gives no text) and retry.
+
+```ts
+try {
+	await compact(messages, { budget, summarize });
+} catch (e) {
+	if (e instanceof MemoryError && e.code === 'EMPTY_SUMMARY') retryLater();
+	else throw e;
+}
+```
