@@ -1,5 +1,6 @@
 import { AiError, type AiIssue } from './errors';
 import { errorResult, type ToolCallPart, type ToolResultPart } from './message';
+import { zodIssues } from './schema';
 import type { AnyTool, ToolContext } from './tool';
 
 const describe = (issues: readonly AiIssue[]): string =>
@@ -61,6 +62,7 @@ export async function executeTool(
 					`Tool "${tool.name}" returned an invalid output.`,
 					{
 						cause: parsed.error,
+						issues: zodIssues(parsed.error),
 					},
 				),
 			);
