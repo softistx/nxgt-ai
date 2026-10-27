@@ -66,7 +66,24 @@ implement; it streams `ModelEvent`s (`text-delta`, `thinking-delta`,
 `tool-call`, `usage`, `finish`). `generate(model, req, signal)` folds one call
 into an assistant `Message`, its `Usage` and a finish reason, and throws
 `AiError` `ABORTED` when the signal aborts. `agentEventSchema` validates the
-`AgentEvent`s the agent loop will emit. See [Model port](docs/guide/model.md).
+`AgentEvent`s the agent loop emits. See [Model port](docs/guide/model.md).
+
+## Agent loop
+
+`runAgent({ model, system, messages, tools, context, signal, maxSteps, budget,
+observers })` returns an `AgentRun`: iterate it for `AgentEvent`s, await
+`run.result` for the `AgentResult`, call `run.abort()` to stop it. Tool calls of
+a step run in parallel and answer in call order; a failing tool becomes an
+error result the model sees. `maxSteps` and `budget` end the run with
+`MAX_STEPS` / `BUDGET_EXCEEDED`. See [Agent loop](docs/guide/agent.md).
+
+```ts
+const run = runAgent({ model, messages, tools: [weather], maxSteps: 5 });
+for await (const event of run) {
+	if (event.type === 'text-delta') process.stdout.write(event.text);
+}
+const { reason, usage } = await run.result;
+```
 
 ## Errors
 
