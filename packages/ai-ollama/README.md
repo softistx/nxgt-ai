@@ -36,3 +36,7 @@ bun add @nxgt/ai-ollama @nxgt/ai-core
 ```
 
 Requires `"moduleResolution": "bundler"`. See the [guide](docs/guide/ollama.md).
+
+## Documentation
+
+[docs/](docs/README.md): guides, [troubleshooting](docs/troubleshooting.md) and the [roadmap](docs/roadmap.md).

@@ -42,3 +42,7 @@ bun add @nxgt/ai-anthropic @nxgt/ai-core
 ```
 
 Requires `"moduleResolution": "bundler"`. See the [guide](docs/guide/anthropic.md).
+
+## Documentation
+
+[docs/](docs/README.md): guides, [troubleshooting](docs/troubleshooting.md) and the [roadmap](docs/roadmap.md).

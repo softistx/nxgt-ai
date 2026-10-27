@@ -106,4 +106,4 @@ See [Errors](docs/guide/errors.md).
 
 ## Documentation
 
-[docs/](docs/README.md): guides and the [roadmap](docs/roadmap.md).
+[docs/](docs/README.md): guides, [troubleshooting](docs/troubleshooting.md) and the [roadmap](docs/roadmap.md).
