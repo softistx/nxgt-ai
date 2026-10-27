@@ -41,12 +41,19 @@ export interface AgentObserver {
 		messages: readonly Message[];
 		tools: readonly string[];
 	}): void | Promise<void>;
+	/** Before each model call; `onModelCall` follows it, error or not. */
+	onModelStart?(info: { step: number }): void | Promise<void>;
 	onModelCall?(info: {
 		step: number;
 		durationMs: number;
 		usage: Usage;
 		finishReason?: FinishReason;
 		error?: RunError;
+	}): void | Promise<void>;
+	/** Before each tool call runs; `onToolCall` follows it. */
+	onToolStart?(info: {
+		step: number;
+		call: ToolCallPart;
 	}): void | Promise<void>;
 	onToolCall?(info: {
 		step: number;
