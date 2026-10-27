@@ -25,6 +25,19 @@
         "zod": ">=4.6.5 <5",
       },
     },
+    "packages/ai-testing": {
+      "name": "@nxgt/ai-testing",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "@types/bun": "^1.4.4",
+        "zod": "4.6.5",
+      },
+      "peerDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "typescript": "^6.0.3 || ^7.0.0",
+      },
+    },
   },
   "overrides": {
     "typescript": "~6.0.3",
@@ -97,6 +110,8 @@
     "@manypkg/tools": ["@manypkg/tools@2.1.2", "", { "dependencies": { "jju": "^1.4.0", "tinyglobby": "^0.2.13", "yaml": "^2.9.0" } }, "sha512-6QEf6yqFbETdwGITKq57aYoPfX/3K8XFNwsAlx0C1M7o8cb79sv1M3w+tWuWvIcSbNqrLF7OD7YpZMVVz335hQ=="],
 
     "@nxgt/ai-core": ["@nxgt/ai-core@workspace:packages/ai-core"],
+
+    "@nxgt/ai-testing": ["@nxgt/ai-testing@workspace:packages/ai-testing"],
 
     "@pnpm/deps.graph-sequencer": ["@pnpm/deps.graph-sequencer@1100.0.1", "", {}, "sha512-pOr5+q1fLYKwFN3LAJuGZEnfXDcQ73zqgDHMtGy+K+uIoUqyY+6MeDCWFwfu+4EFuq76I5EPFofoNAI+Bmmq4A=="],
 
