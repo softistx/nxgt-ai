@@ -156,7 +156,7 @@ describe('runAgent limits and abort', () => {
 					isError: true,
 					error: {
 						code: 'MODEL_ERROR',
-						message: `The call was cut off (${finish}) and did not run.`,
+						message: `The call was cut off (the step ended ${finish}) and did not run.`,
 					},
 				},
 			]);

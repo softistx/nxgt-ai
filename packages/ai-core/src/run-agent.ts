@@ -5,6 +5,7 @@ import type {
 	RunBudget,
 	RunError,
 } from './agent-types';
+import { answerCutOff } from './cut-off';
 import { AiError } from './errors';
 import { createChannel } from './event-channel';
 import type { AgentEvent, RunEndReason } from './events';
@@ -14,7 +15,6 @@ import {
 	type Message,
 	type ProposedActionPart,
 	type ToolCallPart,
-	type ToolResultPart,
 	type Usage,
 } from './message';
 import { notify } from './observers';
@@ -64,28 +64,34 @@ function limitEnding(
 	return undefined;
 }
 
-/**
- * Tool calls on a step that did not end in `tool-use` never run. Each gets an
- * error result, so the history stays valid for a provider that wants every
- * call answered (Anthropic answers 400 to a `tool_use` with no `tool_result`).
- */
-function answerCutOff(
-	calls: readonly ToolCallPart[],
-	finish: string,
+/** Runs the calls of a step and records the assistant and tool messages. */
+async function runTools(
+	options: RunAgentOptions,
 	state: RunState,
+	calls: ToolCallPart[],
+	assistant: Message,
+	signal: AbortSignal,
 	emit: Emit,
-): void {
-	const message = `The call was cut off (${finish}) and did not run.`;
-	const parts: ToolResultPart[] = calls.map((call) => ({
-		type: 'tool-result',
-		callId: call.id,
-		name: call.name,
-		isError: true,
-		error: { code: 'MODEL_ERROR', message },
-	}));
-	for (const result of parts) emit({ type: 'tool-result', result });
-	const toolMessage: Message = { role: 'tool', parts };
-	state.added.push(toolMessage);
+): Promise<void> {
+	const tools = new Map((options.tools ?? []).map((t) => [t.name, t]));
+	const proposals: ProposedActionPart[] = [];
+	const results = await runToolCalls(calls, {
+		tools,
+		ttlMs: options.proposalTtlMs ?? DEFAULT_PROPOSAL_TTL_MS,
+		now: options.now ?? Date.now,
+		proposals,
+		context: options.context,
+		signal,
+		step: state.steps,
+		runId: state.runId,
+		observers: options.observers,
+		emit,
+	});
+	const toolMessage: Message = {
+		role: 'tool',
+		parts: [...results, ...proposals],
+	};
+	state.added.push(assistant, toolMessage);
 	emit({ type: 'message', message: toolMessage });
 }
 
@@ -120,26 +126,7 @@ async function step(
 		return { reason };
 	}
 	emit({ type: 'message', message: out.message });
-	const tools = new Map((options.tools ?? []).map((t) => [t.name, t]));
-	const proposals: ProposedActionPart[] = [];
-	const results = await runToolCalls(calls, {
-		tools,
-		ttlMs: options.proposalTtlMs ?? DEFAULT_PROPOSAL_TTL_MS,
-		now: options.now ?? Date.now,
-		proposals,
-		context: options.context,
-		signal,
-		step: state.steps,
-		runId: state.runId,
-		observers: options.observers,
-		emit,
-	});
-	const toolMessage: Message = {
-		role: 'tool',
-		parts: [...results, ...proposals],
-	};
-	state.added.push(out.message, toolMessage);
-	emit({ type: 'message', message: toolMessage });
+	await runTools(options, state, calls, out.message, signal, emit);
 	return signal.aborted ? { reason: 'aborted' } : undefined;
 }
 

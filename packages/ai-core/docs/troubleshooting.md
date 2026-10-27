@@ -117,7 +117,7 @@ runAgent({ model, messages, tools, maxSteps: 20 });
 
 If the model keeps calling the same tool, fix the tool's result or description instead of raising the limit.
 
-### `The call was cut off (max-tokens) and did not run.`
+### `The call was cut off (the step ended max-tokens) and did not run.`
 
 **When:** a step ends `max-tokens`, `end` or `refusal` while the model also sent complete tool calls. The result is a `MODEL_ERROR` tool result, not a thrown error, and the run ends with that reason.
 **Why:** the answer was cut or refused, so the calls cannot be trusted to be what the model meant. Without an answer the next turn would send a `tool_use` with no `tool_result`, which Anthropic rejects with a 400.
