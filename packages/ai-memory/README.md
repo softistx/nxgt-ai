@@ -38,6 +38,25 @@ memoryStoreContract(() => myStore());
 The factory returns a fresh, empty store each time. The suite runs under
 `bun test`.
 
+## API
+
+| Export                                                                  | What it is                                                                                                                                                  |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MemoryStore`                                                           | the port: `createThread`, `getThread`, `listThreads`, `append`, `load`, `setSummary`, `findAction`, `updateAction`, `deleteThread`, each with the `ownerId` |
+| `memoryStore({ now? })`                                                 | an in-process store; `now` is the clock in epoch ms                                                                                                         |
+| `MemoryError`, `MEMORY_ERROR_CODES`                                     | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR` or `INVALID_OWNER`                                         |
+| `messageSchema`, `threadSchema`, `storedMessageSchema`, `summarySchema` | the zod shapes of a message, a thread, a stored message and a summary                                                                                       |
+| `memoryStoreContract(make)`                                             | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `memoryStore`                                                                          |
+
+## Traps
+
+- A foreign owner reads as absent, never as forbidden.
+- `updateAction` returns `undefined` when the action is absent, foreign or no longer `pending`.
+- The store never checks `expiresAt`; the core checks it when the action is confirmed.
+- A cursor is opaque: pass only a `nextCursor` the store gave.
+- `load` with `sinceSummary` returns every message when the summary's `throughMessageId` is no longer found.
+- `append` strips keys a message part does not declare.
+
 ## Install
 
 ```sh

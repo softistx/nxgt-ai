@@ -36,6 +36,7 @@ const toolResultPart = z.discriminatedUnion('isError', [
 			message: z.string(),
 			issues: z
 				.array(z.object({ path: z.string(), message: z.string() }))
+				.readonly()
 				.optional(),
 		}),
 	}),
