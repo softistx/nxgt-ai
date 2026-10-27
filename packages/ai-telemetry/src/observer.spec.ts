@@ -185,6 +185,22 @@ describe('aiTelemetry', () => {
 		expect(root.attributes['ai.error.code']).toBe('RATE_LIMITED');
 	});
 
+	test('an unknown error code is recorded as it came', async () => {
+		const error = Object.assign(new AiError('MODEL_ERROR', 'newer'), {
+			code: 'FUTURE_CODE',
+		});
+		const spans = await traced({}, (o) =>
+			runAgent({
+				model: fakeModel([{ error }]),
+				messages: user,
+				observers: [o],
+			}),
+		);
+		const root = only(spans, 'ai.agent.run');
+		expect(root.status).toBe('error');
+		expect(root.attributes['ai.error.code']).toBe('FUTURE_CODE');
+	});
+
 	test('an abort is cancelled, not an error', async () => {
 		const spans = await traced({}, (o) => {
 			const run = runAgent({
