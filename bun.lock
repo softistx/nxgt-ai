@@ -13,6 +13,19 @@
         "zod": "4.6.5",
       },
     },
+    "packages/ai-anthropic": {
+      "name": "@nxgt/ai-anthropic",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "@types/bun": "^1.4.4",
+        "zod": "4.6.5",
+      },
+      "peerDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "typescript": "^6.0.3 || ^7.0.0",
+      },
+    },
     "packages/ai-core": {
       "name": "@nxgt/ai-core",
       "version": "0.0.0",
@@ -108,6 +121,8 @@
     "@manypkg/get-packages": ["@manypkg/get-packages@3.1.0", "", { "dependencies": { "@manypkg/find-root": "^3.1.0", "@manypkg/tools": "^2.1.0" } }, "sha512-0TbBVyvPrP7xGYBI/cP8UP+yl/z+HtbTttAD7FMAJgn/kXOTwh5/60TsqP9ZYY710forNfyV0N8P/IE/ujGZJg=="],
 
     "@manypkg/tools": ["@manypkg/tools@2.1.2", "", { "dependencies": { "jju": "^1.4.0", "tinyglobby": "^0.2.13", "yaml": "^2.9.0" } }, "sha512-6QEf6yqFbETdwGITKq57aYoPfX/3K8XFNwsAlx0C1M7o8cb79sv1M3w+tWuWvIcSbNqrLF7OD7YpZMVVz335hQ=="],
+
+    "@nxgt/ai-anthropic": ["@nxgt/ai-anthropic@workspace:packages/ai-anthropic"],
 
     "@nxgt/ai-core": ["@nxgt/ai-core@workspace:packages/ai-core"],
 

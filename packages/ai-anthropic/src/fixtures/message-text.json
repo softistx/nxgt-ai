@@ -1,0 +1,13 @@
+{
+	"id": "msg_01",
+	"type": "message",
+	"role": "assistant",
+	"content": [{ "type": "text", "text": "It is 18 degrees." }],
+	"stop_reason": "end_turn",
+	"usage": {
+		"input_tokens": 12,
+		"output_tokens": 7,
+		"cache_read_input_tokens": 3,
+		"cache_creation_input_tokens": 1
+	}
+}

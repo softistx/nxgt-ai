@@ -1,0 +1,16 @@
+{
+	"id": "msg_02",
+	"type": "message",
+	"role": "assistant",
+	"content": [
+		{ "type": "text", "text": "Let me check." },
+		{
+			"type": "tool_use",
+			"id": "toolu_1",
+			"name": "weather",
+			"input": { "city": "Lyon" }
+		}
+	],
+	"stop_reason": "tool_use",
+	"usage": { "input_tokens": 20, "output_tokens": 15 }
+}
