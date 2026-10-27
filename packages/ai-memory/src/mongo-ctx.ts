@@ -1,4 +1,4 @@
-import { MemoryError } from './errors';
+import { assertOwner } from './guards';
 import type { MongoCollection, MongoDoc } from './mongo-collection';
 
 /** What the functions of the sibling files share. */
@@ -10,17 +10,7 @@ export interface Ctx {
 	expiry: (at: number) => MongoDoc;
 }
 
-export function assertOwner(ownerId: string): void {
-	if (typeof ownerId !== 'string' || ownerId === '') {
-		throw new MemoryError(
-			'INVALID_OWNER',
-			'ownerId must be a non-empty string.',
-		);
-	}
-}
-
-export const notFound = (id: string): MemoryError =>
-	new MemoryError('THREAD_NOT_FOUND', `Thread "${id}" was not found.`);
+export { assertOwner, notFound } from './guards';
 
 export async function ownThread(c: Ctx, id: string, ownerId: string) {
 	assertOwner(ownerId);
