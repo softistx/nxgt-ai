@@ -144,4 +144,25 @@ describe('mongoMemory', () => {
 			expireAfterSeconds: 0,
 		});
 	});
+
+	it('deletes the messages before the thread', async () => {
+		const { store, threads, messages } = await setup();
+		const t = await store.createThread({ ownerId: 'a' });
+		await store.append(t.id, 'a', [user('x')]);
+		const order: string[] = [];
+		const spy = (name: string, coll: typeof threads) =>
+			new Proxy(coll, {
+				get(target, prop, receiver) {
+					if (prop === 'deleteOne' || prop === 'deleteMany') order.push(name);
+					return Reflect.get(target, prop, receiver);
+				},
+			});
+		const wrapped = mongoMemory({
+			threads: spy('threads', threads),
+			messages: spy('messages', messages),
+		});
+		expect(await wrapped.deleteThread(t.id, 'a')).toBe(true);
+		expect(order).toEqual(['messages', 'threads']);
+		expect(await messages.countDocuments({})).toBe(0);
+	});
 });

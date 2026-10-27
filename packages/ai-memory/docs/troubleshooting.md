@@ -5,6 +5,14 @@
 - [`MemoryError` INVALID_CURSOR](#memoryerror-invalid_cursor)
 - [`MemoryError` INVALID_OWNER](#memoryerror-invalid_owner)
 - [`updateAction` returns undefined](#updateaction-returns-undefined)
+- [`compact` returns more tokens than `budget`](#compact-returns-more-tokens-than-budget)
+- [The summary forgets what the previous one said](#the-summary-forgets-what-the-previous-one-said)
+- [The model sees `{ truncated: true, preview }` as a tool result](#the-model-sees--truncated-true-preview--as-a-tool-result)
+- [`MemoryError` EMPTY_SUMMARY](#memoryerror-empty_summary)
+- [Mongo store: `E11000 duplicate key` on `ownerId_1_threadId_1_seq_1`](#mongo-store-e11000-duplicate-key-on-ownerid_1_threadid_1_seq_1)
+- [Mongo store: a failed `append` leaves a gap in `seq`](#mongo-store-a-failed-append-leaves-a-gap-in-seq)
+- [Mongo store: expired threads and messages are still read](#mongo-store-expired-threads-and-messages-are-still-read)
+- [Mongo store: `findOneAndUpdate` returns a result object, not a document](#mongo-store-findoneandupdate-returns-a-result-object-not-a-document)
 
 ## `MemoryError` THREAD_NOT_FOUND
 
@@ -116,3 +124,9 @@ await threads.updateOne(
 **When:** `append` stores `NaN` as a `seq`, or `updateAction` returns `undefined` for a pending action that exists.
 **Why:** the collection resolves `findOneAndUpdate` to `{ value }`, as `mongodb` 5 and earlier do; the store needs the document itself.
 **Fix:** use `mongodb` 6 or later, or wrap the collection so `findOneAndUpdate` resolves to the document.
+
+## Mongo store: a failed `append` leaves a gap in `seq`
+
+**When:** an `append` threw while inserting, and the next messages start at a higher `seq` than the last stored one.
+**Why:** the store reserves the `seq` range on the thread before inserting, so a failed insert keeps `messageCount` advanced.
+**Fix:** none needed: `load` orders by `seq`, and gaps are harmless. Retry the `append`.
