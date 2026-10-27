@@ -1,0 +1,72 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`cache breakpoints cache auto marks the last tool, last system block and last user turn 1`] = `
+{
+  "max_tokens": 4096,
+  "messages": [
+    {
+      "content": [
+        {
+          "text": "first",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "content": [
+        {
+          "text": "ok",
+          "type": "text",
+        },
+      ],
+      "role": "assistant",
+    },
+    {
+      "content": [
+        {
+          "cache_control": {
+            "type": "ephemeral",
+          },
+          "text": "second",
+          "type": "text",
+        },
+      ],
+      "role": "user",
+    },
+  ],
+  "model": "m",
+  "system": [
+    {
+      "text": "rules",
+      "type": "text",
+    },
+    {
+      "cache_control": {
+        "type": "ephemeral",
+      },
+      "text": "more rules",
+      "type": "text",
+    },
+  ],
+  "tools": [
+    {
+      "description": "A",
+      "input_schema": {
+        "type": "object",
+      },
+      "name": "a",
+    },
+    {
+      "cache_control": {
+        "type": "ephemeral",
+      },
+      "description": "B",
+      "input_schema": {
+        "type": "object",
+      },
+      "name": "b",
+    },
+  ],
+}
+`;

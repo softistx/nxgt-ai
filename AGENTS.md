@@ -43,8 +43,13 @@ shared are copied byte for byte from nxgt-data; fix a drift there first.
   generic domains.
 - Imports carry no extension; consumers resolve with
   `"moduleResolution": "bundler"` (each README says so).
-- Every package is `"private": true` until its release-readiness slice
-  removes it, in a commit of its own.
+- A package is `"private": true` until its effort's release-readiness slice
+  removes it, in a commit of its own. Phase 1a (`ai-core`, `ai-testing`,
+  `ai-anthropic`, `ai-ollama`, `ai-telemetry`) is publishable, first version
+  0.1.0 from its `minor` changesets; the packages of phases 1b and 1c stay
+  private until theirs.
+- Every package has a README, `docs/guide/`, `docs/troubleshooting.md` (one
+  entry per error a consumer can hit) and `docs/roadmap.md`.
 - Every slice carries specs, README/docs, a changeset and a green bar:
   `bun install`, `bunx biome ci`, `bun run build`, `bun run typecheck`,
   `bun run test`, `bun run verify:artifacts`.
@@ -64,3 +69,5 @@ An effort has an integration branch (`feat/ai-core`, `feat/ai-memory-graphql`,
 - `ci.yml` has no Meilisearch/SeaweedFS caches and no newest-peers job.
 - `CLAUDE.md` is the one-line import `@AGENTS.md`; the comments in the
   workflow files are condensed from nxgt-data's.
+- `biome.json` also excludes `.changeset/*.md`: Biome 2.6.3 (locked here) reformats a
+  changeset's front matter into a heading; nxgt-data's 2.5.15 did not.

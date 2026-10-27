@@ -4,7 +4,7 @@ A direction, not a commitment: entries carry no dates, and the version an entry 
 
 ## Now
 
-- **Phase 1a: agent core, providers, testing and telemetry** (branch `feat/ai-core`) — you get:
+- **Phase 1a: agent core, providers, testing and telemetry** (branch `feat/ai-core`, releasing as 0.1.0) — you get:
   - `@nxgt/ai-core`: typed messages and parts (text, thinking, tool calls and results, proposed actions), usage with cache read/write counts, zod-typed tools (`defineTool`, `jsonSchemaTool`), a model port, and `runAgent` with parallel tool calls, a step limit, a budget, abort and tool errors surfaced as events. Mutating tools can return a proposed action that is only executed once confirmed.
   - `@nxgt/ai-anthropic`: streaming, thinking blocks, automatic prompt-cache breakpoints, token counting, and retries on 429/529 that honour `retry-after`.
   - `@nxgt/ai-ollama`: the same model port over a local Ollama server.

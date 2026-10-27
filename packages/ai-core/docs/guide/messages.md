@@ -1,0 +1,65 @@
+# Messages
+
+A conversation is a list of `Message`; a message is a `role` and its `parts`.
+Everything is plain JSON, so a message can be stored and read back unchanged.
+
+```ts
+import type { Message } from '@nxgt/ai-core';
+
+const conversation: Message[] = [
+	{ role: 'user', parts: [{ type: 'text', text: 'Weather in Lyon?' }] },
+	{
+		role: 'assistant',
+		parts: [
+			{ type: 'thinking', text: 'I should call the tool.', signature: 'sig…' },
+			{ type: 'tool-call', id: 'c1', name: 'weather', input: { city: 'Lyon' } },
+		],
+	},
+	{
+		role: 'tool',
+		parts: [
+			{
+				type: 'tool-result',
+				callId: 'c1',
+				name: 'weather',
+				isError: false,
+				output: { degrees: 18 },
+			},
+		],
+	},
+	{ role: 'assistant', parts: [{ type: 'text', text: 'It is 18 degrees.' }] },
+];
+```
+
+## Parts
+
+| `type`            | Fields                                                                           | Notes                                                                                                             |
+| ----------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `text`            | `text`                                                                           |                                                                                                                   |
+| `thinking`        | `text`, `signature?`, `redacted?`                                                | Send `signature` and `redacted` (a provider's opaque data, `text` empty) back unchanged; never read or edit them. |
+| `tool-call`       | `id`, `name`, `input`                                                            | `input` is what the model sent, **not validated**.                                                                |
+| `tool-result`     | `callId`, `name`, then `isError: false` + `output`, or `isError: true` + `error` | `callId` is the call's `id`.`error` is `{ code, message, issues? }`.                                              |
+| `proposed-action` | `id`, `tool`, `input`, `summary?`, `expiresAt`                                   | A mutation waiting for a confirmation.                                                                            |
+
+Switch on `part.type`; the compiler narrows each branch, and a `default` branch
+with `part satisfies never` tells you when a new part type is added.
+
+## Usage
+
+```ts
+import { addUsage, emptyUsage } from '@nxgt/ai-core';
+
+let total = emptyUsage();
+total = addUsage(total, {
+	inputTokens: 1200,
+	outputTokens: 80,
+	cacheReadTokens: 1000,
+	cacheWriteTokens: 0,
+});
+```
+
+`inputTokens` is **all** the input tokens of the call, the cached ones included.
+`cacheReadTokens` and `cacheWriteTokens` say how many of them the provider's
+prompt cache served or wrote (`0` when it reports none), so they are never
+added to `inputTokens` again. `maxInputTokens` and `maxTotalTokens` budgets
+count the same way: a cached prompt still spends its budget.

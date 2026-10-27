@@ -1,0 +1,66 @@
+{
+	"name": "@nxgt/ai-telemetry",
+	"version": "0.0.0",
+	"description": "An @nxgt/ai-core agent observer that writes runs, model calls and tool calls as @nxgt/telemetry spans with gen_ai.* attributes",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"package.json",
+		"LICENSE"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"keywords": [
+		"ai",
+		"agent",
+		"llm",
+		"telemetry",
+		"tracing",
+		"opentelemetry",
+		"gen_ai",
+		"bun",
+		"typescript"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/softistx/nxgt-ai.git",
+		"directory": "packages/ai-telemetry"
+	},
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org",
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun run ../../build.ts",
+		"test": "bun test src",
+		"typecheck": "tsc --noEmit"
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts"
+		]
+	},
+	"devDependencies": {
+		"@nxgt/ai-core": "workspace:^",
+		"@nxgt/ai-testing": "workspace:^",
+		"@nxgt/telemetry": "^0.2.2",
+		"@types/bun": "^1.4.4",
+		"zod": "4.6.5"
+	},
+	"peerDependencies": {
+		"@nxgt/ai-core": "workspace:^",
+		"@nxgt/telemetry": ">=0.2.2 <0.3.0",
+		"typescript": "^6.0.3 || ^7.0.0"
+	}
+}
