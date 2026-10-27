@@ -13,7 +13,9 @@ export type AiErrorCode =
 	| 'AUTHENTICATION'
 	| 'ABORTED'
 	| 'MAX_STEPS'
-	| 'BUDGET_EXCEEDED';
+	| 'BUDGET_EXCEEDED'
+	| 'ACTION_EXPIRED'
+	| 'ACTION_NOT_PENDING';
 
 /** One problem found in a tool's input, located by a dotted path. */
 export interface AiIssue {

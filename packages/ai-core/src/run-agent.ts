@@ -12,10 +12,12 @@ import {
 	addUsage,
 	emptyUsage,
 	type Message,
+	type ProposedActionPart,
 	type ToolCallPart,
 	type Usage,
 } from './message';
 import { notify } from './observers';
+import { DEFAULT_PROPOSAL_TTL_MS } from './proposed-action';
 import { buildRequest, modelStep, toRunError } from './run-step';
 import { runToolCalls } from './run-tools';
 
@@ -84,15 +86,22 @@ async function step(
 	}
 	emit({ type: 'message', message: out.message });
 	const tools = new Map((options.tools ?? []).map((t) => [t.name, t]));
+	const proposals: ProposedActionPart[] = [];
 	const results = await runToolCalls(calls, {
 		tools,
+		ttlMs: options.proposalTtlMs ?? DEFAULT_PROPOSAL_TTL_MS,
+		now: options.now ?? Date.now,
+		proposals,
 		context: options.context,
 		signal,
 		step: state.steps,
 		observers: options.observers,
 		emit,
 	});
-	const toolMessage: Message = { role: 'tool', parts: results };
+	const toolMessage: Message = {
+		role: 'tool',
+		parts: [...results, ...proposals],
+	};
 	state.added.push(out.message, toolMessage);
 	emit({ type: 'message', message: toolMessage });
 	return signal.aborted ? { reason: 'aborted' } : undefined;

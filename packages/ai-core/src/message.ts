@@ -49,6 +49,8 @@ export interface ProposedActionPart {
 	input: unknown;
 	/** What the user is asked to confirm, in words. */
 	summary?: string;
+	/** Epoch milliseconds after which the action can no longer be confirmed. */
+	expiresAt?: number;
 }
 
 export type Part =

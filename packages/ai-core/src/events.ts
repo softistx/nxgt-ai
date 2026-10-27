@@ -50,6 +50,8 @@ const codeSchema = z.enum([
 	'ABORTED',
 	'MAX_STEPS',
 	'BUDGET_EXCEEDED',
+	'ACTION_EXPIRED',
+	'ACTION_NOT_PENDING',
 ]);
 
 const resultBase = {
@@ -80,6 +82,7 @@ const proposedActionSchema = z.object({
 	tool: z.string(),
 	input: z.unknown(),
 	summary: z.string().optional(),
+	expiresAt: z.number().optional(),
 });
 
 const partSchema = z.union([
