@@ -60,6 +60,7 @@ export async function append(
 		String(at),
 		c.expireAt(at),
 		keys.actionPrefix(c, ownerId),
+		threadId,
 		String(parsed.length),
 		...args,
 	]);

@@ -112,7 +112,7 @@ await store.append(thread.id, 'user-1', [
 
 It passes `memoryStoreContract`. Each `append` is one Lua script that reserves
 its `seq` range and writes its messages, and `updateAction` is one script that
-matches only a `pending` action. Nothing is indexed by hand and nothing needs
+matches only a `pending` action; `deleteThread` is one script. Nothing is indexed by hand and nothing needs
 creating first. See the [guide](docs/guide/memory.md#redis-store).
 
 ## Test your own store
@@ -140,13 +140,14 @@ The factory returns a fresh, empty store each time. The suite runs under
 | `mongoMemory({ threads, messages, expireAfterSeconds?, now? })`                                    | from `@nxgt/ai-memory/mongo`: a store over two MongoDB collections                                                                                          |
 | `threadFields`, `messageFields`, `threadIndexes`, `messageIndexes`, `expiresAtIndex`               | from `@nxgt/ai-memory/mongo`: the stored field names and the indexes to create                                                                              |
 | `redisMemory({ client, prefix?, expireAfterSeconds?, now? })`                                      | from `@nxgt/ai-memory/redis`: a store over Redis keys                                                                                                       |
+| `RedisMemoryOptions`                                                                               | from `@nxgt/ai-memory/redis`: the options of `redisMemory`                                                                                                  |
 | `RedisCommands`                                                                                    | from `@nxgt/ai-memory/redis`: the one method of the client the store calls, `send(command, args)`                                                           |
 | `memoryStoreContract(make)`                                                                        | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `memoryStore`                                                                          |
 
 ## Traps
 
 - Mongo store: create the indexes first (a missing unique index is not caught), and mind that a TTL monitor deletes expired documents up to a minute late.
-- Redis store: a TTL expires a whole thread at once (its last write plus `expireAfterSeconds`), and it needs Redis 6.2 or later outside cluster mode.
+- Redis store: unlike the Mongo store, messages do not expire one by one; the whole thread expires from its last write (plus `expireAfterSeconds`), and it needs Redis 6.2 or later outside cluster mode.
 - A foreign owner reads as absent, never as forbidden.
 - `updateAction` returns `undefined` when the action is absent, foreign or no longer `pending`.
 - The store never checks `expiresAt`; the core checks it when the action is confirmed.

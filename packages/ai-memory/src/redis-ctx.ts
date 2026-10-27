@@ -26,8 +26,12 @@ export const keys = {
 	ids: (c: Ctx, id: string) => `${c.prefix}:ids:${id}`,
 	actionIndex: (c: Ctx, id: string) => `${c.prefix}:actions:${id}`,
 	owner: (c: Ctx, ownerId: string) => `${c.prefix}:owner:${ownerId}`,
-	/** The prefix of an owner's action keys; the action id follows it. */
-	actionPrefix: (c: Ctx, ownerId: string) => `${c.prefix}:action:${ownerId}:`,
+	/**
+	 * The prefix of an owner's action keys; the action id follows it. The
+	 * owner's length comes first, so `a:b` + `c` never meets `a` + `b:c`.
+	 */
+	actionPrefix: (c: Ctx, ownerId: string) =>
+		`${c.prefix}:action:${ownerId.length}:${ownerId}:`,
 };
 
 /** Runs a Lua script atomically. */

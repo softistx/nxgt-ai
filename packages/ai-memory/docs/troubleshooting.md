@@ -145,7 +145,7 @@ await threads.updateOne(
 ## Redis store: `CROSSSLOT Keys in request don't hash to the same slot`
 
 **When:** `append`, `setSummary` or `deleteThread` fails on a Redis Cluster.
-**Why:** one script touches the keys of a thread, which a cluster spreads over several slots. The store supports a single node, or one primary with replicas behind Sentinel.
+**Why:** each script touches the keys of a thread, which a cluster spreads over several slots, and builds the action keys inside the script instead of declaring them in `KEYS`. Redis Cluster is not supported. The store supports a single node, or one primary with replicas behind Sentinel.
 **Fix:** point the client at a non-cluster Redis.
 
 ## Redis store: `WRONGTYPE Operation against a key holding the wrong kind of value`

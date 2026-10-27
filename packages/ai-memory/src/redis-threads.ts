@@ -8,7 +8,7 @@ import {
 	readThreadHash,
 } from './redis-ctx';
 import { toThread } from './redis-map';
-import { CREATE_THREAD } from './redis-scripts';
+import { CREATE_THREAD, DELETE_THREAD } from './redis-scripts';
 import type { CreateThreadInput, Page, Thread, ThreadPage } from './types';
 
 const DEFAULT_LIMIT = 20;
@@ -91,20 +91,23 @@ export async function listThreads(
 }
 
 /**
- * Messages and actions first, then the thread: a crash in between leaves an
- * empty thread that a retry removes, never messages nobody can reach.
+ * One script removes the messages, the actions, the thread and its owner
+ * index entry, so a crash or a racing `append` never leaves keys nobody can
+ * reach: the append finds the thread gone.
  */
 export async function deleteThread(c: Ctx, id: string, ownerId: string) {
-	if (!(await ownThread(c, id, ownerId))) return false;
-	const index = keys.actionIndex(c, id);
-	const actions = (await c.redis.send('SMEMBERS', [index])) as string[];
-	await c.redis.send('DEL', [
-		keys.messages(c, id),
-		keys.ids(c, id),
-		index,
-		...actions,
-	]);
-	await c.redis.send('DEL', [keys.thread(c, id)]);
-	await c.redis.send('ZREM', [keys.owner(c, ownerId), id]);
-	return true;
+	assertOwner(ownerId);
+	const done = await evalLua(
+		c,
+		DELETE_THREAD,
+		[
+			keys.thread(c, id),
+			keys.messages(c, id),
+			keys.ids(c, id),
+			keys.actionIndex(c, id),
+			keys.owner(c, ownerId),
+		],
+		[ownerId, id],
+	);
+	return done !== null && done !== undefined;
 }

@@ -84,7 +84,7 @@ describe('redisMemory', () => {
 		const found = (await client.send('KEYS', [
 			'ai-memory:action:*',
 		])) as string[];
-		expect(found).toEqual(['ai-memory:action:a:p1']);
+		expect(found).toEqual(['ai-memory:action:1:a:p1']);
 	});
 
 	it('lets only one of two concurrent confirmations win', async () => {
@@ -129,24 +129,45 @@ describe('redisMemory', () => {
 		expect(await client.send('ZCARD', ['ai-memory:owner:a'])).toBe(0);
 	});
 
-	it('deletes the messages before the thread', async () => {
+	it('deletes a thread whole, so a later append finds it gone', async () => {
 		const { client, store } = await setup();
 		const t = await store.createThread({ ownerId: 'a' });
 		await store.append(t.id, 'a', [proposal]);
-		const order: string[] = [];
-		const wrapped = redisMemory({
-			client: {
-				send: (command, args) => {
-					if (command === 'DEL') order.push(args[0] as string);
-					return client.send(command, args);
-				},
-			},
+		expect(await store.deleteThread(t.id, 'a')).toBe(true);
+		await expect(store.append(t.id, 'a', [user('x')])).rejects.toMatchObject({
+			code: 'THREAD_NOT_FOUND',
 		});
-		expect(await wrapped.deleteThread(t.id, 'a')).toBe(true);
-		expect(order).toEqual([
-			`ai-memory:messages:${t.id}`,
-			`ai-memory:thread:${t.id}`,
-		]);
-		expect(await client.send('KEYS', ['*'])).toEqual([]);
+		const [, left] = (await client.send('SCAN', [
+			'0',
+			'MATCH',
+			'ai-memory:*',
+			'COUNT',
+			'1000',
+		])) as [string, string[]];
+		expect(left).toEqual([]);
+	});
+
+	it('keeps the actions of owners "a:b" and "a" apart', async () => {
+		const { store } = await setup();
+		const one = await store.createThread({ ownerId: 'a:b' });
+		const two = await store.createThread({ ownerId: 'a' });
+		const act = (id: string) => ({
+			role: 'assistant' as const,
+			parts: [
+				{
+					type: 'proposed-action' as const,
+					id,
+					tool: 'x',
+					input: {},
+					expiresAt: 9,
+				},
+			],
+		});
+		await store.append(one.id, 'a:b', [act('c')]);
+		await store.append(two.id, 'a', [act('b:c')]);
+		expect((await store.findAction('c', 'a:b'))?.id).toBe('c');
+		expect(await store.findAction('c', 'a')).toBeUndefined();
+		expect((await store.findAction('b:c', 'a'))?.id).toBe('b:c');
+		expect(await store.findAction('b:c', 'a:b')).toBeUndefined();
 	});
 });

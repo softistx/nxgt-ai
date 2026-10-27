@@ -60,6 +60,8 @@ export async function updateAction(
 			patch.status,
 			patch.result === undefined ? '0' : '1',
 			patch.result === undefined ? '' : JSON.stringify(patch.result),
+			c.expireAt(c.now()),
+			c.prefix,
 		],
 	);
 	return done === null || done === undefined

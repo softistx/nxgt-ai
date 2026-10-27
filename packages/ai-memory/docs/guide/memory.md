@@ -249,25 +249,26 @@ const store = redisMemory({ client: redis.client });
 Every key starts with `prefix` (default `ai-memory`); give each application
 that shares a Redis its own.
 
-| key                              | type       | holds                                                                  |
-| -------------------------------- | ---------- | ---------------------------------------------------------------------- |
-| `<prefix>:thread:<id>`           | hash       | the thread: `ownerId`, `title`, `meta`, `messageCount`, `summary`, ... |
-| `<prefix>:messages:<id>`         | sorted set | the messages of a thread, scored by `seq`                              |
-| `<prefix>:ids:<id>`              | hash       | message id to `seq`, to find the summary's last message                |
-| `<prefix>:actions:<id>`          | set        | the keys of the actions the thread proposed                            |
-| `<prefix>:action:<ownerId>:<id>` | hash       | one proposed action: its `status`, its `body` and its `result`         |
-| `<prefix>:owner:<ownerId>`       | sorted set | the ids of the owner's threads, which pages `listThreads` newest first |
+| key                                  | type       | holds                                                                  |
+| ------------------------------------ | ---------- | ---------------------------------------------------------------------- |
+| `<prefix>:thread:<id>`               | hash       | the thread: `ownerId`, `title`, `meta`, `messageCount`, `summary`, ... |
+| `<prefix>:messages:<id>`             | sorted set | the messages of a thread, scored by `seq`                              |
+| `<prefix>:ids:<id>`                  | hash       | message id to `seq`, to find the summary's last message                |
+| `<prefix>:actions:<id>`              | set        | the keys of the actions the thread proposed                            |
+| `<prefix>:action:<n>:<ownerId>:<id>` | hash       | one proposed action: its `status`, its `body` and its `result`         |
+| `<prefix>:owner:<ownerId>`           | sorted set | the ids of the owner's threads, which pages `listThreads` newest first |
 
-Thread ids are time-ordered UUIDs. Reads need no index and no setup.
+`<n>` is the length of the owner id, so owner ids may hold `:` without their action keys meeting. Thread ids are time-ordered UUIDs. Reads need no index and no setup.
 
 ### Expiry
 
 `expireAfterSeconds` sets an expiry on a thread's keys at every write that
 touches the thread (`append`, `setSummary`): the thread, its messages and its
-indexes go together, that long after the last write. A thread you keep
-writing to never expires, and an idle one disappears whole, so a thread never
-loses only its oldest messages. An action expires that long after it was
-proposed. The `now` option is the clock the expiry is computed from.
+indexes go together, that long after the last write, and so do its
+proposed actions (`updateAction` slides them too). Unlike the Mongo store,
+messages do not expire one by one: the whole thread expires from its last
+write, so a thread you keep writing to never expires and an idle one
+disappears whole. The `now` option is the clock the expiry is computed from.
 
 Redis deletes an expired key on access or in the background; a read after
 the time never sees it. The owner index is not given an expiry: `listThreads`
@@ -284,11 +285,10 @@ action id is recorded once per owner, as in the other stores.
 
 ### Deleting
 
-`deleteThread` deletes the messages and the actions first, then the thread,
-then its entry in the owner index. It returns `false` for a foreign or absent
-owner. A crash in between leaves an empty thread, which a retry removes. An
-`append` racing a delete can leave unreachable keys; the TTL removes them when
-`expireAfterSeconds` is set.
+`deleteThread` is one script: it removes the messages, the actions, the thread
+and its entry in the owner index together, and returns `false` for a foreign
+or absent owner. It never leaves unreachable keys; an `append` racing it
+finds the thread gone and throws `THREAD_NOT_FOUND`.
 
 ## Write your own store
 
