@@ -38,6 +38,18 @@
         "zod": ">=4.6.5 <5",
       },
     },
+    "packages/ai-ollama": {
+      "name": "@nxgt/ai-ollama",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "@types/bun": "^1.4.4",
+      },
+      "peerDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "typescript": "^6.0.3 || ^7.0.0",
+      },
+    },
     "packages/ai-testing": {
       "name": "@nxgt/ai-testing",
       "version": "0.0.0",
@@ -125,6 +137,8 @@
     "@nxgt/ai-anthropic": ["@nxgt/ai-anthropic@workspace:packages/ai-anthropic"],
 
     "@nxgt/ai-core": ["@nxgt/ai-core@workspace:packages/ai-core"],
+
+    "@nxgt/ai-ollama": ["@nxgt/ai-ollama@workspace:packages/ai-ollama"],
 
     "@nxgt/ai-testing": ["@nxgt/ai-testing@workspace:packages/ai-testing"],
 
