@@ -60,6 +60,11 @@ class SpanObserver implements AgentObserver {
 		this.calls.clear();
 	}
 
+	private open(key: string, handle: SpanHandle): void {
+		this.calls.get(key)?.end();
+		this.calls.set(key, handle);
+	}
+
 	private take(key: string): SpanHandle | undefined {
 		const handle = this.calls.get(key);
 		this.calls.delete(key);
@@ -87,7 +92,7 @@ class SpanObserver implements AgentObserver {
 	};
 
 	onModelStart: Hook<'onModelStart'> = ({ step }) => {
-		this.calls.set(
+		this.open(
 			`model:${step}`,
 			this.child('ai.model.call', {
 				[OPERATION]: 'chat',
@@ -114,7 +119,7 @@ class SpanObserver implements AgentObserver {
 	};
 
 	onToolStart: Hook<'onToolStart'> = ({ step, call }) => {
-		this.calls.set(
+		this.open(
 			`tool:${call.id}`,
 			this.child('ai.tool.call', toolAttributes(call, step)),
 		);
