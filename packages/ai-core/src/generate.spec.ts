@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { z } from 'zod';
 import {
 	type AgentEvent,
+	AI_ERROR_CODES,
 	AiError,
 	agentEventSchema,
 	generate,
@@ -65,6 +66,25 @@ describe('generate', () => {
 			{ type: 'thinking', text: 'a' },
 			{ type: 'thinking', text: '', redacted: 'opaque' },
 			{ type: 'thinking', text: 'b', signature: 's' },
+		]);
+	});
+
+	test('start opens a new part: two thinking blocks keep their signatures', async () => {
+		const model = adapter(async function* () {
+			yield { type: 'thinking-delta', text: 'a', start: true };
+			yield { type: 'thinking-delta', text: '', signature: 's1' };
+			yield { type: 'thinking-delta', text: 'b', start: true };
+			yield { type: 'thinking-delta', text: '', signature: 's2' };
+			yield { type: 'text-delta', text: 'x', start: true };
+			yield { type: 'text-delta', text: 'y', start: true };
+			yield { type: 'finish', reason: 'end' };
+		});
+		const out = await generate(model, req);
+		expect(out.message.parts).toEqual([
+			{ type: 'thinking', text: 'a', signature: 's1' },
+			{ type: 'thinking', text: 'b', signature: 's2' },
+			{ type: 'text', text: 'x' },
+			{ type: 'text', text: 'y' },
 		]);
 	});
 
@@ -136,8 +156,8 @@ describe('agentEventSchema', () => {
 
 	const events: AgentEvent[] = [
 		{ type: 'step-start', step: 1, runId: 'r1' },
-		{ type: 'text-delta', text: 'a' },
-		{ type: 'thinking-delta', text: 'b', signature: 's' },
+		{ type: 'text-delta', text: 'a', start: true },
+		{ type: 'thinking-delta', text: 'b', signature: 's', start: true },
 		{ type: 'tool-call', id: 'c1', name: 'w', input: { x: 1 } },
 		{
 			type: 'tool-result',
@@ -165,7 +185,13 @@ describe('agentEventSchema', () => {
 		},
 		{
 			type: 'proposed-action',
-			action: { type: 'proposed-action', id: 'p1', tool: 'w', input: {} },
+			action: {
+				type: 'proposed-action',
+				id: 'p1',
+				tool: 'w',
+				input: {},
+				expiresAt: 9,
+			},
 		},
 		{
 			type: 'message',
@@ -181,6 +207,27 @@ describe('agentEventSchema', () => {
 			const back = agentEventSchema.parse(JSON.parse(JSON.stringify(event)));
 			expect(back).toEqual(event);
 		}
+	});
+
+	test('an unknown error code still parses; the known ones do too', () => {
+		for (const code of [...AI_ERROR_CODES, 'FUTURE_CODE']) {
+			const event = { type: 'error', error: { code, message: 'x' } };
+			expect(agentEventSchema.safeParse(event).success).toBe(true);
+		}
+	});
+
+	test('a proposed action without expiresAt is rejected', () => {
+		const action = { type: 'proposed-action', id: 'p', tool: 't', input: {} };
+		const parsed = agentEventSchema.safeParse({
+			type: 'proposed-action',
+			action,
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	test('"proposed" is no longer a run end reason', () => {
+		const event = { type: 'done', reason: 'proposed', usage: usage(1) };
+		expect(agentEventSchema.safeParse(event).success).toBe(false);
 	});
 
 	test('rejects an unknown type', () => {

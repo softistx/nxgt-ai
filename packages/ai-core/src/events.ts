@@ -15,16 +15,16 @@ export type RunEndReason =
 	| 'max-steps'
 	| 'budget'
 	| 'aborted'
-	| 'error'
-	| 'proposed';
+	| 'error';
 
 /** What `runAgent` emits, in order, one run. */
 export type AgentEvent =
 	| { type: 'step-start'; step: number; runId: string }
-	| { type: 'text-delta'; text: string }
+	| { type: 'text-delta'; text: string; start?: true }
 	| {
 			type: 'thinking-delta';
 			text: string;
+			start?: true;
 			signature?: string;
 			redacted?: string;
 	  }
@@ -43,21 +43,11 @@ const usageSchema = z.object({
 	cacheWriteTokens: z.number(),
 });
 
-const codeSchema = z.enum([
-	'INVALID_TOOL_DEFINITION',
-	'INVALID_TOOL_INPUT',
-	'INVALID_TOOL_OUTPUT',
-	'TOOL_FAILED',
-	'UNKNOWN_TOOL',
-	'MODEL_ERROR',
-	'RATE_LIMITED',
-	'AUTHENTICATION',
-	'ABORTED',
-	'MAX_STEPS',
-	'BUDGET_EXCEEDED',
-	'ACTION_EXPIRED',
-	'ACTION_NOT_PENDING',
-]);
+/**
+ * Known codes are `AI_ERROR_CODES`; any string parses, so a client older than
+ * the server that sent the event still reads it.
+ */
+const codeSchema = z.custom<AiErrorCode>((value) => typeof value === 'string');
 
 const resultBase = {
 	type: z.literal('tool-result'),
@@ -87,7 +77,7 @@ const proposedActionSchema = z.object({
 	tool: z.string(),
 	input: z.unknown(),
 	summary: z.string().optional(),
-	expiresAt: z.number().optional(),
+	expiresAt: z.number(),
 });
 
 const partSchema = z.union([
@@ -120,10 +110,15 @@ export const agentEventSchema = z.discriminatedUnion('type', [
 		step: z.number().int(),
 		runId: z.string(),
 	}),
-	z.object({ type: z.literal('text-delta'), text: z.string() }),
+	z.object({
+		type: z.literal('text-delta'),
+		text: z.string(),
+		start: z.literal(true).optional(),
+	}),
 	z.object({
 		type: z.literal('thinking-delta'),
 		text: z.string(),
+		start: z.literal(true).optional(),
 		signature: z.string().optional(),
 		redacted: z.string().optional(),
 	}),
@@ -154,7 +149,6 @@ export const agentEventSchema = z.discriminatedUnion('type', [
 			'budget',
 			'aborted',
 			'error',
-			'proposed',
 		]),
 		usage: usageSchema,
 	}),

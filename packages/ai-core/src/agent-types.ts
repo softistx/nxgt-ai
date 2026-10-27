@@ -6,6 +6,7 @@ import type { AnyTool } from './tool';
 
 /** Token limits of one run; each is checked between model calls. */
 export interface RunBudget {
+	/** All input tokens, the cached ones included. */
 	maxInputTokens?: number;
 	maxOutputTokens?: number;
 	/** Input plus output. */

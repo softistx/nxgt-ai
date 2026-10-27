@@ -39,7 +39,7 @@ const conversation: Message[] = [
 | `thinking`        | `text`, `signature?`, `redacted?`                                                | Send `signature` and `redacted` (a provider's opaque data, `text` empty) back unchanged; never read or edit them. |
 | `tool-call`       | `id`, `name`, `input`                                                            | `input` is what the model sent, **not validated**.                                                                |
 | `tool-result`     | `callId`, `name`, then `isError: false` + `output`, or `isError: true` + `error` | `callId` is the call's `id`.`error` is `{ code, message, issues? }`.                                              |
-| `proposed-action` | `id`, `tool`, `input`, `summary?`                                                | A mutation waiting for a confirmation.                                                                            |
+| `proposed-action` | `id`, `tool`, `input`, `summary?`, `expiresAt`                                   | A mutation waiting for a confirmation.                                                                            |
 
 Switch on `part.type`; the compiler narrows each branch, and a `default` branch
 with `part satisfies never` tells you when a new part type is added.
@@ -58,5 +58,8 @@ total = addUsage(total, {
 });
 ```
 
-`cacheReadTokens` and `cacheWriteTokens` count the provider's prompt cache and
-are `0` when it reports none.
+`inputTokens` is **all** the input tokens of the call, the cached ones included.
+`cacheReadTokens` and `cacheWriteTokens` say how many of them the provider's
+prompt cache served or wrote (`0` when it reports none), so they are never
+added to `inputTokens` again. `maxInputTokens` and `maxTotalTokens` budgets
+count the same way: a cached prompt still spends its budget.

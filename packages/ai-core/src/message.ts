@@ -55,7 +55,7 @@ export interface ProposedActionPart {
 	/** What the user is asked to confirm, in words. */
 	summary?: string;
 	/** Epoch milliseconds after which the action can no longer be confirmed. */
-	expiresAt?: number;
+	expiresAt: number;
 }
 
 export type Part =
@@ -72,11 +72,12 @@ export interface Message {
 
 /** Tokens of one model call, or the sum of several. */
 export interface Usage {
+	/** All input tokens of the call, the cached ones (read and write) included. */
 	inputTokens: number;
 	outputTokens: number;
-	/** Input tokens served from the provider's prompt cache. */
+	/** Of `inputTokens`, those served from the provider's prompt cache. */
 	cacheReadTokens: number;
-	/** Input tokens written to the provider's prompt cache. */
+	/** Of `inputTokens`, those written to the provider's prompt cache. */
 	cacheWriteTokens: number;
 }
 

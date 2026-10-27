@@ -18,13 +18,18 @@ export interface GenerateResult {
 const aborted = (cause?: unknown) =>
 	new AiError('ABORTED', 'The model call was aborted', { cause });
 
+interface DeltaExtra {
+	signature?: string | undefined;
+	redacted?: string | undefined;
+	start?: true | undefined;
+}
+
 /** Appends a delta to the last part when it has the same type. */
 function pushDelta(
 	parts: Part[],
 	type: 'text' | 'thinking',
 	text: string,
-	signature?: string,
-	redacted?: string,
+	{ signature, redacted, start }: DeltaExtra = {},
 ) {
 	if (redacted !== undefined) {
 		// An opaque block stands alone: never merged with what comes before or after.
@@ -33,6 +38,7 @@ function pushDelta(
 	}
 	const last = parts[parts.length - 1];
 	if (
+		!start &&
 		last?.type === type &&
 		!(last.type === 'thinking' && last.redacted !== undefined)
 	) {
@@ -66,16 +72,10 @@ export async function generate(
 			if (signal.aborted) throw aborted();
 			switch (event.type) {
 				case 'text-delta':
-					pushDelta(parts, 'text', event.text);
+					pushDelta(parts, 'text', event.text, { start: event.start });
 					break;
 				case 'thinking-delta':
-					pushDelta(
-						parts,
-						'thinking',
-						event.text,
-						event.signature,
-						event.redacted,
-					);
+					pushDelta(parts, 'thinking', event.text, event);
 					break;
 				case 'tool-call':
 					parts.push({

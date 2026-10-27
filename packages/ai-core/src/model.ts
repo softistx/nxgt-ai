@@ -30,10 +30,17 @@ export interface ModelRequest {
 
 /** What a model adapter streams. A call ends with exactly one `finish`. */
 export type ModelEvent =
-	| { type: 'text-delta'; text: string }
+	| {
+			type: 'text-delta';
+			text: string;
+			/** Opens a new part even when the last one has the same type. */
+			start?: true;
+	  }
 	| {
 			type: 'thinking-delta';
 			text: string;
+			/** Opens a new part: two consecutive blocks keep their signatures. */
+			start?: true;
 			signature?: string;
 			/** An opaque redacted block: becomes its own part, `text` is empty. */
 			redacted?: string;

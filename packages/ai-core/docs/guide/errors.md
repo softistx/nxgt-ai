@@ -39,5 +39,9 @@ These codes exist for the next slices and are not raised yet: `UNKNOWN_TOOL`,
 `BUDGET_EXCEEDED`. More codes can be added in a minor version, so keep a
 `default` branch when you switch on `code`.
 
+`AI_ERROR_CODES` lists every code; `AiErrorCode` is its element type. The
+`error` event and tool-result errors that `agentEventSchema` validates accept
+any string code, so a client older than the server still parses a newer code.
+
 In a tool result the same information is plain data, `{ code, message,
 issues? }`, because it is sent to the model and stored with the conversation.

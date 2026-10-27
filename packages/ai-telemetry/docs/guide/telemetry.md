@@ -56,7 +56,8 @@ whatever span was current where the tool was called, not under the tool call.
 | `ai.model.call` | `gen_ai.operation.name` = `chat`, `ai.step`, `ai.duration_ms`, `gen_ai.response.finish_reasons` (`stop`, `tool_calls`, `length`, `content_filter`), usage of the call |
 | `ai.tool.call`  | `gen_ai.operation.name` = `execute_tool`, `gen_ai.tool.name`, `gen_ai.tool.call.id`, `ai.step`, `ai.duration_ms`                                                      |
 
-Usage is `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`,
+Usage is `gen_ai.usage.input_tokens` (all input tokens, the cached ones
+included, as the OpenTelemetry convention says), `gen_ai.usage.output_tokens`,
 `gen_ai.usage.cache_read.input_tokens` and
 `gen_ai.usage.cache_creation.input_tokens`.
 

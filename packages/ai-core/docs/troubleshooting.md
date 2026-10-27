@@ -117,10 +117,16 @@ runAgent({ model, messages, tools, maxSteps: 20 });
 
 If the model keeps calling the same tool, fix the tool's result or description instead of raising the limit.
 
+### `The call was cut off (max-tokens) and did not run.`
+
+**When:** a step ends `max-tokens`, `end` or `refusal` while the model also sent complete tool calls. The result is a `MODEL_ERROR` tool result, not a thrown error, and the run ends with that reason.
+**Why:** the answer was cut or refused, so the calls cannot be trusted to be what the model meant. Without an answer the next turn would send a `tool_use` with no `tool_result`, which Anthropic rejects with a 400.
+**Fix:** raise `maxTokens`, or ask again; the history in `result.messages` is valid to continue from.
+
 ### `The token budget (input N) is spent.`
 
 **When:** the usage so far reaches a `budget` limit before the next model call (`BUDGET_EXCEEDED`, `reason: 'budget'`); the message names `input`, `output` or `total`.
-**Why:** the check runs between calls, so a single call can overshoot; the run stops before the next one.
+**Why:** the check runs between calls, so a single call can overshoot; the run stops before the next one. Input counts every input token, cached ones included, so a large cached prompt spends the input budget too.
 **Fix:**
 
 ```ts

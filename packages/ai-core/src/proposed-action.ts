@@ -37,7 +37,7 @@ export function toProposedAction(part: ProposedActionPart): ProposedAction {
 		tool: part.tool,
 		input: part.input,
 		status: 'pending',
-		expiresAt: part.expiresAt ?? Number.MAX_SAFE_INTEGER,
+		expiresAt: part.expiresAt,
 		...(part.summary === undefined ? {} : { summary: part.summary }),
 	};
 }

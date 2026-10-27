@@ -7,6 +7,7 @@ export type {
 	RunError,
 } from './agent-types';
 export {
+	AI_ERROR_CODES,
 	AiError,
 	type AiErrorCode,
 	type AiErrorOptions,

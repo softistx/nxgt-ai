@@ -34,6 +34,7 @@ describe('parts and messages', () => {
 				tool: 'delete_note',
 				input: { id: 'n' },
 				summary: 'Delete n',
+				expiresAt: 9,
 			},
 		];
 		const labels = parts.map((part) => {
