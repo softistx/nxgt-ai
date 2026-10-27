@@ -66,7 +66,6 @@ describe('compact cut placement and blank summaries', () => {
 			say(4),
 			say(5, 'assistant'),
 		]);
-		// naive cut: keepLast 2 starts at the assistant message m4? index 3 is user; use 3 kept
 		const out = await compact(msgs, opts(1, { keepLast: 3 }));
 		expect(out.messages[0]?.message.role).toBe('user');
 		expect(out.messages.map((m) => m.id)).toEqual(

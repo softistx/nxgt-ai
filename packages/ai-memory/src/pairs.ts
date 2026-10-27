@@ -19,7 +19,12 @@ export function safeCut(messages: readonly StoredMessage[], from: number) {
 export function userCut(messages: readonly StoredMessage[], from: number) {
 	const safe = safeCut(messages, from);
 	let cut = safe;
-	while (cut > 0 && messages[cut]?.message.role !== 'user') cut--;
+	while (
+		cut > 0 &&
+		(messages[cut]?.message.role !== 'user' || splitsPair(messages, cut))
+	) {
+		cut--;
+	}
 	return cut > 0 ? cut : safe;
 }
 
