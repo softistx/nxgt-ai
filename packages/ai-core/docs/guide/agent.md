@@ -59,7 +59,9 @@ the model streams, `usage` (that step's), `message` (the assistant message).
 When tools ran, each `tool-result` is emitted as its tool finishes and a
 `message` with role `tool` follows. The run ends with an `error` event (only
 for `max-steps`, `budget` and `error`) and one `done { reason, usage }`.
-`agentEventSchema` validates any of them.
+`agentEventSchema` validates any of them; it accepts an unknown error code or
+`done.reason` (typed `WireErrorCode` / `WireRunEndReason`), so keep a `default`
+branch when you switch on them.
 
 ## Tools
 

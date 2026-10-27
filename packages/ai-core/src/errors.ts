@@ -21,6 +21,12 @@ export const AI_ERROR_CODES = [
  */
 export type AiErrorCode = (typeof AI_ERROR_CODES)[number];
 
+/**
+ * An error code as read from the wire: a known code, or any string a newer
+ * server sent. Autocomplete keeps the known ones; keep a `default` branch.
+ */
+export type WireErrorCode = AiErrorCode | (string & {});
+
 /** One problem found in a tool's input, located by a dotted path. */
 export interface AiIssue {
 	/** Dotted path into the input; `''` for the input itself. */

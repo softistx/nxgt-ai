@@ -51,6 +51,14 @@ Ollama has no thinking token budget, so `budgetTokens` is ignored.
 | `message.tool_calls[]` | `tool-call`, with a generated id (Ollama gives none) |
 | `done: true`           | `usage`, then `finish`                               |
 
+`usage.inputTokens` is `prompt_eval_count`, which Ollama documents as the number
+of tokens in the prompt. Ollama also documents `prompt_eval_cached_count` (prompt
+tokens read from its cache), but the adapter does not map it yet:
+`cacheReadTokens` and `cacheWriteTokens` are always `0`.
+
+The adapter never sets `start` on a delta: one message carries at most one
+thinking run and one text run, so `generate` needs no hint to keep them apart.
+
 `finish` is `tool-use` when the call had tool calls, `max-tokens` for
 `done_reason: 'length'`, else `end`. The parser accepts chunks cut at any byte,
 even inside a UTF-8 character.

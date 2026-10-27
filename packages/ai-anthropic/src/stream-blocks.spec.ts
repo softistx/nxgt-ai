@@ -65,7 +65,29 @@ describe('a tool input cut by max_tokens', () => {
 	test('a block that never got its stop event is dropped too', async () => {
 		const list = [...cutTool().slice(0, 2), ...end('max_tokens')];
 		const out = await events(setup([stream(list)]).model, req);
+		expect(out.some((e) => e.type === 'tool-call')).toBe(false);
 		expect(out.at(-1)).toEqual({ type: 'finish', reason: 'max-tokens' });
+	});
+
+	test('a block with no stop event that parses at message_stop is emitted', async () => {
+		const list = [
+			start(0, { type: 'tool_use', id: 'toolu_9', name: 'echo', input: {} }),
+			delta(0, { type: 'input_json_delta', partial_json: '{"v":"ok"}' }),
+			...end('tool_use'),
+		];
+		const out = await events(setup([stream(list)]).model, req);
+		expect(out.find((e) => e.type === 'tool-call')).toMatchObject({
+			id: 'toolu_9',
+			input: { v: 'ok' },
+		});
+		expect(out.at(-1)).toEqual({ type: 'finish', reason: 'tool-use' });
+	});
+
+	test('a block with no stop event that does not parse fails unless cut off', async () => {
+		const list = [...cutTool().slice(0, 2), ...end('end_turn')];
+		await expect(
+			events(setup([stream(list)]).model, req),
+		).rejects.toMatchObject({ code: 'MODEL_ERROR' });
 	});
 
 	test('a complete tool call before the cut one is kept', async () => {
@@ -81,7 +103,9 @@ describe('a tool input cut by max_tokens', () => {
 
 	test('the same bad input without max_tokens is still a MODEL_ERROR', async () => {
 		const { model } = setup([stream([...cutTool(), ...end('tool_use')])]);
-		expect(events(model, req)).rejects.toMatchObject({ code: 'MODEL_ERROR' });
+		await expect(events(model, req)).rejects.toMatchObject({
+			code: 'MODEL_ERROR',
+		});
 	});
 });
 

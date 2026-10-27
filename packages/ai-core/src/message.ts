@@ -1,4 +1,4 @@
-import type { AiError, AiErrorCode, AiIssue } from './errors';
+import type { AiError, AiIssue, WireErrorCode } from './errors';
 
 export type Role = 'user' | 'assistant' | 'tool';
 
@@ -30,7 +30,7 @@ export interface ToolCallPart {
 
 /** What a failed tool call reports to the model. */
 export interface ToolErrorInfo {
-	code: AiErrorCode;
+	code: WireErrorCode;
 	message: string;
 	issues?: readonly AiIssue[];
 }

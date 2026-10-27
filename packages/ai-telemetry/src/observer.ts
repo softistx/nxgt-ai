@@ -1,9 +1,4 @@
-import {
-	type AgentObserver,
-	type AgentResult,
-	AiError,
-	type RunError,
-} from '@nxgt/ai-core';
+import type { AgentObserver, AgentResult, RunError } from '@nxgt/ai-core';
 import type { Telemetry } from '@nxgt/telemetry';
 import { resolveTelemetry } from '@nxgt/telemetry';
 import {
@@ -32,7 +27,10 @@ function fail(handle: SpanHandle, error: RunError): void {
 	if (error.code === 'ABORTED') {
 		handle.scope.fail(new DOMException(error.message, 'AbortError'));
 	} else {
-		handle.scope.fail(new AiError(error.code, error.message));
+		// The code may be one a newer core sent, so no AiError (strict codes) here.
+		const failure = new Error(error.message);
+		failure.name = 'AiError';
+		handle.scope.fail(Object.assign(failure, { code: error.code }));
 	}
 }
 

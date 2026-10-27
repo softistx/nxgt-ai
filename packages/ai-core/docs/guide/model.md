@@ -75,7 +75,7 @@ are summed.
 
 ## AgentEvent
 
-`runAgent` (a later slice) emits `AgentEvent`s: `step-start`, `text-delta`,
+`runAgent` emits `AgentEvent`s: `step-start`, `text-delta`,
 `thinking-delta`, `tool-call`, `tool-result`, `proposed-action`, `message`,
 `usage`, `error` and a final `done` with a `reason`. `agentEventSchema` is the
 Zod schema of the union, for reading events back from a stream:

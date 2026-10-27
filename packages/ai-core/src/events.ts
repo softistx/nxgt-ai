@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AiErrorCode } from './errors';
+import type { WireErrorCode } from './errors';
 import type {
 	Message,
 	ProposedActionPart,
@@ -17,6 +17,9 @@ export type RunEndReason =
 	| 'aborted'
 	| 'error';
 
+/** A run end reason as read from the wire: a known one, or a newer server's. */
+export type WireRunEndReason = RunEndReason | (string & {});
+
 /** What `runAgent` emits, in order, one run. */
 export type AgentEvent =
 	| { type: 'step-start'; step: number; runId: string }
@@ -33,8 +36,8 @@ export type AgentEvent =
 	| { type: 'proposed-action'; action: ProposedActionPart }
 	| { type: 'message'; message: Message }
 	| { type: 'usage'; usage: Usage }
-	| { type: 'error'; error: { code: AiErrorCode; message: string } }
-	| { type: 'done'; reason: RunEndReason; usage: Usage };
+	| { type: 'error'; error: { code: WireErrorCode; message: string } }
+	| { type: 'done'; reason: WireRunEndReason; usage: Usage };
 
 const usageSchema = z.object({
 	inputTokens: z.number(),
@@ -47,7 +50,9 @@ const usageSchema = z.object({
  * Known codes are `AI_ERROR_CODES`; any string parses, so a client older than
  * the server that sent the event still reads it.
  */
-const codeSchema = z.custom<AiErrorCode>((value) => typeof value === 'string');
+const codeSchema = z.custom<WireErrorCode>(
+	(value) => typeof value === 'string',
+);
 
 const resultBase = {
 	type: z.literal('tool-result'),
@@ -141,15 +146,7 @@ export const agentEventSchema = z.discriminatedUnion('type', [
 	}),
 	z.object({
 		type: z.literal('done'),
-		reason: z.enum([
-			'end',
-			'max-tokens',
-			'refusal',
-			'max-steps',
-			'budget',
-			'aborted',
-			'error',
-		]),
+		reason: z.custom<WireRunEndReason>((value) => typeof value === 'string'),
 		usage: usageSchema,
 	}),
 ]);

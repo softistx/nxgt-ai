@@ -9,6 +9,7 @@ import {
 	type ModelAdapter,
 	type ModelEvent,
 	type ModelRequest,
+	type WireErrorCode,
 } from './index';
 
 const req: ModelRequest = {
@@ -225,9 +226,22 @@ describe('agentEventSchema', () => {
 		expect(parsed.success).toBe(false);
 	});
 
-	test('"proposed" is no longer a run end reason', () => {
-		const event = { type: 'done', reason: 'proposed', usage: usage(1) };
-		expect(agentEventSchema.safeParse(event).success).toBe(false);
+	test('an unknown run end reason parses and is typed open', () => {
+		const event = { type: 'done', reason: 'future-reason', usage: usage(1) };
+		const parsed = agentEventSchema.parse(event);
+		// Type test: assigning a string to the parsed reason must compile.
+		const reason: string = parsed.type === 'done' ? parsed.reason : '';
+		expect(reason).toBe('future-reason');
+	});
+
+	test('error codes of events and tool errors are typed open', () => {
+		const code: WireErrorCode = 'FUTURE_CODE';
+		const known: WireErrorCode = 'TOOL_FAILED';
+		const event: AgentEvent = { type: 'error', error: { code, message: 'x' } };
+		expect([event.type, known]).toEqual(['error', 'TOOL_FAILED']);
+		// The thrown class stays strict: this must not compile.
+		// @ts-expect-error an unknown code is not an AiErrorCode
+		new AiError('FUTURE_CODE', 'x');
 	});
 
 	test('rejects an unknown type', () => {

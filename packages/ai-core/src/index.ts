@@ -12,9 +12,15 @@ export {
 	type AiErrorCode,
 	type AiErrorOptions,
 	type AiIssue,
+	type WireErrorCode,
 } from './errors';
 export { estimateTokens } from './estimate-tokens';
-export { type AgentEvent, agentEventSchema, type RunEndReason } from './events';
+export {
+	type AgentEvent,
+	agentEventSchema,
+	type RunEndReason,
+	type WireRunEndReason,
+} from './events';
 export { executeTool } from './execute-tool';
 export { type GenerateResult, generate } from './generate';
 export {
