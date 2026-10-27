@@ -40,3 +40,49 @@ if (!thread) return notFound();
 **When:** you confirm an action and get `undefined`.
 **Why:** the action is absent, belongs to another owner, or is no longer `pending` because a concurrent call or an earlier one already settled it.
 **Fix:** treat it as "not yours to run": do not execute the tool. Call `findAction` to see the status.
+
+## `compact` returns more tokens than `budget`
+
+It happens when the last `keepLast` messages (default 6), or a tool call and the
+result kept with it, are alone over the budget. `compact` never drops them. Lower
+`keepLast`, lower `truncateToolResultsTo`, or raise `budget`.
+
+```ts
+await compact(messages, {
+	budget,
+	keepLast: 2,
+	truncateToolResultsTo: 500,
+	summarize,
+});
+```
+
+## The summary forgets what the previous one said
+
+`compact` only knows the earlier summary when you give it. Pass the thread's
+stored one as `summary`.
+
+```ts
+const loaded = await store.load(id, ownerId, { sinceSummary: true });
+await compact(loaded.messages, { budget, summary: loaded.summary, summarize });
+```
+
+## The model sees `{ truncated: true, preview }` as a tool result
+
+That is a tool output cut by `compact` because it was longer than
+`truncateToolResultsTo` characters. The stored message is unchanged. Raise
+`truncateToolResultsTo`, or have the tool return less.
+
+## `MemoryError` EMPTY_SUMMARY
+
+`summarize` returned an empty or whitespace-only string, so `compact` folded
+nothing rather than let a blank summary replace the messages. Check the model's
+reply (a refusal or a `maxTokens` too low gives no text) and retry.
+
+```ts
+try {
+	await compact(messages, { budget, summarize });
+} catch (e) {
+	if (e instanceof MemoryError && e.code === 'EMPTY_SUMMARY') retryLater();
+	else throw e;
+}
+```
