@@ -1,7 +1,7 @@
 # @nxgt/ai-testing
 
 Deterministic tests for nxgt-ai agents: a scripted `fakeModel` and `collect`.
-Not published yet. Peer: `@nxgt/ai-core`; no other dependency.
+Peer: `@nxgt/ai-core`; no other dependency.
 
 ```ts
 import { collect, expectToolCalls, fakeModel, textOf } from '@nxgt/ai-testing';
@@ -25,3 +25,7 @@ bun add -d @nxgt/ai-testing @nxgt/ai-core
 ```
 
 Requires `"moduleResolution": "bundler"`. See the [guide](docs/guide/testing.md).
+
+## Documentation
+
+[docs/](docs/README.md): guides, [troubleshooting](docs/troubleshooting.md) and the [roadmap](docs/roadmap.md).

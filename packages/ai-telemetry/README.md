@@ -2,7 +2,7 @@
 
 An `@nxgt/ai-core` `AgentObserver` that writes an agent run as
 [`@nxgt/telemetry`](https://www.npmjs.com/package/@nxgt/telemetry) spans with
-`gen_ai.*` attributes. Not published yet. Peers: `@nxgt/ai-core`,
+`gen_ai.*` attributes. Peers: `@nxgt/ai-core`,
 `@nxgt/telemetry`.
 
 ```ts
@@ -35,3 +35,7 @@ bun add @nxgt/ai-telemetry @nxgt/ai-core @nxgt/telemetry
 ```
 
 Requires `"moduleResolution": "bundler"`. See the [guide](docs/guide/telemetry.md).
+
+## Documentation
+
+[docs/](docs/README.md): guides, [troubleshooting](docs/troubleshooting.md) and the [roadmap](docs/roadmap.md).

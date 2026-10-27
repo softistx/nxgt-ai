@@ -1,7 +1,7 @@
 # @nxgt/ai-ollama
 
 A local [Ollama](https://ollama.com) server as an `@nxgt/ai-core`
-`ModelAdapter`, on Bun `fetch` with no third-party client. Not published yet.
+`ModelAdapter`, on Bun `fetch` with no third-party client.
 Peer: `@nxgt/ai-core`.
 
 ```ts
@@ -36,3 +36,7 @@ bun add @nxgt/ai-ollama @nxgt/ai-core
 ```
 
 Requires `"moduleResolution": "bundler"`. See the [guide](docs/guide/ollama.md).
+
+## Documentation
+
+[docs/](docs/README.md): guides, [troubleshooting](docs/troubleshooting.md) and the [roadmap](docs/roadmap.md).
