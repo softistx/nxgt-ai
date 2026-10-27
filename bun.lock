@@ -39,6 +39,23 @@
         "zod": ">=4.6.5 <5",
       },
     },
+    "packages/ai-graphql": {
+      "name": "@nxgt/ai-graphql",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "@nxgt/ai-testing": "workspace:^",
+        "@types/bun": "^1.4.4",
+        "graphql": "16.11.0",
+        "zod": "4.6.5",
+      },
+      "peerDependencies": {
+        "@nxgt/ai-core": "workspace:^",
+        "graphql": "^16.8.0 || ^17.0.0",
+        "typescript": "^6.0.3 || ^7.0.0",
+        "zod": ">=4.6.5 <5",
+      },
+    },
     "packages/ai-memory": {
       "name": "@nxgt/ai-memory",
       "version": "0.0.0",
@@ -180,6 +197,8 @@
 
     "@nxgt/ai-core": ["@nxgt/ai-core@workspace:packages/ai-core"],
 
+    "@nxgt/ai-graphql": ["@nxgt/ai-graphql@workspace:packages/ai-graphql"],
+
     "@nxgt/ai-memory": ["@nxgt/ai-memory@workspace:packages/ai-memory"],
 
     "@nxgt/ai-ollama": ["@nxgt/ai-ollama@workspace:packages/ai-ollama"],
@@ -279,6 +298,8 @@
     "get-port": ["get-port@5.1.1", "", {}, "sha512-g/Q1aTSDOxFpchXC4i8ZWvxA1lnPqx/JHqcpIw0/LX9T8x/GBbi6YnlN5nhaKIFkT8oFsscUKgDJYxfwfS6QsQ=="],
 
     "glob": ["glob@10.5.0", "", { "dependencies": { "foreground-child": "^3.1.0", "jackspeak": "^3.1.2", "minimatch": "^9.0.4", "minipass": "^7.1.2", "package-json-from-dist": "^1.0.0", "path-scurry": "^1.11.1" }, "bin": { "glob": "dist/esm/bin.mjs" } }, "sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg=="],
+
+    "graphql": ["graphql@16.11.0", "", {}, "sha512-mS1lbMsxgQj6hge1XZ6p7GPhbrtFwUFYi3wRzXAC/FmYnyXMTvvI3td3rjmQ2u8ewXueaSvRPWaEcgVVOT9Jnw=="],
 
     "https-proxy-agent": ["https-proxy-agent@7.0.6", "", { "dependencies": { "agent-base": "^7.1.2", "debug": "4" } }, "sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw=="],
 
