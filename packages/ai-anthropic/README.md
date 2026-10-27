@@ -1,7 +1,7 @@
 # @nxgt/ai-anthropic
 
 The Anthropic Messages API as an `@nxgt/ai-core` `ModelAdapter`, on Bun `fetch`
-with no third-party client. Not published yet. Peer: `@nxgt/ai-core`.
+with no third-party client. Peer: `@nxgt/ai-core`.
 
 ```ts
 import { generate } from '@nxgt/ai-core';

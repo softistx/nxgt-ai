@@ -1,9 +1,7 @@
 # @nxgt/ai-core
 
 Messages, Zod tools, the model port and the agent loop of nxgt-ai, a
-Bun-native AI agents SDK. Not published yet; this page covers what exists:
-messages and parts, usage, tools, the model port and their errors. It has no dependency; `zod`
-is a peer.
+Bun-native AI agents SDK. It has no dependency; `zod` is a peer.
 
 ```ts
 import { z } from 'zod';
