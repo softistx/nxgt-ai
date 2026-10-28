@@ -85,7 +85,7 @@
     },
     "packages/ai-mcp": {
       "name": "@nxgt/ai-mcp",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "dependencies": {
         "@modelcontextprotocol/sdk": "~1.32.2",
       },
