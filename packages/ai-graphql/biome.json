@@ -1,5 +1,1 @@
-{
-	"root": false,
-	"extends": "//",
-	"files": { "includes": ["**", "!test/codegen/operations.generated.ts"] }
-}
+{ "root": false, "extends": "//" }

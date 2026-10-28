@@ -115,6 +115,29 @@ describe('codegen plugin', () => {
 		).toThrow(/operation "AllBooks" has no description/);
 	});
 
+	test('the same fragment with different text is refused', () => {
+		expect(() =>
+			generate([
+				'fragment F on Book { id }',
+				'fragment F on Book { title }\n# tool: x\nquery Q { books { ...F } }',
+			]),
+		).toThrow(/fragment "F" is defined in two documents/);
+		expect(() =>
+			generate([
+				'fragment F on Book { id }',
+				'fragment F on Book { id }\n# tool: x\nquery Q { books { ...F } }',
+			]),
+		).not.toThrow();
+	});
+
+	test('options are validated', () => {
+		const q = ['# tool: x\nquery Q { books { id } }'];
+		expect(() => generate(q, { schemaPrefix: 'a-b' })).toThrow(/schemaPrefix/);
+		expect(() => generate(q, { typesSuffix: ' ' })).toThrow(/typesSuffix/);
+		expect(() => generate(q, { zodImport: '' })).toThrow(/zodImport/);
+		expect(() => generate(q, { typesImport: '' })).toThrow(/typesImport/);
+	});
+
 	test('a subscription is refused', () => {
 		expect(() =>
 			generate(['# tool: Watches.\nsubscription Added { bookAdded { id } }']),

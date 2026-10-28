@@ -3,10 +3,6 @@
 - [`GraphqlToolsError` FORBIDDEN_FIELD](#graphqltoolserror-forbidden_field)
 - [`GraphqlToolsError` INVALID_OPERATION](#graphqltoolserror-invalid_operation)
 - [`GraphqlToolsError` DUPLICATE_OPERATION](#graphqltoolserror-duplicate_operation)
-- [Codegen: `has no description`](#codegen-has-no-description)
-- [Codegen: `is a subscription`, `anonymous operation`](#codegen-is-a-subscription-anonymous-operation)
-- [Codegen: `two operations are named`](#codegen-two-operations-are-named)
-- [Codegen: the generated file does not typecheck](#codegen-the-generated-file-does-not-typecheck)
 - [`INVALID_TOOL_INPUT` on a tool call](#invalid_tool_input-on-a-tool-call)
 - [`TOOL_FAILED` with `The GraphQL operation failed`](#tool_failed-with-the-graphql-operation-failed)
 - [The model sees `INTERNAL_ERROR`](#the-model-sees-internal_error)
@@ -14,6 +10,17 @@
 - [A forbidden field still reaches the model](#a-forbidden-field-still-reaches-the-model)
 - [A mutation never runs](#a-mutation-never-runs)
 - [An abort does not stop a running operation](#an-abort-does-not-stop-a-running-operation)
+- [Codegen: operation "…" has no description](#codegen-operation--has-no-description)
+- [Codegen: operation "…" is a subscription](#codegen-operation--is-a-subscription)
+- [Codegen: an anonymous operation cannot become a tool](#codegen-an-anonymous-operation-cannot-become-a-tool)
+- [Codegen: two operations are named "…"](#codegen-two-operations-are-named-)
+- [Codegen: operation "…" spreads the fragment "…"](#codegen-operation--spreads-the-fragment-)
+- [Codegen: fragment "…" is defined in two documents](#codegen-fragment--is-defined-in-two-documents)
+- [Codegen: "names" maps "…", which is no operation](#codegen-names-maps--which-is-no-operation)
+- [Codegen: exportName "…" is not a valid identifier](#codegen-exportname--is-not-a-valid-identifier)
+- [Codegen: the tool name "…" of operation "…" must be letters, digits](#codegen-the-tool-name--of-operation--must-be-letters-digits)
+- [Codegen: schemaPrefix, typesPrefix, typesSuffix, zodImport, typesImport or namingConvention is refused](#codegen-schemaprefix-typesprefix-typessuffix-zodimport-typesimport-or-namingconvention-is-refused)
+- [Codegen: The generated file does not typecheck](#codegen-the-generated-file-does-not-typecheck)
 
 ## `GraphqlToolsError` FORBIDDEN_FIELD
 
@@ -85,11 +92,11 @@ try {
 **Why:** graphql-js `execute` takes no signal; the abort is checked before the operation starts.
 **Fix:** read `signal` from your `context` builder (`context: ({ signal }) => ({ signal })`) and pass it to your data sources.
 
-## Codegen: `has no description`
+## Codegen: operation "…" has no description
 
 **When:** graphql-codegen fails with `@nxgt/ai-graphql/codegen: operation "FindTickets" has no description.`
-**Why:** the model reads the description to choose the tool, so the plugin will not write a tool without one. The operation has no graphql 17 description and no `# tool:` comment _directly_ above it (a blank line cuts it off; so does a comment inside the braces).
-**Fix:** add the comment on the lines just above the operation.
+**Why:** the model reads the description to choose the tool, so the plugin will not write a tool without one. The operation has no graphql 17 description and no `# tool:` comment _directly_ above it: a blank line cuts it off, and so does a comment inside the braces or above a fragment. The plugin reads comments from the file on disk, so a document that does not come from a `.graphql` file (a `gql` tag in a `.ts` file) has none.
+**Fix:** put the comment on the lines just above the operation, or use a `"""description"""` (graphql 17).
 
 ```graphql
 # tool: List the open tickets of a customer, newest first.
@@ -100,22 +107,64 @@ query FindTickets($customerId: ID!) {
 }
 ```
 
-## Codegen: `is a subscription`, `anonymous operation`
+## Codegen: operation "…" is a subscription
 
-**When:** generation fails with `operation "…" is a subscription` or `an anonymous operation cannot become a tool`.
-**Why:** a tool call is one request and one answer, and an anonymous operation has no name for the tool or for its `z<Op>Variables` schema.
-**Fix:** keep subscriptions out of the documents this plugin reads (use a separate `generates` entry with its own `documents`), and name every query and mutation.
+**When:** generation fails with `operation "Watch" is a subscription; only queries and mutations become tools.`
+**Why:** a tool call is one request and one answer.
+**Fix:** keep subscriptions out of the `documents` this plugin reads, for example with a separate `generates` entry that has its own `documents`.
 
-## Codegen: `two operations are named`
+## Codegen: an anonymous operation cannot become a tool
 
-**When:** generation fails with `two operations are named "…"`.
-**Why:** tool names are unique; two operations (or an operation and a `names` mapping) give the same one.
-**Fix:** rename one operation, or map it: `config: { names: { FindTickets: 'find_tickets' } }`.
+**When:** generation fails with `an anonymous operation cannot become a tool: give it a name`.
+**Why:** an anonymous operation has no name for the tool, nor for its `z<Op>Variables` schema.
+**Fix:** name it: `query FindTickets { … }`.
 
-## Codegen: the generated file does not typecheck
+## Codegen: two operations are named "…"
+
+**When:** generation fails with `two operations are named "FindTickets"; rename one or map it in "names".`
+**Why:** tool names are unique; two operations, or an operation and a `names` mapping, give the same one.
+**Fix:** rename an operation, or map it: `config: { names: { FindTickets: 'find_tickets' } }`.
+
+## Codegen: operation "…" spreads the fragment "…"
+
+**When:** generation fails with `operation "FindTickets" spreads the fragment "TicketFields", which is in none of the documents.`
+**Why:** the manifest carries each operation's fragments, and this one is defined in no file of `documents`.
+**Fix:** add the file that defines it to `documents`, or fix the fragment's name.
+
+## Codegen: fragment "…" is defined in two documents
+
+**When:** generation fails with `fragment "TicketFields" is defined in two documents with different text; rename one.`
+**Why:** two files define a fragment with the same name and different text, so the manifest cannot tell which an operation means.
+**Fix:** rename one of them, or make them identical.
+
+## Codegen: "names" maps "…", which is no operation
+
+**When:** generation fails with `"names" maps "FindTicket", which is no operation of the documents.`
+**Why:** a key of `names` matches no operation name, usually a typo.
+**Fix:** use the GraphQL operation name as the key: `names: { FindTickets: 'find_tickets' }`.
+
+## Codegen: exportName "…" is not a valid identifier
+
+**When:** generation fails with `exportName "find-tickets" is not a valid identifier.`
+**Why:** the name becomes `export const <exportName> = [...]`.
+**Fix:** use letters, digits, `_` and `$`, not starting with a digit.
+
+## Codegen: the tool name "…" of operation "…" must be letters, digits
+
+**When:** generation fails with `the tool name "find tickets" of operation "FindTickets" must be letters, digits, "_" and "-", at most 64.`
+**Why:** the name comes from a `names` mapping (a GraphQL operation name is always valid) and is longer than 64 or holds other characters.
+**Fix:** map it to a name made of letters, digits, `_` and `-`.
+
+## Codegen: schemaPrefix, typesPrefix, typesSuffix, zodImport, typesImport or namingConvention is refused
+
+**When:** generation fails with `schemaPrefix "a-b" must be letters, digits, "_" and "$" only.`, `zodImport must be a non-empty string.` or `namingConvention "…" is not one this plugin reads.`
+**Why:** these options build identifiers and import paths in the generated file; `namingConvention` accepts `keep`, a function, `change-case-all#<case>` and `change-case#<case>`, like `@nxgt/graphql-codegen-zod`.
+**Fix:** correct the option; give both plugins the same values.
+
+## Codegen: The generated file does not typecheck
 
 **When:** `tsc` reports `has no exported member 'zFindTicketsQueryVariables'` or cannot find `./zod`.
-**Why:** the manifest imports the schema under the name `@nxgt/graphql-codegen-zod` gives it, from `zodImport` (default `./zod`, relative to the manifest). A different `schemaPrefix`, `dedupeOperationSuffix` or `omitOperationSuffix` there, a manifest written elsewhere, or `moduleResolution: nodenext` (which wants `.js`) breaks it.
+**Why:** the manifest imports each schema under the name `@nxgt/graphql-codegen-zod` gives it, from `zodImport` (default `./zod`, relative to the manifest). Different `schemaPrefix`, `typesPrefix`, `typesSuffix`, `namingConvention`, `dedupeOperationSuffix` or `omitOperationSuffix` on the two plugins, a manifest written elsewhere, or `moduleResolution: nodenext` (which wants `.js`) breaks it.
 **Fix:** set the same options on both plugins and point `zodImport` at the generated zod file.
 
 ```ts

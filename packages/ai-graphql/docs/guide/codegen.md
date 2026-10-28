@@ -15,9 +15,10 @@ you keep by hand.
 ## Set it up
 
 Install `@graphql-codegen/cli` and `@nxgt/graphql-codegen-zod` as dev
-dependencies. The plugin needs `@graphql-codegen/plugin-helpers` for its types
-only: the CLI brings it, and it is an optional peer, so importing
-`@nxgt/ai-graphql` never needs it.
+dependencies. The plugin has two optional peers, used by `./codegen` only, so
+importing `@nxgt/ai-graphql` never needs them: `@graphql-codegen/plugin-helpers`
+(types; the CLI brings it) and `change-case` (`bun add -d change-case`, the
+converter `@nxgt/graphql-codegen-zod` names its schemas with).
 
 Write the manifest beside the zod file, as separate outputs:
 
@@ -55,6 +56,14 @@ takes, in this order:
    lines right below the first join it into one line; a blank line ends the
    block;
 3. otherwise generation fails and names the operation.
+
+graphql-codegen hands plugins its documents printed, without comments. The
+plugin therefore reads the comments from the file on disk (the document's
+`location`), when that file holds the same operations. **Limit:** a document
+that is not a file of its own, such as a `gql` tag inside a `.ts` file, has no
+comment to read: describe those operations with a graphql 17 description, or
+keep them in `.graphql` files. A comment above a fragment, or separated from
+the operation by a blank line, does not count.
 
 ```graphql
 fragment TicketFields on Ticket {
@@ -105,10 +114,11 @@ export const operations = [
   only changes the file when the documents do.
 - `document` holds the operation and the fragments it spreads, directly or
   through other fragments, from any of the documents, sorted by name. A fragment
-  found nowhere fails generation. A graphql 17 description is left out of the
+  found nowhere fails generation, and so does a name defined in two documents
+  with different text. A graphql 17 description is left out of the
   document text, so any graphql version parses it.
 - `variables` is `z<Op><Kind>Variables` (`zFindTicketsQueryVariables`), the
-  name `@nxgt/graphql-codegen-zod` gives it. An operation without variables has
+  name `@nxgt/graphql-codegen-zod` gives it, built with the same options. An operation without variables has
   no `variables` key and no import.
 - `name` is the GraphQL operation name unless `names` maps it.
 
@@ -133,19 +143,22 @@ runtime surprise.
 
 Under `config` of the output:
 
-| Option                  | Default            | Meaning                                                                                                       |
-| ----------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `exportName`            | `operations`       | Name of the exported array.                                                                                   |
-| `zodImport`             | `./zod`            | Where the schemas are imported from, written as given. Relative to the manifest; under `nodenext`, add `.js`. |
-| `typesImport`           | `@nxgt/ai-graphql` | Where `GraphqlOperation` is imported from.                                                                    |
-| `names`                 | none               | Tool name by operation name, `{ FindTickets: 'find_tickets' }`. A key that is no operation fails.             |
-| `schemaPrefix`          | `z`                | Same as `@nxgt/graphql-codegen-zod`'s option; set both alike.                                                 |
-| `dedupeOperationSuffix` | `false`            | Same: `TicketQuery` gives `zTicketQueryVariables`, not `zTicketQueryQueryVariables`.                          |
-| `omitOperationSuffix`   | `false`            | Same: `zFindTicketsVariables`.                                                                                |
+| Option                       | Default             | Meaning                                                                                                       |
+| ---------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `exportName`                 | `operations`        | Name of the exported array.                                                                                   |
+| `zodImport`                  | `./zod`             | Where the schemas are imported from, written as given. Relative to the manifest; under `nodenext`, add `.js`. |
+| `typesImport`                | `@nxgt/ai-graphql`  | Where `GraphqlOperation` is imported from.                                                                    |
+| `names`                      | none                | Tool name by operation name, `{ FindTickets: 'find_tickets' }`. A key that is no operation fails.             |
+| `schemaPrefix`               | `z`                 | Same as `@nxgt/graphql-codegen-zod`'s option.                                                                 |
+| `typesPrefix`, `typesSuffix` | none                | Same.                                                                                                         |
+| `namingConvention`           | PascalCase per part | Same: `keep`, a function, `change-case-all#<case>` or `{ typeNames, transformUnderscore }`.                   |
+| `dedupeOperationSuffix`      | `false`             | Same: `TicketQuery` gives `zTicketQueryVariables`, not `zTicketQueryQueryVariables`.                          |
+| `omitOperationSuffix`        | `false`             | Same: `zFindTicketsVariables`.                                                                                |
 
-The schema name capitalises the operation's first letter (`findTickets` gives
-`zFindTicketsQueryVariables`); it does not apply a `namingConvention`, so keep
-operation names in PascalCase.
+The last six mirror `@nxgt/graphql-codegen-zod`, whose naming is not exported:
+the plugin repeats its rules (`getHTTPThing` gives `zGetHttpThingQueryVariables`,
+`get_book` gives `zGet_BookQueryVariables`). Give both plugins the same values
+and the imported names exist; a spec runs both on the same documents.
 
 ## What it refuses
 
@@ -156,6 +169,7 @@ Generation fails with `@nxgt/ai-graphql/codegen: …` for:
 - two operations with the same tool name;
 - a tool name that is not letters, digits, `_` and `-` (at most 64);
 - a fragment spread with no definition in the documents;
-- a `names` key that matches no operation, or an invalid `exportName`.
+- a fragment defined in two documents with different text;
+- a `names` key that matches no operation, an invalid `exportName`, `schemaPrefix`, `typesPrefix` or `typesSuffix`, or an empty `zodImport` or `typesImport`.
 
 Each case has an entry in [Troubleshooting](../troubleshooting.md).

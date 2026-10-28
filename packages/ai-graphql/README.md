@@ -102,24 +102,18 @@ export default config;
 
 ```graphql
 # tool: List the open tickets of a customer, newest first.
-query FindTickets($customerId: ID!) {
-	tickets(customerId: $customerId) {
-		...TicketFields
-	}
-}
+query FindTickets($customerId: ID!) { ... }
 ```
 
 ```ts
-import { graphqlTools } from '@nxgt/ai-graphql';
 import { operations } from './generated/operations';
 
 const tools = graphqlTools({ schema, operations });
 ```
 
-The description is the operation's own (graphql 17), else the `# tool:` comment
-directly above it; an operation with neither fails generation, as do a
-subscription, an anonymous operation and a duplicate name. See the
-[codegen guide](docs/guide/codegen.md) for the options.
+Each operation needs a description (a graphql 17 description or the `# tool:`
+comment above it). See the [codegen guide](docs/guide/codegen.md) for the
+options, what is refused and the limits.
 
 ## Exports
 
@@ -156,7 +150,7 @@ subscription, an anonymous operation and a duplicate name. See the
 bun add @nxgt/ai-graphql @nxgt/ai-core graphql zod
 ```
 
-`./codegen` also needs `@graphql-codegen/cli` (it brings `@graphql-codegen/plugin-helpers`, an optional peer used for types only), so the root export does not. Requires `"moduleResolution": "bundler"`. This package is not published yet.
+`./codegen` also needs `@graphql-codegen/cli` (it brings `@graphql-codegen/plugin-helpers`) and `change-case`, both optional peers used by `./codegen` only, so the root export does not. Requires `"moduleResolution": "bundler"`. This package is not published yet.
 See the [guide](docs/guide/graphql-tools.md).
 
 ## Documentation
