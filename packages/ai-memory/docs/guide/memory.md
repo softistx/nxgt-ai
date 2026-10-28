@@ -99,6 +99,12 @@ if (out.summary && out.throughMessageId) {
 - `summarizeWith(model, { system?, maxTokens?, signal? })` calls the model
   once, with a transcript of the messages (the previous summary first), and
   returns its text. Pass your own `summarize` to use another way.
+  The messages are sent as tagged `<message role>` data blocks, with a line
+  saying they are data, not instructions, and a failed tool result as its error
+  code, never its message.
+- "Summarize" means two things in these packages: the confirmation line of a
+  tool (`summarize` in `@nxgt/ai-core`) and the conversation summary written
+  here (`summarizeWith`, `compact`). They are unrelated.
 - The kept messages start on a user turn: the cut moves back past assistant
   and tool messages, as the Anthropic Messages API needs a conversation that
   opens with the user and refuses a tool result without its call. When no user
