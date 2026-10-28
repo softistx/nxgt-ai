@@ -151,7 +151,7 @@ throw new GraphQLError('Ticket row 42 not found', {
 ## Result size
 
 The result is serialised (`{ data, errors? }`) and cut so that the marker below,
-serialised, is at most `maxResultChars` characters (default 20000). With a very
+serialised, is at most `maxResultChars` characters (default 20000, at least 100). With a very
 small limit the note, then the preview, are dropped. Data JSON cannot hold (a
 BigInt, a cycle) fails the call with `INTERNAL_ERROR`:
 

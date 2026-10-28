@@ -87,7 +87,7 @@ proposed action (`confirm: true`) and runs it only after
 - The model sees error codes (`extensions.code`, plus `extensions.fields` and scalar `extensions.params`), never messages or stacks. An error without a code reads `INTERNAL_ERROR`.
 - A mutation that reports any error, and a query with no `data` or whose root fields are all null, make the call fail with `TOOL_FAILED` and the mapped errors in its message; a query that partly fails succeeds with `data` and `errors`. A throwing `context` builder fails the call with `INTERNAL_ERROR` and never shows its message.
 - `extensions.params` scalars are shown as the resolver set them: do not put secrets in them.
-- A result longer than `maxResultChars` becomes `{ truncated: true, originalChars, preview, note }`; make the model narrow its variables.
+- `maxResultChars` is at least 100. A result longer than it becomes `{ truncated: true, originalChars, preview, note }`; make the model narrow its variables.
 - graphql-js `execute` takes no abort signal: an abort is honoured before the operation starts, not during it.
 
 ## Install

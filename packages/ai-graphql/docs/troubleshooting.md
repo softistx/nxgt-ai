@@ -31,7 +31,7 @@ try {
 
 **When:** `graphqlTools` throws at build with `does not parse`, `is not valid against the schema`, `is a subscription`, `set operationName`, a `forbidFields` entry that is not `Type.field`, or a bad `maxResultChars`.
 **Why:** the document does not parse or does not validate against `schema` (an unknown field, a missing argument), is a subscription, or holds several operations.
-**Fix:** correct the document; set `operationName` when it holds several; use `Type.field` entries; give `maxResultChars` a positive integer.
+**Fix:** correct the document; set `operationName` when it holds several; use `Type.field` entries; give `maxResultChars` an integer of at least 100.
 
 ## `GraphqlToolsError` DUPLICATE_OPERATION
 
