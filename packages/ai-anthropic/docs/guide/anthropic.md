@@ -41,7 +41,15 @@ const model = anthropic({
 | `thinking` part with `redacted` | `redacted_thinking` block with its `data`                               |
 | `tool-result` part              | `tool_result` block (`is_error: true` on failure), in a user message    |
 | `proposed-action` part          | not sent: it is for the user, not the model                             |
-| `providerOptions`               | merged into the body last, so it can override any field                 |
+| `providerOptions`               | merged into the body last, so it can override any field (see below)     |
+
+A `providerOptions.thinking` that is not `{ type: 'disabled' }` replaces the
+typed thinking and is treated like it: `temperature` is dropped, a
+`budget_tokens` below 1024 is raised to 1024, and `max_tokens` is recomputed
+for the budget (the asked `maxTokens`, or the default plus the budget, and
+always above the budget). A type with no budget (such as `adaptive`) only drops
+`temperature`. A `temperature` or `max_tokens` named in `providerOptions` is
+sent as is.
 
 Consecutive messages of one role are merged, as the API requires; a `tool`
 message becomes a user message. A tool output that is not a string is sent as

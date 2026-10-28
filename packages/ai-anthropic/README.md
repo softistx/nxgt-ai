@@ -32,6 +32,11 @@ user turn; `model.countTokens(req)` asks `/v1/messages/count_tokens`.
 const tokens = await model.countTokens?.({ messages, tools });
 ```
 
+Overriding `thinking` through `providerOptions` (`{ thinking: { type: 'enabled',
+budget_tokens: 8000 } }`) is treated like the typed option: `temperature` is
+dropped and `max_tokens` resized. Name either in `providerOptions` to set it
+yourself.
+
 `bun run smoke:anthropic` in the repository tries it against the real API
 (local only, needs `ANTHROPIC_API_KEY`).
 
