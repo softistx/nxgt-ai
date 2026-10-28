@@ -66,6 +66,32 @@ function propose(
 	};
 }
 
+function abortedResult(call: ToolCallPart): ToolResultPart {
+	return errorResult(
+		call,
+		new AiError('ABORTED', `Tool "${call.name}" was aborted.`),
+	);
+}
+
+/**
+ * Resolves with an `ABORTED` result as soon as the signal aborts, so a tool
+ * that ignores its signal is no longer waited for. `release` removes the
+ * listener once the call has settled.
+ */
+function whenAborted(
+	call: ToolCallPart,
+	signal: AbortSignal,
+): { aborted: Promise<ToolResultPart>; release(): void } {
+	let release = () => {};
+	const aborted = new Promise<ToolResultPart>((resolve) => {
+		const onAbort = () => resolve(abortedResult(call));
+		if (signal.aborted) return onAbort();
+		signal.addEventListener('abort', onAbort, { once: true });
+		release = () => signal.removeEventListener('abort', onAbort);
+	});
+	return { aborted, release: () => release() };
+}
+
 async function runOne(
 	call: ToolCallPart,
 	run: ToolRunContext,
@@ -100,8 +126,10 @@ async function runOne(
 
 /**
  * Runs the calls in parallel and returns their results in call order. Each
- * `tool-result` event is emitted as its tool finishes. Never rejects: a tool
- * cut short by an abort answers with an `ABORTED` result.
+ * `tool-result` event is emitted as its tool finishes. Never rejects: after
+ * an abort, a tool still running answers with an `ABORTED` result at once,
+ * even when it ignores its signal; it is not waited for and whatever it
+ * returns later is dropped.
  */
 export function runToolCalls(
 	calls: readonly ToolCallPart[],
@@ -115,7 +143,12 @@ export function runToolCalls(
 				call,
 			});
 			const started = performance.now();
-			const result = await runOne(call, run);
+			// Aborted while the observers ran: neither run nor propose the call.
+			const guard = whenAborted(call, run.signal);
+			const result = run.signal.aborted
+				? abortedResult(call)
+				: await Promise.race([runOne(call, run), guard.aborted]);
+			guard.release();
 			run.emit({ type: 'tool-result', result });
 			await notify(run.observers, 'onToolCall', {
 				runId: run.runId,
