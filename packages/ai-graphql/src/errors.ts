@@ -2,6 +2,7 @@
 export const GRAPHQL_TOOLS_ERROR_CODES = [
 	'FORBIDDEN_FIELD',
 	'INVALID_OPERATION',
+	'INVALID_OPTIONS',
 	'DUPLICATE_OPERATION',
 ] as const;
 
@@ -9,8 +10,8 @@ export const GRAPHQL_TOOLS_ERROR_CODES = [
 export type GraphqlToolsErrorCode = (typeof GRAPHQL_TOOLS_ERROR_CODES)[number];
 
 export interface GraphqlToolsErrorOptions {
-	/** The tool name of the operation at fault. */
-	operation: string;
+	/** The tool name of the operation at fault; none for `INVALID_OPTIONS`. */
+	operation?: string;
 	/** `Type.field` of the forbidden field, for `FORBIDDEN_FIELD`. */
 	field?: string;
 	/** Response path of the field in the operation, for `FORBIDDEN_FIELD`. */
@@ -22,7 +23,7 @@ export interface GraphqlToolsErrorOptions {
 export class GraphqlToolsError extends Error {
 	override name = 'GraphqlToolsError';
 	readonly code: GraphqlToolsErrorCode;
-	readonly operation: string;
+	readonly operation: string | undefined;
 	readonly field: string | undefined;
 	readonly path: string | undefined;
 

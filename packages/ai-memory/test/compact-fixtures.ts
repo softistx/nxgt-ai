@@ -1,7 +1,7 @@
 import type { Message } from '@nxgt/ai-core';
 import {
 	type CompactOptions,
-	memoryStore,
+	inProcessMemory,
 	type StoredMessage,
 } from '../src/index';
 
@@ -24,7 +24,7 @@ export const result = (id: string, output: unknown): Message => ({
 });
 
 export async function stored(messages: Message[]): Promise<StoredMessage[]> {
-	const store = memoryStore();
+	const store = inProcessMemory();
 	const t = await store.createThread({ ownerId: 'o' });
 	return store.append(t.id, 'o', messages);
 }

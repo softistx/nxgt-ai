@@ -145,9 +145,9 @@ export function graphqlTools<TContext = unknown>(
 	const max = options.maxResultChars ?? DEFAULT_MAX_RESULT_CHARS;
 	if (!Number.isInteger(max) || max < 100) {
 		throw new GraphqlToolsError(
-			'INVALID_OPERATION',
+			'INVALID_OPTIONS',
 			'maxResultChars must be an integer of at least 100: a truncation marker needs room.',
-			{ operation: '' },
+			{},
 		);
 	}
 	const seen = new Set<string>();

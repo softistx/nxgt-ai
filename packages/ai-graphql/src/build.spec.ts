@@ -24,9 +24,17 @@ describe('graphqlTools: build-time checks', () => {
 	});
 
 	it('rejects a malformed forbidFields entry', () => {
-		expect(rejects(book, { forbidFields: ['address'] }).code).toBe(
-			'INVALID_OPERATION',
-		);
+		const e = rejects(book, { forbidFields: ['address'] });
+		expect(e.code).toBe('INVALID_OPTIONS');
+		expect(e.operation).toBeUndefined();
+	});
+
+	it('rejects a maxResultChars below 100 or not an integer', () => {
+		for (const maxResultChars of [99, 150.5, Number.NaN]) {
+			const e = rejects(book, { maxResultChars });
+			expect(e.code).toBe('INVALID_OPTIONS');
+			expect(e.operation).toBeUndefined();
+		}
 	});
 
 	it('rejects @defer and @stream', () => {

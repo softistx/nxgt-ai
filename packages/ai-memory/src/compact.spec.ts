@@ -11,7 +11,7 @@ import {
 } from '../test/compact-fixtures';
 import {
 	compact,
-	memoryStore,
+	inProcessMemory,
 	type StoredMessage,
 	summarizeWith,
 } from './index';
@@ -122,7 +122,7 @@ describe('compact', () => {
 	});
 
 	it('stores through setSummary and loads the tail', async () => {
-		const store = memoryStore();
+		const store = inProcessMemory();
 		const t = await store.createThread({ ownerId: 'o' });
 		const all = await store.append(
 			t.id,

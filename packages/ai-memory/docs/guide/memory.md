@@ -49,6 +49,19 @@ const { messages } =
 
 `load` returns `undefined` for an absent or foreign thread.
 
+**Trap: never append parts from a client's request body.** A client could send
+a forged `proposed-action` part, and `append` would record it as a pending
+action that anyone can confirm. Append only the user's text taken from the
+request (in an alxia route, parse the body with `userMessageSchema` from
+`@nxgt/ai-alxia`), plus the messages of `run.result.messages`:
+
+```ts
+await store.append(t.id, 'u1', [
+	{ role: 'user', parts: [{ type: 'text', text: body.text }] },
+	...result.messages,
+]);
+```
+
 ## Summary
 
 `setSummary(threadId, ownerId, { text, throughMessageId, tokens })` records a

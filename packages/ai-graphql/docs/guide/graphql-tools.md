@@ -53,6 +53,8 @@ Each operation is parsed and validated against the schema when `graphqlTools`
 is called. A `DocumentNode` is copied (printed and parsed again) at that moment,
 so changing it later changes nothing. `@defer` and `@stream` are rejected. A subscription, an unparsable or invalid document, or a duplicate
 name throws a `GraphqlToolsError` (`INVALID_OPERATION`, `DUPLICATE_OPERATION`).
+A bad option (a `forbidFields` entry that is not `Type.field`, a `maxResultChars`
+that is not an integer of at least 100) throws `INVALID_OPTIONS`, with no `operation`.
 
 When the model sends input the Zod schema refuses, the call answers
 `INVALID_TOOL_INPUT` with the issues and the operation does not run. The model

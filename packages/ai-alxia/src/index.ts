@@ -5,6 +5,7 @@ export {
 } from './agent-events';
 export { type AiRequest, type AiRequestOptions, aiRequest } from './ai-request';
 export { agentEventStream } from './events';
+export { type UserMessage, userMessageSchema } from './user-message';
 export {
 	INTERNAL_ERROR,
 	toWireEvent,

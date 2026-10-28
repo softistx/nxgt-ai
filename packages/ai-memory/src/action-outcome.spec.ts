@@ -8,7 +8,7 @@ import {
 } from '@nxgt/ai-core';
 import { collect, fakeModel } from '@nxgt/ai-testing';
 import { z } from 'zod';
-import { memoryStore } from './index';
+import { inProcessMemory } from './index';
 
 const pay = defineTool({
 	name: 'pay',
@@ -26,7 +26,7 @@ const say = (text: string): Message => ({
 
 describe('a confirmation in a later request', () => {
 	it('tells the next run how the action ended', async () => {
-		const store = memoryStore();
+		const store = inProcessMemory();
 		const thread = await store.createThread({ ownerId: 'u1' });
 
 		// Request 1: the model proposes; the run's messages are stored.
