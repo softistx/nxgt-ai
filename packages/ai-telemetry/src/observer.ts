@@ -139,10 +139,17 @@ class SpanObserver implements AgentObserver {
 		);
 	};
 
-	onToolCall: Hook<'onToolCall'> = ({ runId, call, result, durationMs }) => {
+	onToolCall: Hook<'onToolCall'> = ({
+		runId,
+		call,
+		result,
+		durationMs,
+		proposed,
+	}) => {
 		const handle = this.runs.get(runId)?.take(`tool:${call.id}`);
 		if (!handle) return;
 		handle.scope.attribute('ai.duration_ms', Math.round(durationMs));
+		if (proposed) handle.scope.attribute('ai.tool.proposed', true);
 		if (this.recordContent) {
 			handle.scope.attributes(toolContent(call, result));
 		}

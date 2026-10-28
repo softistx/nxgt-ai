@@ -172,6 +172,7 @@ export function runToolCalls(
 				call,
 				result,
 				durationMs: performance.now() - started,
+				proposed: run.proposals.some((action) => action.id === call.id),
 			});
 			return result;
 		}),
