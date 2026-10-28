@@ -130,7 +130,7 @@ options, what is refused and the limits.
 
 ## Traps
 
-- `forbidFields` is checked when the tools are built, never at run time, and only against the operations you allow: the model cannot write its own query.
+- `forbidFields` is checked when the tools are built, never at run time, and only against the operations you allow: the model cannot write its own query. Each entry must name a type and field the schema declares, or the build throws `INVALID_OPTIONS`.
 - A field forbidden on an interface is forbidden on every type that implements it, and a field forbidden on a type is caught when read through an interface or a union. Aliases do not hide it.
 - A failed mutation may still have committed some of its root fields, so `failed` does not mean nothing changed.
 - `forbidFields` stops what an operation selects. It does not guard what your resolvers return, nor arguments and variables: a filter such as `where: { phone }` can act as a lookup oracle on a hidden field. The operation author controls the arguments; keep authorisation in the resolvers.

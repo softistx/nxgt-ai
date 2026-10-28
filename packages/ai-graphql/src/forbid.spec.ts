@@ -92,8 +92,41 @@ describe('forbidFields', () => {
 	});
 
 	it('does not confuse the same field name on another type', () => {
-		expect(build('{ book(id: "1") { title } }', ['Person.title'])).toHaveLength(
-			1,
-		);
+		expect(build('{ book(id: "1") { id } }', ['Person.name'])).toHaveLength(1);
+	});
+
+	describe('entries checked against the schema', () => {
+		const doc = '{ member(id: "1") { name } }';
+
+		it('refuses an unknown type, naming the entry', () => {
+			const e = failure(doc, ['Persn.phone']);
+			expect(e.code).toBe('INVALID_OPTIONS');
+			expect(e.operation).toBeUndefined();
+			expect(e.message).toContain('"Persn.phone"');
+			expect(e.message).toContain('"Persn"');
+		});
+
+		it('refuses an unknown field, naming the entry', () => {
+			const e = failure(doc, ['Person.fax']);
+			expect(e.code).toBe('INVALID_OPTIONS');
+			expect(e.message).toContain('"Person.fax"');
+			expect(e.message).toContain('"fax"');
+		});
+
+		it('refuses a type that has no fields (a union)', () => {
+			const e = failure(doc, ['Contact.name']);
+			expect(e.code).toBe('INVALID_OPTIONS');
+			expect(e.message).toContain('"Contact.name"');
+		});
+
+		it('refuses a field only an implementing type has, named on the interface', () => {
+			expect(failure(doc, ['Person.nationalId']).code).toBe('INVALID_OPTIONS');
+			// The same field is valid on the type that declares it.
+			expect(build(doc, ['Librarian.nationalId'])).toHaveLength(1);
+		});
+
+		it('accepts a valid entry on an object and on an interface', () => {
+			expect(build(doc, ['Member.loans', 'Person.phone'])).toHaveLength(1);
+		});
 	});
 });

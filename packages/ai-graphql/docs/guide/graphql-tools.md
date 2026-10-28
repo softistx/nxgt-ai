@@ -53,8 +53,9 @@ Each operation is parsed and validated against the schema when `graphqlTools`
 is called. A `DocumentNode` is copied (printed and parsed again) at that moment,
 so changing it later changes nothing. `@defer` and `@stream` are rejected. A subscription, an unparsable or invalid document, or a duplicate
 name throws a `GraphqlToolsError` (`INVALID_OPERATION`, `DUPLICATE_OPERATION`).
-A bad option (a `forbidFields` entry that is not `Type.field`, a `maxResultChars`
-that is not an integer of at least 100) throws `INVALID_OPTIONS`, with no `operation`.
+A bad option (a `forbidFields` entry that is not `Type.field` or that names a
+type or field the schema does not have, a `maxResultChars` that is not an
+integer of at least 100) throws `INVALID_OPTIONS`, with no `operation`.
 
 When the model sends input the Zod schema refuses, the call answers
 `INVALID_TOOL_INPUT` with the issues and the operation does not run. The model
@@ -101,6 +102,8 @@ GraphqlToolsError FORBIDDEN_FIELD
 
 Rules:
 
+- Every entry must exist in the schema, or `graphqlTools` throws `INVALID_OPTIONS` naming it: a rename that leaves an entry behind fails the build instead of silently protecting nothing.
+- The named type must be an object or interface type that declares the field itself. `Person.nationalId` is refused when only `Librarian` declares `nationalId`; write `Librarian.nationalId`. A union has no fields of its own, so name the member types.
 - A field forbidden on an interface is forbidden on the types that implement it.
 - A field forbidden on an object type is caught when read through an interface or union it belongs to.
 - Aliases do not hide a field, and `__typename` is ignored.

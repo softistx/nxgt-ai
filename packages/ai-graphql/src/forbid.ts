@@ -15,14 +15,44 @@ import {
 } from 'graphql';
 import { GraphqlToolsError } from './errors';
 
-/** The `Type.field` names of a list, checked to be well formed. */
-export function parseForbidden(list: readonly string[]): Set<string> {
+/**
+ * The `Type.field` names of a list, checked to be well formed and to exist in
+ * `schema`: the type must be an object or interface type that declares the
+ * field itself (a field only an implementing type has is not an interface's).
+ */
+export function parseForbidden(
+	list: readonly string[],
+	schema: GraphQLSchema,
+): Set<string> {
 	const set = new Set<string>();
 	for (const entry of list) {
 		if (!/^[_A-Za-z][_0-9A-Za-z]*\.[_A-Za-z][_0-9A-Za-z]*$/.test(entry)) {
 			throw new GraphqlToolsError(
 				'INVALID_OPTIONS',
 				`forbidFields entry ${JSON.stringify(entry)} must look like "Type.field".`,
+				{},
+			);
+		}
+		const [typeName = '', fieldName = ''] = entry.split('.');
+		const type = schema.getType(typeName);
+		if (!type) {
+			throw new GraphqlToolsError(
+				'INVALID_OPTIONS',
+				`forbidFields entry ${JSON.stringify(entry)} names the type "${typeName}", which the schema does not have.`,
+				{},
+			);
+		}
+		if (!isObjectType(type) && !isInterfaceType(type)) {
+			throw new GraphqlToolsError(
+				'INVALID_OPTIONS',
+				`forbidFields entry ${JSON.stringify(entry)} names "${typeName}", which is not an object or interface type and has no fields to forbid.`,
+				{},
+			);
+		}
+		if (!type.getFields()[fieldName]) {
+			throw new GraphqlToolsError(
+				'INVALID_OPTIONS',
+				`forbidFields entry ${JSON.stringify(entry)} names the field "${fieldName}", which type "${typeName}" does not declare.`,
 				{},
 			);
 		}
