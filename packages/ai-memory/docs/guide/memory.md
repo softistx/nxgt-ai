@@ -150,17 +150,59 @@ await generate(model, {
 When an appended message holds a `proposed-action` part, the store records a
 `pending` action you can find by its id.
 
+### Confirm flow: claim, run, record
+
 ```ts
-const action = await store.findAction(actionId, 'u1');
-const won = await store.updateAction(actionId, 'u1', { status: 'confirmed' });
-if (!won) return; // absent, or someone else confirmed or rejected it first
-await runConfirmedAction(/* ... */);
+import { actionOutcomeMessage, runConfirmedAction } from '@nxgt/ai-core';
+
+// 1. Claim: only one caller moves pending -> running.
+const claimed = await store.updateAction(actionId, 'u1', { status: 'running' });
+if (!claimed) {
+	// Lost the claim, or the action is absent. Read what is stored.
+	const stored = await store.findAction(actionId, 'u1');
+	if (!stored) return notFound();
+	if (stored.status === 'running') return unknownOutcome(); // under way, or crashed
+	return answer(stored); // confirmed, failed, rejected, expired: the stored outcome
+}
+
+// 2. Run the tool (the action as read, `running`, is accepted).
+const done = await runConfirmedAction(claimed, tools, { context });
+
+// 3. Record the outcome, only from `running`.
+await store.updateAction(
+	actionId,
+	'u1',
+	{ status: done.status === 'failed' ? 'failed' : 'confirmed', result: done.result },
+	{ from: 'running' },
+);
+await store.append(threadId, 'u1', [actionOutcomeMessage(done)]);
 ```
 
-`updateAction` changes the action only while it is `pending` (a
-compare-and-set), so two concurrent confirmations cannot both run the tool.
-Patch `status` to `confirmed`, `rejected`, `expired` or `failed`, with the
-tool's `result` when there is one.
+`updateAction(id, ownerId, patch, { from })` is a compare-and-set: it writes
+only while the action has the `from` status (a status or a list; default
+`'pending'`, so a call without options is unchanged) and returns the action,
+or `undefined`. Two concurrent claims cannot both win, so the tool runs once.
+
+| from      | to                                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------- |
+| `pending` | `running` (the claim), `rejected`, `expired`; also `confirmed` or `failed` directly, for a flow that does not claim |
+| `running` | `confirmed` or `failed`                                                                                             |
+
+Any other pair, and an empty `from`, throws
+`MemoryError('INVALID_ACTION_TRANSITION')` before the store is touched. A
+terminal action (`confirmed`, `failed`, `rejected`, `expired`) never moves.
+
+The outcome is the action's `result`, the tool result as `runConfirmedAction`
+returns it: the output when `confirmed`, the error code when `failed`. The store
+keeps an output as given (keep tool outputs small, as they are in messages)
+but keeps an error as its code only: the message and the issues are dropped
+(`message` is stored empty), so an app can expose `result` to a client.
+`actionOutcomeMessage` likewise names only the code.
+
+A crash between the claim and the write leaves the action `running` with no
+`result`: nobody can tell whether the tool ran. The store does not time a
+claim out; decide in your application (inspect the side effect, or mark it
+`failed` with `{ from: 'running' }` and let the user retry).
 
 ## MongoDB store
 
@@ -284,7 +326,7 @@ removed whole.
 
 `append` reserves its `seq` range with one atomic increment on the thread, so
 concurrent appends never collide. `updateAction` is one `findOneAndUpdate`
-that matches only an action still `pending`; of two concurrent confirmations
+that matches only an action still in a `from` status (`pending` by default); of two concurrent claims
 one gets the action and the other `undefined`. A failed insert in `append`
 leaves a gap in `seq`; `load` still orders by it.
 
@@ -351,8 +393,8 @@ skips the ids of expired threads and removes them as it goes.
 `append` is one Lua script: it checks the owner, reserves the `seq` range with
 an atomic increment, and writes the messages and the new actions, so
 concurrent appends never share a position and a reader never sees a gap.
-`updateAction` is one script that matches only an action still `pending`; of
-two concurrent confirmations one gets the action and the other `undefined`. An
+`updateAction` is one script that matches only an action in a `from` status (`pending` by default); of
+two concurrent claims one gets the action and the other `undefined`. An
 action id is recorded once per owner, as in the other stores.
 
 ### Deleting
@@ -373,4 +415,6 @@ memoryStoreContract(() => myStore());
 ```
 
 Your `updateAction` must be atomic in the backing database (a conditional
-update on `status: 'pending'`), not a read then a write.
+update on `status` in `from`), not a read then a write. Accept `patch`
+and `{ from }` as the in-process store does and validate the transition with
+the table above (`pending` to `running`, `rejected`, `expired`, `confirmed`, `failed`; `running` to `confirmed`, `failed`).

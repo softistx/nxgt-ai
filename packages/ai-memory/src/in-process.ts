@@ -29,8 +29,8 @@ export function inProcessMemory(
 		setSummary: async (id, ownerId, input) =>
 			messages.setSummary(s, id, ownerId, input),
 		findAction: async (id, ownerId) => actions.findAction(s, id, ownerId),
-		updateAction: async (id, ownerId, patch) =>
-			actions.updateAction(s, id, ownerId, patch),
+		updateAction: async (id, ownerId, patch, options) =>
+			actions.updateAction(s, id, ownerId, patch, options),
 		deleteThread: async (id, ownerId) => threads.deleteThread(s, id, ownerId),
 	};
 }

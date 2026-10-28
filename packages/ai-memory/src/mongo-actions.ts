@@ -5,7 +5,8 @@ import {
 } from '@nxgt/ai-core';
 import { assertOwner, type Ctx, scoped } from './mongo-ctx';
 import { pickAction } from './mongo-map';
-import type { ActionPatch } from './types';
+import { actionFrom, storedResult } from './transitions';
+import type { ActionPatch, ActionUpdateOptions } from './types';
 
 /** Per message, the actions it proposes that this owner has not recorded yet. */
 export async function newActions(
@@ -43,20 +44,21 @@ export async function updateAction(
 	actionId: string,
 	ownerId: string,
 	patch: ActionPatch,
+	options?: ActionUpdateOptions,
 ) {
 	assertOwner(ownerId);
-	// One atomic write: it matches only while the action is still pending.
+	const from = actionFrom(patch, options);
+	const result = storedResult(patch);
+	// One atomic write: it matches only while the action still has a `from` status.
 	const doc = await c.messages.findOneAndUpdate(
 		scoped(c, {
 			ownerId,
-			actions: { $elemMatch: { id: actionId, status: 'pending' } },
+			actions: { $elemMatch: { id: actionId, status: { $in: from } } },
 		}),
 		{
 			$set: {
 				'actions.$.status': patch.status,
-				...(patch.result === undefined
-					? {}
-					: { 'actions.$.result': patch.result }),
+				...(result === undefined ? {} : { 'actions.$.result': result }),
 			},
 		},
 		{ returnDocument: 'after' },

@@ -74,12 +74,15 @@ return 1
 
 /**
  * KEYS: action hash. ARGV: status, '1' when a result follows, the result
- * JSON, expireAt, key prefix. Moves a pending action on and slides the
- * thread's keys and actions with it; returns 1, or nil when it is absent or
- * no longer pending.
+ * JSON, expireAt, key prefix, then the statuses the action may be in. Moves
+ * the action on and slides the thread's keys and actions with it; returns 1,
+ * or nil when it is absent or in none of those statuses.
  */
 export const UPDATE_ACTION = `${SLIDE}
-if redis.call('HGET', KEYS[1], 'status') ~= 'pending' then return false end
+local current = redis.call('HGET', KEYS[1], 'status')
+local matched = false
+for i = 6, #ARGV do if ARGV[i] == current then matched = true end end
+if not matched then return false end
 redis.call('HSET', KEYS[1], 'status', ARGV[1])
 if ARGV[2] == '1' then redis.call('HSET', KEYS[1], 'result', ARGV[3]) end
 if ARGV[4] ~= '0' then

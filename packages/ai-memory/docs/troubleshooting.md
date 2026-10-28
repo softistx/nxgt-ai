@@ -5,6 +5,8 @@
 - [`MemoryError` INVALID_CURSOR](#memoryerror-invalid_cursor)
 - [`MemoryError` INVALID_OWNER](#memoryerror-invalid_owner)
 - [`updateAction` returns undefined](#updateaction-returns-undefined)
+- [`MemoryError` INVALID_ACTION_TRANSITION](#memoryerror-invalid_action_transition)
+- [An action stays `running`](#an-action-stays-running)
 - [`compact` returns more tokens than `budget`](#compact-returns-more-tokens-than-budget)
 - [The summary forgets what the previous one said](#the-summary-forgets-what-the-previous-one-said)
 - [The model sees `{ truncated: true, preview }` as a tool result](#the-model-sees--truncated-true-preview--as-a-tool-result)
@@ -62,8 +64,29 @@ mongoMemory({ threads, messages, scope: { tenantId: 'school-12' } });
 ## `updateAction` returns undefined
 
 **When:** you confirm an action and get `undefined`.
-**Why:** the action is absent, belongs to another owner, or is no longer `pending` because a concurrent call or an earlier one already settled it.
-**Fix:** treat it as "not yours to run": do not execute the tool. Call `findAction` to see the status.
+**Why:** the action is absent, belongs to another owner, or is not in the `from` status (default `pending`) because a concurrent call or an earlier one already claimed or settled it.
+**Fix:** treat it as "not yours to run": do not execute the tool. Call `findAction` to see the status and answer the stored outcome.
+
+## `MemoryError` INVALID_ACTION_TRANSITION
+
+**When:** `updateAction` throws `An action cannot move from running to rejected.` (or an empty `from`).
+**Why:** `patch.status` is not reachable from a `from` status. Allowed: `pending` to `running`, `rejected`, `expired` (or `confirmed`/`failed` without a claim); `running` to `confirmed` or `failed`.
+**Fix:** claim with `{ status: 'running' }`, then record the outcome with `{ from: 'running' }`.
+
+```ts
+await store.updateAction(
+	id,
+	'u1',
+	{ status: 'failed', result },
+	{ from: 'running' },
+);
+```
+
+## An action stays `running`
+
+**When:** `findAction` shows `running` with no `result` long after the claim.
+**Why:** the process died between the claim and the outcome write; nobody knows if the tool ran. The store never times a claim out.
+**Fix:** check the side effect, then write `failed` or `confirmed` with `{ from: 'running' }`, or let the user retry.
 
 ## `compact` returns more tokens than `budget`
 

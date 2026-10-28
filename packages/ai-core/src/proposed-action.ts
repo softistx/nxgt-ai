@@ -8,6 +8,8 @@ export const DEFAULT_PROPOSAL_TTL_MS = 60 * 60 * 1000;
 
 export type ProposedActionStatus =
 	| 'pending'
+	/** Claimed for a run that has not ended: its outcome is unknown. */
+	| 'running'
 	| 'confirmed'
 	| 'rejected'
 	| 'expired'
@@ -25,7 +27,10 @@ export interface ProposedAction {
 	status: ProposedActionStatus;
 	/** Epoch milliseconds. */
 	expiresAt: number;
-	/** Set once the tool ran: its output, or its error when `failed`. */
+	/**
+	 * Set once the tool ran: its output when `confirmed`, its error when
+	 * `failed`. Store it with the status so a repeated confirm can answer it.
+	 */
 	result?: ToolResultPart;
 	summary?: string;
 }
@@ -40,6 +45,12 @@ export function toProposedAction(part: ProposedActionPart): ProposedAction {
 		expiresAt: part.expiresAt,
 		...(part.summary === undefined ? {} : { summary: part.summary }),
 	};
+}
+
+function assertRunnable(action: ProposedAction, now: number): void {
+	// A claimed action was alive when it was claimed: its expiry no longer bites.
+	if (action.status === 'running') return;
+	assertPending(action, now);
 }
 
 function assertPending(action: ProposedAction, now: number): void {
@@ -66,12 +77,18 @@ export interface ConfirmContext {
 }
 
 /**
- * Runs a pending action's tool, once. It re-validates the input and refuses,
- * before running anything, an action that is not `pending` (`ACTION_NOT_PENDING`),
- * has expired (`ACTION_EXPIRED`), names an unknown tool (`UNKNOWN_TOOL`) or has
+ * Runs a pending or claimed action's tool, once. It re-validates the input and
+ * refuses, before running anything, an action that is neither `pending` nor
+ * `running` (`ACTION_NOT_PENDING`), a pending one that has expired
+ * (`ACTION_EXPIRED`; a `running` one was claimed in time), names an unknown tool (`UNKNOWN_TOOL`) or has
  * invalid input (`INVALID_TOOL_INPUT`). It returns a new action, `confirmed`
  * with the tool's result or `failed` when the tool threw; the caller stores it,
- * which is what keeps a second confirmation out. An abort rejects and leaves
+ * which is what keeps a second confirmation out. To record the outcome, claim
+ * first: store `running` (a compare-and-set from `pending`), call this with
+ * the action as read, then store the returned `confirmed` or `failed` with
+ * its `result` (from `running`). A repeated confirm that reads a terminal
+ * status answers the stored outcome and does not call this; one that reads
+ * `running` cannot tell if the run is under way or crashed. An abort rejects and leaves
  * the action to the caller.
  */
 export async function runConfirmedAction(
@@ -80,7 +97,7 @@ export async function runConfirmedAction(
 	ctx: ConfirmContext = {},
 	options: ConfirmOptions = {},
 ): Promise<ProposedAction> {
-	assertPending(action, (options.now ?? Date.now)());
+	assertRunnable(action, (options.now ?? Date.now)());
 	const tool = tools.find((t) => t.name === action.tool);
 	if (!tool) {
 		throw new AiError('UNKNOWN_TOOL', `No tool named "${action.tool}".`);
@@ -169,9 +186,10 @@ function decision(action: ProposedAction, options: ActionOutcomeOptions) {
 		case 'expired':
 			return `The action ${what} expired before the user answered. Nothing ran.`;
 		case 'pending':
+		case 'running':
 			throw new AiError(
 				'ACTION_NOT_PENDING',
-				`Action "${action.id}" is still pending: it has no outcome yet.`,
+				`Action "${action.id}" is still ${action.status}: it has no outcome yet.`,
 			);
 	}
 }
@@ -201,7 +219,7 @@ function outcomeText(action: ProposedAction, options: ActionOutcomeOptions) {
  * It takes the action `runConfirmedAction` or `rejectAction` returned, and
  * names `confirmed` (with the tool's output, cut to 2000 characters), `rejected`
  * (with `options.reason`), `failed` (the error code only, never the error text)
- * or `expired`. A `pending` action throws `ACTION_NOT_PENDING`.
+ * or `expired`. A `pending` or `running` action throws `ACTION_NOT_PENDING`.
  */
 export function actionOutcomeMessage(
 	action: ProposedAction,
