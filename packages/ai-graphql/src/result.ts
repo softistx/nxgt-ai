@@ -3,7 +3,8 @@ import type { GraphQLError } from 'graphql';
 
 /** One GraphQL error as the model reads it: a code, never a stack or a message. */
 export interface ToolGraphqlError {
-	/** `extensions.code`, or `INTERNAL_ERROR` when absent or not a plain code. */
+	/** `extensions.code`, or `INTERNAL_ERROR` when absent or not a plain code
+	 * (letters, digits, `_`, `.`, `-`; at most 100). */
 	code: string;
 	/** Response path of the failing field, when it has one. */
 	path?: (string | number)[];
@@ -31,9 +32,76 @@ export interface TruncatedGraphqlOutput {
 	note: string;
 }
 
-const CODE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+/** Letters, digits, `_`, `.` and `-`: `NOT_FOUND`, `auth.errors.forbidden`. */
+const CODE = /^[A-Za-z0-9_.-]{1,100}$/;
 const isRecord = (v: unknown): v is Record<string, unknown> =>
 	typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Where the hook of `mapErrors` is told the call comes from. */
+export interface MapErrorsInfo {
+	/** The tool name of the operation that ran. */
+	operation: string;
+}
+
+/** The hook of `mapErrors`: decides what the model reads of a call's errors. */
+export type MapErrors = (
+	errors: readonly GraphQLError[],
+	info: MapErrorsInfo,
+) => readonly ToolGraphqlError[] | undefined;
+
+function keepFields(fields: unknown): string[] | undefined {
+	if (Array.isArray(fields) && fields.every((f) => typeof f === 'string')) {
+		return fields.slice(0, 20).map((f) => f.slice(0, 200));
+	}
+	return undefined;
+}
+
+function keepParams(
+	params: unknown,
+): Record<string, string | number | boolean> | undefined {
+	if (!isRecord(params)) return undefined;
+	const kept: Record<string, string | number | boolean> = {};
+	for (const [k, v] of Object.entries(params).slice(0, 20)) {
+		if (
+			typeof v === 'number' ||
+			typeof v === 'boolean' ||
+			(typeof v === 'string' && v.length <= 200)
+		) {
+			kept[k] = v;
+		}
+	}
+	return Object.keys(kept).length ? kept : undefined;
+}
+
+function keepPath(path: unknown): (string | number)[] | undefined {
+	if (
+		Array.isArray(path) &&
+		path.length > 0 &&
+		path.every(
+			(p) =>
+				typeof p === 'number' || (typeof p === 'string' && p.length <= 200),
+		)
+	) {
+		return path.slice(0, 20);
+	}
+	return undefined;
+}
+
+function build(
+	code: string,
+	path: unknown,
+	fields: unknown,
+	params: unknown,
+): ToolGraphqlError {
+	const out: ToolGraphqlError = { code };
+	const p = keepPath(path);
+	if (p) out.path = p;
+	const f = keepFields(fields);
+	if (f) out.fields = f;
+	const q = keepParams(params);
+	if (q) out.params = q;
+	return out;
+}
 
 /** Maps a GraphQL error to the part of it the model may see. */
 export function toToolError(error: GraphQLError): ToolGraphqlError {
@@ -42,27 +110,37 @@ export function toToolError(error: GraphQLError): ToolGraphqlError {
 		typeof ext?.['code'] === 'string' && CODE.test(ext['code'])
 			? ext['code']
 			: 'INTERNAL_ERROR';
-	const out: ToolGraphqlError = { code };
-	if (error.path?.length) out.path = [...error.path];
-	const fields = ext?.['fields'];
-	if (Array.isArray(fields) && fields.every((f) => typeof f === 'string')) {
-		out.fields = fields.slice(0, 20).map((f) => f.slice(0, 200));
-	}
-	const params = ext?.['params'];
-	if (isRecord(params)) {
-		const kept: Record<string, string | number | boolean> = {};
-		for (const [k, v] of Object.entries(params).slice(0, 20)) {
-			if (
-				typeof v === 'number' ||
-				typeof v === 'boolean' ||
-				(typeof v === 'string' && v.length <= 200)
-			) {
-				kept[k] = v;
+	return build(code, error.path, ext?.['fields'], ext?.['params']);
+}
+
+/**
+ * The errors the model reads: what `hook` returns, cut down to `code`, `path`,
+ * `fields` and scalar `params`, or the default mapping when the hook is absent,
+ * throws, returns a promise or returns anything but a non-empty list of
+ * entries with a plain code. A hook can never widen what the model sees.
+ */
+export function mapToolErrors(
+	errors: readonly GraphQLError[],
+	hook: MapErrors | undefined,
+	info: MapErrorsInfo,
+): ToolGraphqlError[] {
+	if (hook) {
+		try {
+			const raw: unknown = hook(errors, info);
+			if (Array.isArray(raw) && raw.length > 0) {
+				const kept: ToolGraphqlError[] = [];
+				for (const e of raw.slice(0, 50)) {
+					if (!isRecord(e) || typeof e['code'] !== 'string') break;
+					if (!CODE.test(e['code'])) break;
+					kept.push(build(e['code'], e['path'], e['fields'], e['params']));
+				}
+				if (kept.length === Math.min(raw.length, 50)) return kept;
 			}
+		} catch {
+			// Never the hook's message: fall back to the default mapping.
 		}
-		if (Object.keys(kept).length) out.params = kept;
 	}
-	return out;
+	return errors.map(toToolError);
 }
 
 const NOTE_FULL =

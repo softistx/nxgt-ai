@@ -57,6 +57,15 @@ export function librarySchema(): GraphQLSchema {
 				},
 			});
 		}
+		if (args.id === 'dotted' || args.id === 'bad-code') {
+			throw new GraphQLError('Forbidden for user u-77 at /srv/app.ts', {
+				extensions: {
+					code:
+						args.id === 'dotted' ? 'auth.errors.forbidden' : 'has space.<b>',
+					params: { limit: 3, token: 'hunter2' },
+				},
+			});
+		}
 		if (args.id === 'boom')
 			throw new Error('connect ECONNREFUSED 10.0.0.5:5432');
 		return { id: args.id, title: `Book for ${ctx.viewer}`, borrower: member };

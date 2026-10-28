@@ -144,19 +144,43 @@ A failed mutation may still have committed some of its root fields, so
 
 The model never gets a GraphQL message or a stack, only codes.
 
-| GraphQL error has                        | The model reads                         |
-| ---------------------------------------- | --------------------------------------- |
-| `extensions.code` (letters, digits, `_`) | `code`                                  |
-| no code, or an odd one                   | `INTERNAL_ERROR`                        |
-| `extensions.fields`, an array of strings | `fields` (up to 20)                     |
-| `extensions.params`, an object           | `params`, scalar values only (up to 20) |
-| a response path                          | `path`                                  |
+| GraphQL error has                                             | The model reads                         |
+| ------------------------------------------------------------- | --------------------------------------- |
+| `extensions.code` (letters, digits, `_`, `.`, `-`; up to 100) | `code`                                  |
+| no code, or an odd one                                        | `INTERNAL_ERROR`                        |
+| `extensions.fields`, an array of strings                      | `fields` (up to 20)                     |
+| `extensions.params`, an object                                | `params`, scalar values only (up to 20) |
+| a response path                                               | `path`                                  |
 
 Two outcomes:
 
 - **A query that partly failed** (some root value is not null): the call succeeds with `{ data, errors: [{ code, path, fields?, params? }] }`.
 - **Everything failed, or any mutation error** (`data` is null, every root value is null, or the operation is a mutation with any error): the call is an error, `TOOL_FAILED`, whose message is `The GraphQL operation failed: [{"code":"NOT_FOUND","fields":["id"]}]`. A confirmed mutation becomes `failed`.
 - **A throwing `context` builder** fails the call the same way with `INTERNAL_ERROR`; its message and stack are never shown (an abort is rethrown as is).
+
+### Mapping errors with `mapErrors`
+
+`graphqlTools` runs graphql-js `execute` in process, so the error formatting
+of your server (a Yoga plugin, `maskedErrors`) does not apply. Give it your own
+with `mapErrors`: it receives the `GraphQLError`s of one call and
+`{ operation }` (the tool name) and returns what the model reads.
+
+```ts
+const tools = graphqlTools({
+	schema,
+	operations,
+	mapErrors: (errors, { operation }) =>
+		errors.map((e) => ({
+			code: appCode(e) ?? 'INTERNAL_ERROR', // for example 'validation.errors.invalid-input'
+			...(e.path ? { path: [...e.path] } : {}),
+		})),
+});
+```
+
+- It stays no-leak: each returned entry is cut down to `code`, `path`, `fields` and scalar `params` (the limits above). Anything else, such as a `message`, is dropped.
+- A `code` must be letters, digits, `_`, `.` or `-`, at most 100. A hook that throws, returns a promise, an empty list or an entry with another code is ignored and the default mapping applies to that call. The hook is synchronous.
+- It applies to both outcomes: the `errors` next to partial `data`, and the failure of a mutation or of a query that returned nothing. It does not apply to a throwing `context` builder or to an unserialisable result, which stay `INTERNAL_ERROR`.
+- The model reads exactly the list you return (the first 50 entries); return one entry per error unless you mean to hide some.
 
 `fields` strings are cut to 200 characters. `params` scalars are shown as the resolver set them, so keep secrets out of them.
 

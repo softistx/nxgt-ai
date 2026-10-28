@@ -121,8 +121,9 @@ options, what is refused and the limits.
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `graphqlTools(options)`                                          | Builds the tools; throws `GraphqlToolsError` on the first problem                                                                                     |
 | `GraphqlOperation`                                               | `{ name, description, document, variables?, operationName? }`: the allow-list entry and the shape the codegen emits                                   |
-| `GraphqlToolsOptions`                                            | `{ schema, operations, context?, forbidFields?, maxResultChars? }`                                                                                    |
+| `GraphqlToolsOptions`                                            | `{ schema, operations, context?, forbidFields?, maxResultChars?, mapErrors? }`                                                                        |
 | `GraphqlToolsError`, `GRAPHQL_TOOLS_ERROR_CODES`                 | `FORBIDDEN_FIELD`, `INVALID_OPERATION`, `INVALID_OPTIONS`, `DUPLICATE_OPERATION`; carries `operation` (absent for `INVALID_OPTIONS`), `field`, `path` |
+| `MapErrors`, `MapErrorsInfo`                                     | The `mapErrors` hook `(errors, { operation }) => ToolGraphqlError[]` and its second argument                                                          |
 | `GraphqlToolOutput`, `ToolGraphqlError`                          | What a call returns: `{ data, errors? }`, each error `{ code, path?, fields?, params? }`                                                              |
 | `TruncatedGraphqlOutput`                                         | `{ truncated: true, originalChars, preview, note }`, returned when the result exceeds `maxResultChars`                                                |
 | `DEFAULT_MAX_RESULT_CHARS`                                       | 20000                                                                                                                                                 |
@@ -138,7 +139,7 @@ options, what is refused and the limits.
 - `@defer` and `@stream` are rejected at build (incremental results of graphql 17 are not supported).
 - `variables` must be a `z.object(...)`.
 - Subscriptions are rejected. Queries and mutations only.
-- The model sees error codes (`extensions.code`, plus `extensions.fields` and scalar `extensions.params`), never messages or stacks. An error without a code reads `INTERNAL_ERROR`.
+- The model sees error codes (`extensions.code`, plus `extensions.fields` and scalar `extensions.params`), never messages or stacks. A code is letters, digits, `_`, `.` and `-` (at most 100), so `auth.errors.forbidden` passes; an error without a code, or with another one, reads `INTERNAL_ERROR`. Pass `mapErrors` to choose what the model reads (see the [guide](docs/guide/graphql-tools.md#mapping-errors-with-maperrors)).
 - A mutation that reports any error, and a query with no `data` or whose root fields are all null, make the call fail with `TOOL_FAILED` and the mapped errors in its message; a query that partly fails succeeds with `data` and `errors`. A throwing `context` builder fails the call with `INTERNAL_ERROR` and never shows its message.
 - `extensions.params` scalars are shown as the resolver set them: do not put secrets in them.
 - `maxResultChars` is at least 100. A result longer than it becomes `{ truncated: true, originalChars, preview, note }`; make the model narrow its variables.

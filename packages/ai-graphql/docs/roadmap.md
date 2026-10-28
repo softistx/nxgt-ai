@@ -22,6 +22,8 @@ Nothing yet.
 
 ## Shipped
 
+- **`mapErrors`** — choose what the model reads of a call's errors (the server's error formatting does not apply in process), and application codes with `.` and `-` pass ([#90](https://github.com/softistx/nxgt-ai/issues/90)).
+
 - **`@nxgt/ai-graphql` 0.1.0** — GraphQL as agent tools:
   - `graphqlTools`: an allow-list of operations (name, description, Zod variables) as `@nxgt/ai-core` tools, run in process with graphql-js.
   - `forbidFields` checked at build, fragments included, with a typed error naming the operation and the field path.
