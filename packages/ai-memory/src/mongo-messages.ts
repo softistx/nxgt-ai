@@ -2,7 +2,13 @@ import type { Message } from '@nxgt/ai-core';
 import { MemoryError } from './errors';
 import { newActions } from './mongo-actions';
 import type { MongoDoc } from './mongo-collection';
-import { assertOwner, type Ctx, notFound, ownThread } from './mongo-ctx';
+import {
+	assertOwner,
+	type Ctx,
+	notFound,
+	ownThread,
+	scoped,
+} from './mongo-ctx';
 import { toStoredMessage, toThread } from './mongo-map';
 import { messageSchema } from './schemas';
 import type {
@@ -25,7 +31,7 @@ export async function append(
 	const at = c.now();
 	// The $inc reserves the seq range, so concurrent appends never share one.
 	const before = await c.threads.findOneAndUpdate(
-		{ _id: threadId, ownerId },
+		scoped(c, { _id: threadId, ownerId }),
 		{
 			$inc: { messageCount: parsed.length },
 			$set: { updatedAt: at, ...c.expiry(at) },
@@ -45,13 +51,14 @@ export async function append(
 			createdAt: at,
 			...((actions[i]?.length ?? 0) > 0 ? { actions: actions[i] } : {}),
 			...c.expiry(at),
+			...c.scope,
 		}),
 	);
 	if (docs.length > 0) {
 		await c.messages.insertMany(docs);
 		// A delete that ran meanwhile cannot see this batch: drop it.
 		if (!(await ownThread(c, threadId, ownerId))) {
-			await c.messages.deleteMany({ threadId, ownerId });
+			await c.messages.deleteMany(scoped(c, { threadId, ownerId }));
 			throw notFound(threadId);
 		}
 	}
@@ -66,7 +73,9 @@ export async function append(
 async function slide(c: Ctx, threadId: string, ownerId: string, at: number) {
 	const expiry = c.expiry(at);
 	if (Object.keys(expiry).length === 0) return;
-	await c.messages.updateMany({ threadId, ownerId }, { $set: expiry });
+	await c.messages.updateMany(scoped(c, { threadId, ownerId }), {
+		$set: expiry,
+	});
 }
 
 export async function load(
@@ -77,18 +86,20 @@ export async function load(
 ): Promise<LoadedThread | undefined> {
 	const doc = await ownThread(c, threadId, ownerId);
 	if (!doc) return undefined;
-	const thread = toThread(doc);
+	const thread = toThread(doc, c.scope);
 	let after = 0;
 	if (opts.sinceSummary && thread.summary) {
-		const through = await c.messages.findOne({
-			_id: thread.summary.throughMessageId,
-			threadId,
-			ownerId,
-		});
+		const through = await c.messages.findOne(
+			scoped(c, {
+				_id: thread.summary.throughMessageId,
+				threadId,
+				ownerId,
+			}),
+		);
 		after = (through?.['seq'] as number | undefined) ?? 0;
 	}
 	const docs = await c.messages
-		.find({ threadId, ownerId, seq: { $gt: after } })
+		.find(scoped(c, { threadId, ownerId, seq: { $gt: after } }))
 		.sort({ seq: 1 })
 		.toArray();
 	return {
@@ -105,11 +116,9 @@ export async function setSummary(
 	input: SummaryInput,
 ): Promise<ThreadSummary> {
 	if (!(await ownThread(c, threadId, ownerId))) throw notFound(threadId);
-	const through = await c.messages.findOne({
-		_id: input.throughMessageId,
-		threadId,
-		ownerId,
-	});
+	const through = await c.messages.findOne(
+		scoped(c, { _id: input.throughMessageId, threadId, ownerId }),
+	);
 	if (!through) {
 		throw new MemoryError(
 			'MESSAGE_NOT_FOUND',
@@ -124,7 +133,7 @@ export async function setSummary(
 		createdAt: at,
 	};
 	const done = await c.threads.updateOne(
-		{ _id: threadId, ownerId },
+		scoped(c, { _id: threadId, ownerId }),
 		{ $set: { summary, updatedAt: at, ...c.expiry(at) } },
 	);
 	if (done.matchedCount === 0) throw notFound(threadId);

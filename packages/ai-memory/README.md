@@ -55,8 +55,10 @@ into a rolling summary; the last 6 are kept and a tool call never loses its resu
 
 `@nxgt/ai-memory/mongo` keeps threads and messages in two collections. It takes
 any object with the few collection methods it calls: a `Collection` of the
-`mongodb` driver, or a scoped collection of `@nxgt/mongo`. It imports no client.
-It needs the `mongodb` driver 6 or later.
+`mongodb` driver. It imports no client. A scoped collection of `@nxgt/mongo`
+does not fit (it has no `insertOne`, `find` cursor or `findOneAndUpdate`): pass
+its driver collection (`.raw`) with the `scope` option, see
+[multi-tenant](docs/guide/memory.md#multi-tenant-collections). It needs the `mongodb` driver 6 or later.
 
 ```ts
 import {
@@ -80,6 +82,9 @@ const store = mongoMemory({
 	expireAfterSeconds: 60 * 60 * 24 * 30, // optional; omit it to keep everything
 });
 ```
+
+For several tenants in the same collections, add `scope: { tenantId }` and
+build the indexes with `scopedThreadIndexes({ prefix: { tenantId: 1 } })`.
 
 It passes `memoryStoreContract`. `updateAction` is one atomic write that
 matches only a `pending` action. Without `expireAfterSeconds`, leave
@@ -135,7 +140,7 @@ The factory returns a fresh, empty store each time. The suite runs under
 | `inProcessMemory({ now? })`                                                                        | an in-process store (options: `InProcessMemoryOptions`); `now` is the clock in epoch ms                                                                     |
 | `compact(messages, { budget, summarize, keepLast?, truncateToolResultsTo?, summary?, estimate? })` | cuts old tool results, then folds the oldest messages into a summary; returns `{ summary?, throughMessageId?, messages, tokens }`                           |
 | `summarizeWith(model, { system?, maxTokens?, signal? })`                                           | a `summarize` for `compact` backed by an `@nxgt/ai-core` model adapter                                                                                      |
-| `MemoryError`, `MEMORY_ERROR_CODES`                                                                | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR`, `INVALID_OWNER` or `EMPTY_SUMMARY`                        |
+| `MemoryError`, `MEMORY_ERROR_CODES`                                                                | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR`, `INVALID_OWNER`, `INVALID_SCOPE` or `EMPTY_SUMMARY`       |
 | `messageSchema`, `threadSchema`, `storedMessageSchema`, `summarySchema`                            | the zod shapes of a message, a thread, a stored message and a summary                                                                                       |
 | `mongoMemory({ threads, messages, expireAfterSeconds?, now? })`                                    | from `@nxgt/ai-memory/mongo`: a store over two MongoDB collections                                                                                          |
 | `threadFields`, `messageFields`, `threadIndexes`, `messageIndexes`, `expiresAtIndex`               | from `@nxgt/ai-memory/mongo`: the stored field names and the indexes to create                                                                              |

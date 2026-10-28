@@ -168,7 +168,10 @@ tool's `result` when there is one.
 collections you give it. The collections only need `insertOne`, `insertMany`,
 `findOne`, `find` (with `sort`, `limit`, `toArray`), `findOneAndUpdate`,
 `updateOne`, `deleteOne` and `deleteMany`: a `mongodb` driver `Collection`
-(version 6 or later) has them, and so does a scoped collection of `@nxgt/mongo`.
+(version 6 or later) has them. A scoped collection of `@nxgt/mongo` does not
+(it has no `insertOne`, no `find` cursor and no `findOneAndUpdate`): pass the
+driver collection (`.raw`) together with the `scope` option, see
+[Multi-tenant collections](#multi-tenant-collections).
 
 ```ts
 import { mongoMemory } from '@nxgt/ai-memory/mongo';
@@ -196,6 +199,52 @@ for (const { key, ...options } of messageIndexes) {
 
 The messages' unique index on `ownerId, threadId, seq` is what keeps two
 appends from sharing a position.
+
+### Multi-tenant collections
+
+An application that keeps one `threads` and one `messages` collection for all
+its tenants gives `mongoMemory` a `scope`. The scope's fields are merged into
+every filter the store sends (threads, messages and actions), stamped on every
+inserted document, and never written by an update, so two tenants with the
+same `ownerId` (and the same action ids) never see each other's documents.
+`Thread` objects returned to the caller do not carry the scope fields.
+
+```ts
+import {
+	mongoMemory,
+	scopedMessageIndexes,
+	scopedThreadIndexes,
+} from '@nxgt/ai-memory/mongo';
+
+// Once: every index led by the tenant key. The TTL index stays single-field.
+for (const { key, ...options } of scopedThreadIndexes({
+	prefix: { tenantId: 1 },
+})) {
+	await db.collection('threads').createIndex(key, options);
+}
+for (const { key, ...options } of scopedMessageIndexes({
+	prefix: { tenantId: 1 },
+})) {
+	await db.collection('messages').createIndex(key, options);
+}
+
+// Per request or per tenant: the driver collections (`.raw` on a scoped
+// @nxgt/mongo collection), plus the scope.
+const store = mongoMemory({
+	threads: db.collection('threads'),
+	messages: db.collection('messages'),
+	scope: { tenantId: 'school-12' },
+});
+```
+
+A scope value is a string, a finite number, a boolean or a BSON value the
+driver compares by value, such as an `ObjectId`. A name the store writes itself
+(`ownerId`, `threadId`, `seq`, `_id`, `meta`, ...), a name starting with `$` or
+holding a `.`, and a plain object or array value (which would become a query
+operator) are refused with `INVALID_SCOPE` when the store is built. The store
+is cheap to build, so one per tenant is fine. Documents written before you
+added a scope have no scope field and are invisible to the scoped store:
+backfill them first.
 
 ### Stored fields
 

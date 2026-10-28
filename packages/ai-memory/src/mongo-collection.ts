@@ -10,8 +10,10 @@ export interface MongoCursor {
 
 /**
  * The slice of a MongoDB collection the store uses. A `Collection` of the
- * `mongodb` driver, or a scoped collection of `@nxgt/mongo`, satisfies it as
- * is; this package imports no client.
+ * `mongodb` driver satisfies it as is; this package imports no client. A
+ * scoped collection of `@nxgt/mongo` does not (it has no `insertOne`, no
+ * `find` cursor and no `findOneAndUpdate`): pass the driver collection
+ * (`.raw`) and the `scope` option of `mongoMemory` instead.
  */
 export interface MongoCollection {
 	insertOne(doc: MongoDoc): Promise<unknown>;

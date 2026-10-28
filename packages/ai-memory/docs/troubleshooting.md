@@ -8,6 +8,7 @@
 - [`compact` returns more tokens than `budget`](#compact-returns-more-tokens-than-budget)
 - [The summary forgets what the previous one said](#the-summary-forgets-what-the-previous-one-said)
 - [The model sees `{ truncated: true, preview }` as a tool result](#the-model-sees--truncated-true-preview--as-a-tool-result)
+- [`MemoryError` INVALID_SCOPE](#memoryerror-invalid_scope)
 - [`MemoryError` EMPTY_SUMMARY](#memoryerror-empty_summary)
 - [Mongo store: `E11000 duplicate key` on `ownerId_1_threadId_1_seq_1`](#mongo-store-e11000-duplicate-key-on-ownerid_1_threadid_1_seq_1)
 - [Mongo store: expired threads and messages are still read](#mongo-store-expired-threads-and-messages-are-still-read)
@@ -47,6 +48,16 @@ if (!thread) return notFound();
 **When:** any call throws `ownerId must be a non-empty string.`
 **Why:** the owner id is empty or missing, which would put every caller in one scope.
 **Fix:** resolve the signed-in user before calling the store.
+
+## `MemoryError` INVALID_SCOPE
+
+**When:** `mongoMemory` throws `Scope field "…" …` while it is built.
+**Why:** a scope field is named like a field the store writes (`ownerId`, `threadId`, `seq`, `_id`, `meta`, ...), starts with `$`, holds a `.`, or its value is not a string, a finite number, a boolean or a BSON value such as an `ObjectId`.
+**Fix:** use a tenant field of your own (`tenantId`) with a primitive or `ObjectId` value:
+
+```ts
+mongoMemory({ threads, messages, scope: { tenantId: 'school-12' } });
+```
 
 ## `updateAction` returns undefined
 
