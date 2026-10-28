@@ -152,7 +152,11 @@ A body over 4 MiB answers `413`; an invalid JSON body answers `400` (`-32700`).
 
 ## Test your server
 
-Link a client to the server in memory. `InMemoryTransport` comes from the MCP SDK (`@modelcontextprotocol/sdk`, installed with this package), not from `@nxgt/ai-mcp`:
+Link a client to the server in memory. `InMemoryTransport` comes from the MCP SDK, which is a dependency of `@nxgt/ai-mcp`, not something your project imports from. To import it yourself (a custom transport, a test), add it as a dev dependency so your own range and lockfile name it:
+
+```sh
+bun add -d @modelcontextprotocol/sdk
+```
 
 ```ts
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';

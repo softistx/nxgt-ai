@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { type AnyTool, executeTool } from '@nxgt/ai-core';
-import { createTestServer, SECRET, type Seen } from '../test/server';
-import { McpClientError, type McpToolsOptions, mcpTools } from './client';
+import { createTestServer, SECRET, type Seen } from '../../test/server';
+import { McpClientError, type McpToolsOptions, mcpTools } from './index';
 
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => {
@@ -56,7 +56,10 @@ describe('mcpTools: listing', () => {
 	it('refuses a tool name the model cannot use, naming the include option', async () => {
 		const error = await connect().catch((e) => e);
 		expect(error).toBeInstanceOf(McpClientError);
-		expect(error).toMatchObject({ code: 'INVALID_TOOL', tool: 'bad.name' });
+		expect(error).toMatchObject({
+			code: 'INVALID_TOOL_DEFINITION',
+			tool: 'bad.name',
+		});
 	});
 
 	it('keeps only the allow-listed tools', async () => {
@@ -64,9 +67,9 @@ describe('mcpTools: listing', () => {
 		expect(tools.map((t) => t.name)).toEqual(['echo']);
 	});
 
-	it('throws TOOL_NOT_FOUND for an allow-listed name the server lacks', async () => {
+	it('throws UNKNOWN_TOOL for an allow-listed name the server lacks', async () => {
 		const error = await connect({ include: ['echo', 'nope'] }).catch((e) => e);
-		expect(error).toMatchObject({ code: 'TOOL_NOT_FOUND', tool: 'nope' });
+		expect(error).toMatchObject({ code: 'UNKNOWN_TOOL', tool: 'nope' });
 	});
 
 	it('prefixes the model name but calls the server name', async () => {

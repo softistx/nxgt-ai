@@ -77,6 +77,7 @@ export function toContent(blocks: unknown): McpContent[] {
 
 const NOTE_FULL = 'Ask again with narrower arguments.';
 
+// Temporary, until #76
 /**
  * The output as is when its JSON fits `max`, else a truncation marker whose
  * own JSON also fits `max`. Throws when the output cannot be serialised.
@@ -108,14 +109,47 @@ export function fitOutput(
 	return marker('', '');
 }
 
-/** A failure the model reads: the code only, in the message too. */
+/** A server code the model may read: UPPER_SNAKE, at most 40 characters. */
+const SERVER_CODE = /^[A-Z][A-Z0-9_]{0,39}$/;
+
+/**
+ * The code in an `isError` text that is exactly `{"code":"<CODE>"}` (what
+ * `@nxgt/ai-mcp/server` sends), else undefined: any other text stays unread.
+ */
+export function serverCodeOf(content: unknown): string | undefined {
+	if (!Array.isArray(content) || content.length !== 1) return undefined;
+	const text = (content[0] as Record<string, unknown> | undefined)?.['text'];
+	if (typeof text !== 'string' || text.length > 80) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(text);
+		if (
+			typeof parsed === 'object' &&
+			parsed !== null &&
+			Object.keys(parsed).join() === 'code'
+		) {
+			const code = (parsed as { code: unknown }).code;
+			if (typeof code === 'string' && SERVER_CODE.test(code)) {
+				return code;
+			}
+		}
+	} catch {
+		// Not JSON: the text is never forwarded.
+	}
+	return undefined;
+}
+
+/**
+ * A failure the model reads: the code only, in the message too, plus the
+ * server's own code when it is a bare code.
+ */
 export function toolFailure(
 	code: McpToolFailureCode,
 	cause?: unknown,
+	serverCode?: string,
 ): AiError {
 	return new AiError(
 		'TOOL_FAILED',
-		`The MCP tool failed: ${JSON.stringify({ code })}`,
+		`The MCP tool failed: ${JSON.stringify(serverCode === undefined ? { code } : { code, serverCode })}`,
 		cause === undefined ? {} : { cause },
 	);
 }
