@@ -1,3 +1,5 @@
+import { MemoryError } from './errors';
+
 /**
  * The fields the store writes on a thread document. `_id` is the thread id.
  * `expiresAt` is a `Date`, set only with `expireAfterSeconds`.
@@ -55,7 +57,17 @@ const prefixed = (
 	list: readonly MongoIndex[],
 	{ prefix }: IndexPrefix,
 ): MongoIndex[] =>
-	list.map((index) => ({ ...index, key: { ...prefix, ...index.key } }));
+	list.map((index) => {
+		for (const name of Object.keys(prefix)) {
+			if (name in index.key) {
+				throw new MemoryError(
+					'INVALID_SCOPE',
+					`Index prefix field "${name}" is already a key of the index.`,
+				);
+			}
+		}
+		return { ...index, key: { ...prefix, ...index.key } };
+	});
 
 /** `threadIndexes` led by the scope's keys, for a `mongoMemory({ scope })` store. */
 export const scopedThreadIndexes = (options: IndexPrefix): MongoIndex[] =>

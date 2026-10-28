@@ -23,7 +23,7 @@ Nothing yet.
 - **`@nxgt/ai-memory` 0.1.0** — Conversation memory scoped by owner:
   - `MemoryStore` and `inProcessMemory()`: threads, messages, a rolling summary and proposed actions, with `memoryStoreContract` in `@nxgt/ai-memory/testing` to test your own stores.
   - `compact` and `summarizeWith(model)`: old tool results trimmed first, then a rolling summary, never splitting a tool call from its result.
-  - `@nxgt/ai-memory/mongo`: `mongoMemory` over two collections, with optional expiry.
+  - `@nxgt/ai-memory/mongo`: `mongoMemory` over two collections, with optional expiry, and a `scope` option plus `scopedThreadIndexes` / `scopedMessageIndexes` for collections shared by several tenants.
   - `@nxgt/ai-memory/redis`: `redisMemory` over the `@nxgt/redis` client, with optional expiry.
 
 Releases are listed in `CHANGELOG.md`.

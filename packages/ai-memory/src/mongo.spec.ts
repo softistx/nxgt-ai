@@ -359,6 +359,7 @@ describe('mongoMemory scope', () => {
 			{ $or: 'x' },
 			{ 'a.b': 'x' },
 			{ '': 'x' },
+			JSON.parse('{"__proto__":{"_bsontype":"x"}}'),
 			{ tenantId: { $ne: 'a' } },
 			{ tenantId: ['a'] },
 			{ tenantId: null },
@@ -405,6 +406,9 @@ describe('mongoMemory scope', () => {
 			},
 			{ key: { tenantId: 1, region: -1, ownerId: 1, 'actions.id': 1 } },
 		]);
+		expect(() => scopedThreadIndexes({ prefix: { ownerId: 1 } })).toThrow(
+			expect.objectContaining({ code: 'INVALID_SCOPE' }),
+		);
 		// The unprefixed exports are untouched.
 		expect(threadIndexes).toEqual([{ key: { ownerId: 1, _id: -1 } }]);
 		const { db } = await tenants();

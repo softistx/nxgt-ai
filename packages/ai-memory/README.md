@@ -84,7 +84,24 @@ const store = mongoMemory({
 ```
 
 For several tenants in the same collections, add `scope: { tenantId }` and
-build the indexes with `scopedThreadIndexes({ prefix: { tenantId: 1 } })`.
+build the indexes with `scopedThreadIndexes` and `scopedMessageIndexes`.
+
+```ts
+import { mongoMemory, scopedThreadIndexes } from '@nxgt/ai-memory/mongo';
+
+for (const { key, ...options } of scopedThreadIndexes({
+	prefix: { tenantId: 1 },
+})) {
+	await db.collection('threads').createIndex(key, options);
+}
+const store = mongoMemory({
+	threads,
+	messages,
+	scope: { tenantId: 'school-12' },
+});
+```
+
+The same for `scopedMessageIndexes` on the messages collection.
 
 It passes `memoryStoreContract`. `updateAction` is one atomic write that
 matches only a `pending` action. Without `expireAfterSeconds`, leave
@@ -134,20 +151,20 @@ The factory returns a fresh, empty store each time. The suite runs under
 
 ## API
 
-| Export                                                                                             | What it is                                                                                                                                                  |
-| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MemoryStore`                                                                                      | the port: `createThread`, `getThread`, `listThreads`, `append`, `load`, `setSummary`, `findAction`, `updateAction`, `deleteThread`, each with the `ownerId` |
-| `inProcessMemory({ now? })`                                                                        | an in-process store (options: `InProcessMemoryOptions`); `now` is the clock in epoch ms                                                                     |
-| `compact(messages, { budget, summarize, keepLast?, truncateToolResultsTo?, summary?, estimate? })` | cuts old tool results, then folds the oldest messages into a summary; returns `{ summary?, throughMessageId?, messages, tokens }`                           |
-| `summarizeWith(model, { system?, maxTokens?, signal? })`                                           | a `summarize` for `compact` backed by an `@nxgt/ai-core` model adapter                                                                                      |
-| `MemoryError`, `MEMORY_ERROR_CODES`                                                                | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR`, `INVALID_OWNER`, `INVALID_SCOPE` or `EMPTY_SUMMARY`       |
-| `messageSchema`, `threadSchema`, `storedMessageSchema`, `summarySchema`                            | the zod shapes of a message, a thread, a stored message and a summary                                                                                       |
-| `mongoMemory({ threads, messages, expireAfterSeconds?, now? })`                                    | from `@nxgt/ai-memory/mongo`: a store over two MongoDB collections                                                                                          |
-| `threadFields`, `messageFields`, `threadIndexes`, `messageIndexes`, `expiresAtIndex`               | from `@nxgt/ai-memory/mongo`: the stored field names and the indexes to create                                                                              |
-| `redisMemory({ client, prefix?, expireAfterSeconds?, now? })`                                      | from `@nxgt/ai-memory/redis`: a store over Redis keys                                                                                                       |
-| `RedisMemoryOptions`                                                                               | from `@nxgt/ai-memory/redis`: the options of `redisMemory`                                                                                                  |
-| `RedisCommands`                                                                                    | from `@nxgt/ai-memory/redis`: the one method of the client the store calls, `send(command, args)`                                                           |
-| `memoryStoreContract(make)`                                                                        | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `inProcessMemory`                                                                      |
+| Export                                                                                                                                                  | What it is                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MemoryStore`                                                                                                                                           | the port: `createThread`, `getThread`, `listThreads`, `append`, `load`, `setSummary`, `findAction`, `updateAction`, `deleteThread`, each with the `ownerId` |
+| `inProcessMemory({ now? })`                                                                                                                             | an in-process store (options: `InProcessMemoryOptions`); `now` is the clock in epoch ms                                                                     |
+| `compact(messages, { budget, summarize, keepLast?, truncateToolResultsTo?, summary?, estimate? })`                                                      | cuts old tool results, then folds the oldest messages into a summary; returns `{ summary?, throughMessageId?, messages, tokens }`                           |
+| `summarizeWith(model, { system?, maxTokens?, signal? })`                                                                                                | a `summarize` for `compact` backed by an `@nxgt/ai-core` model adapter                                                                                      |
+| `MemoryError`, `MEMORY_ERROR_CODES`                                                                                                                     | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR`, `INVALID_OWNER`, `INVALID_SCOPE` or `EMPTY_SUMMARY`       |
+| `messageSchema`, `threadSchema`, `storedMessageSchema`, `summarySchema`                                                                                 | the zod shapes of a message, a thread, a stored message and a summary                                                                                       |
+| `mongoMemory({ threads, messages, scope?, expireAfterSeconds?, now? })`                                                                                 | from `@nxgt/ai-memory/mongo`: a store over two MongoDB collections                                                                                          |
+| `threadFields`, `messageFields`, `threadIndexes`, `messageIndexes`, `scopedThreadIndexes`, `scopedMessageIndexes`, `expiresAtIndex`, types `MongoScope` | from `@nxgt/ai-memory/mongo`: the stored field names and the indexes to create                                                                              |
+| `redisMemory({ client, prefix?, expireAfterSeconds?, now? })`                                                                                           | from `@nxgt/ai-memory/redis`: a store over Redis keys                                                                                                       |
+| `RedisMemoryOptions`                                                                                                                                    | from `@nxgt/ai-memory/redis`: the options of `redisMemory`                                                                                                  |
+| `RedisCommands`                                                                                                                                         | from `@nxgt/ai-memory/redis`: the one method of the client the store calls, `send(command, args)`                                                           |
+| `memoryStoreContract(make)`                                                                                                                             | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `inProcessMemory`                                                                      |
 
 ## Traps
 

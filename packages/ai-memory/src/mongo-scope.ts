@@ -40,7 +40,12 @@ export function checkScope(scope: MongoScope | undefined): MongoDoc {
 	if (scope === undefined) return {};
 	const copy: MongoDoc = {};
 	for (const [key, value] of Object.entries(scope)) {
-		if (key === '' || key.startsWith('$') || key.includes('.')) {
+		if (
+			key === '' ||
+			key === '__proto__' ||
+			key.startsWith('$') ||
+			key.includes('.')
+		) {
 			throw bad(`Scope field "${key}" is not a plain field name.`);
 		}
 		if (reserved.has(key)) {
