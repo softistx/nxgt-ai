@@ -15,7 +15,7 @@
     },
     "packages/ai-alxia": {
       "name": "@nxgt/ai-alxia",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "devDependencies": {
         "@alxia/core": "^0.17.0",
         "@alxia/language": "^0.3.13",
