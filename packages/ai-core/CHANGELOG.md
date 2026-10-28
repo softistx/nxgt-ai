@@ -1,5 +1,11 @@
 # @nxgt/ai-core
 
+## 0.3.0
+
+### Minor Changes
+
+- [#94](https://github.com/softistx/nxgt-ai/pull/94) [`62fac94`](https://github.com/softistx/nxgt-ai/commit/62fac94e52e4cc8a4c5dd5379b2968b5af3ff611) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `ProposedActionStatus` gains `running`, the claim of an action before it runs. `runConfirmedAction` accepts a `pending` or `running` action (a claimed action is not checked against its expiry again), and `actionOutcomeMessage` refuses a `running` action like a `pending` one. The guide documents the claim, run, record flow.
+
 ## 0.2.0
 
 ### Minor Changes

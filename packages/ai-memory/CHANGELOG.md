@@ -1,5 +1,16 @@
 # @nxgt/ai-memory
 
+## 0.3.0
+
+### Minor Changes
+
+- [#94](https://github.com/softistx/nxgt-ai/pull/94) [`62fac94`](https://github.com/softistx/nxgt-ai/commit/62fac94e52e4cc8a4c5dd5379b2968b5af3ff611) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `updateAction(id, ownerId, patch, { from })` takes the status, or list of statuses, the action must have (default `pending`), so an action can be claimed (`pending` to `running`) and its outcome recorded (`running` to `confirmed` or `failed`, with the tool `result`). An illegal transition throws `MemoryError('INVALID_ACTION_TRANSITION')`. A stored failed `result` keeps its error code only: the message is stored empty and the issues are dropped. The in-process, Mongo and Redis stores and `memoryStoreContract` implement it.
+
+### Patch Changes
+
+- Updated dependencies [[`62fac94`](https://github.com/softistx/nxgt-ai/commit/62fac94e52e4cc8a4c5dd5379b2968b5af3ff611)]:
+  - @nxgt/ai-core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

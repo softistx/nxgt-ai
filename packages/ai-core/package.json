@@ -1,6 +1,6 @@
 {
 	"name": "@nxgt/ai-core",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Bun-native AI agent core: messages, Zod tools, the model port and the agent loop",
 	"license": "MIT",
 	"type": "module",
