@@ -1,4 +1,9 @@
-import type { AiError, AiIssue, WireErrorCode } from './errors';
+import type {
+	AiError,
+	AiIssue,
+	ToolErrorDetail,
+	WireErrorCode,
+} from './errors';
 
 export type Role = 'user' | 'assistant' | 'tool';
 
@@ -33,6 +38,11 @@ export interface ToolErrorInfo {
 	code: WireErrorCode;
 	message: string;
 	issues?: readonly AiIssue[];
+	/**
+	 * The tool's own reasons (a GraphQL operation's error codes), present only
+	 * when the tool gave some. `code` stays the SDK's (`TOOL_FAILED`).
+	 */
+	details?: readonly ToolErrorDetail[];
 }
 
 interface ToolResultBase {
@@ -104,6 +114,7 @@ export function errorResult(
 ): ToolResultPart {
 	const info: ToolErrorInfo = { code: error.code, message: error.message };
 	if (error.issues.length > 0) info.issues = error.issues;
+	if (error.details.length > 0) info.details = error.details;
 	return {
 		type: 'tool-result',
 		callId: call.id,

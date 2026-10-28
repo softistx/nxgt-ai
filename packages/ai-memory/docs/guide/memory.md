@@ -195,9 +195,20 @@ terminal action (`confirmed`, `failed`, `rejected`, `expired`) never moves.
 The outcome is the action's `result`, the tool result as `runConfirmedAction`
 returns it: the output when `confirmed`, the error code when `failed`. The store
 keeps an output as given (keep tool outputs small, as they are in messages)
-but keeps an error as its code only: the message and the issues are dropped
-(`message` is stored empty), so an app can expose `result` to a client.
-`actionOutcomeMessage` likewise names only the code.
+but keeps an error as its code and its `details`: the message and the issues
+are dropped (`message` is stored empty), so an app can expose `result` to a
+client. `details` is the tool's own structured reason (see `ToolErrorDetail` in
+`@nxgt/ai-core`), cleaned again on the way in (plain codes, scalar params, no
+messages), so a failed `graphqlTools` mutation keeps the operation's code:
+
+```ts
+const stored = await store.findAction(id, owner);
+if (stored?.result?.isError) {
+	const reason = stored.result.error.details?.[0]?.code; // 'auth.errors.forbidden'
+}
+```
+
+`actionOutcomeMessage` still names only the code.
 
 A crash between the claim and the write leaves the action `running` with no
 `result`: nobody can tell whether the tool ran. The store does not time a

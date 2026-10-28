@@ -188,6 +188,7 @@ export function failure(errors: readonly ToolGraphqlError[]): AiError {
 	return new AiError(
 		'TOOL_FAILED',
 		`The GraphQL operation failed: ${JSON.stringify(errors)}`,
+		{ details: errors },
 	);
 }
 
@@ -198,6 +199,6 @@ export function internalFailure(cause: unknown): AiError {
 	return new AiError(
 		'TOOL_FAILED',
 		`The GraphQL operation failed: ${JSON.stringify(INTERNAL)}`,
-		{ cause },
+		{ cause, details: INTERNAL },
 	);
 }

@@ -88,6 +88,21 @@ export function contractActions(
 		},
 	} as const;
 
+	const badWithDetails = {
+		...bad,
+		error: {
+			...bad.error,
+			details: [
+				{
+					code: 'auth.errors.forbidden',
+					fields: ['id'],
+					params: { n: 2 },
+					message: 'leaked',
+				},
+			],
+		},
+	};
+
 	const seeded = async () => {
 		const store = await make();
 		const t = await store.createThread({ ownerId: 'a' });
@@ -130,6 +145,30 @@ export function contractActions(
 			isError: true,
 			error: { code: 'TOOL_FAILED' },
 		});
+		expect(JSON.stringify(stored)).not.toContain('boom');
+	});
+
+	it("keeps the tool's error details of a failed run, cleaned", async () => {
+		const store = await seeded();
+		await store.updateAction('act-1', 'a', { status: 'running' });
+		await store.updateAction(
+			'act-1',
+			'a',
+			{ status: 'failed', result: badWithDetails },
+			{ from: 'running' },
+		);
+		const stored = await store.findAction('act-1', 'a');
+		expect(stored?.result).toMatchObject({
+			isError: true,
+			error: {
+				code: 'TOOL_FAILED',
+				message: '',
+				details: [
+					{ code: 'auth.errors.forbidden', fields: ['id'], params: { n: 2 } },
+				],
+			},
+		});
+		expect(JSON.stringify(stored)).not.toContain('leaked');
 		expect(JSON.stringify(stored)).not.toContain('boom');
 	});
 

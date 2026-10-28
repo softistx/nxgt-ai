@@ -155,7 +155,7 @@ The model never gets a GraphQL message or a stack, only codes.
 Two outcomes:
 
 - **A query that partly failed** (some root value is not null): the call succeeds with `{ data, errors: [{ code, path, fields?, params? }] }`.
-- **Everything failed, or any mutation error** (`data` is null, every root value is null, or the operation is a mutation with any error): the call is an error, `TOOL_FAILED`, whose message is `The GraphQL operation failed: [{"code":"NOT_FOUND","fields":["id"]}]`. A confirmed mutation becomes `failed`.
+- **Everything failed, or any mutation error** (`data` is null, every root value is null, or the operation is a mutation with any error): the call is an error, `TOOL_FAILED`, whose message is `The GraphQL operation failed: [{"code":"NOT_FOUND","fields":["id"]}]`. A confirmed mutation becomes `failed`. The same errors are on the result as data: `error.details` is the list of `{ code, path?, fields?, params? }` the message prints, so read `result.error.details?.[0]?.code` (for example `auth.errors.forbidden`) instead of parsing the message. `@nxgt/ai-memory` keeps `details` when it stores the failed action.
 - **A throwing `context` builder** fails the call the same way with `INTERNAL_ERROR`; its message and stack are never shown (an abort is rethrown as is).
 
 ### Mapping errors with `mapErrors`

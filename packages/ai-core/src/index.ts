@@ -12,6 +12,8 @@ export {
 	type AiErrorCode,
 	type AiErrorOptions,
 	type AiIssue,
+	cleanErrorDetails,
+	type ToolErrorDetail,
 	type WireErrorCode,
 } from './errors';
 export { estimateTokens } from './estimate-tokens';

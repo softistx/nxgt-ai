@@ -38,6 +38,22 @@ const toolResultPart = z.discriminatedUnion('isError', [
 				.array(z.object({ path: z.string(), message: z.string() }))
 				.readonly()
 				.optional(),
+			details: z
+				.array(
+					z.object({
+						code: z.string(),
+						path: z.array(z.union([z.string(), z.number()])).optional(),
+						fields: z.array(z.string()).optional(),
+						params: z
+							.record(
+								z.string(),
+								z.union([z.string(), z.number(), z.boolean()]),
+							)
+							.optional(),
+					}),
+				)
+				.readonly()
+				.optional(),
 		}),
 	}),
 ]);

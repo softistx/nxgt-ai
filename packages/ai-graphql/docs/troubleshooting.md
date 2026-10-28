@@ -67,7 +67,7 @@ try {
 
 **When:** a tool result is an error whose message ends with a JSON list of `{ code, … }`.
 **Why:** a mutation reported an error, or a query returned no `data` or only null root values; or the `context` builder or serialisation failed (`INTERNAL_ERROR`).
-**Fix:** read the codes. Fix the resolver or give it an `extensions.code` for the model to act on.
+**Fix:** read the codes: `result.error.details` holds them as data (`code`, `path`, `fields`, `params`), also in the action `@nxgt/ai-memory` stores, so never parse the message. Fix the resolver or give it an `extensions.code` for the model to act on.
 
 ## The model sees `INTERNAL_ERROR`
 
