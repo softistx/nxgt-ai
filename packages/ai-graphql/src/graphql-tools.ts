@@ -1,0 +1,159 @@
+import { type AnyTool, defineTool, type ToolContext } from '@nxgt/ai-core';
+import {
+	type DocumentNode,
+	execute,
+	GraphQLError,
+	type GraphQLSchema,
+} from 'graphql';
+import { z } from 'zod';
+import { compileOperation } from './document';
+import { GraphqlToolsError } from './errors';
+import { parseForbidden } from './forbid';
+import {
+	failure,
+	fitOutput,
+	type GraphqlToolOutput,
+	internalFailure,
+	rootsAllNull,
+	toToolError,
+} from './result';
+
+/**
+ * One allow-listed operation. This is the shape `@nxgt/ai-graphql/codegen`
+ * will emit as a manifest: `variables` is the generated `z<Op>Variables`.
+ */
+export interface GraphqlOperation {
+	/** The tool name: letters, digits, `_` and `-`, at most 64. */
+	name: string;
+	/** Read by the model to decide when to call the tool. */
+	description: string;
+	/** The operation, as source text or a parsed document (fragments included). */
+	document: string | DocumentNode;
+	/** A Zod object schema of the operation's variables; default: no variables. */
+	variables?: z.ZodObject;
+	/** Which operation of the document to run when it holds several. */
+	operationName?: string;
+}
+
+export interface GraphqlToolsOptions<TContext = unknown> {
+	/** Executable schema, resolvers included; the operations run against it. */
+	schema: GraphQLSchema;
+	/** The allow-list: nothing outside it is reachable by the model. */
+	operations: readonly GraphqlOperation[];
+	/**
+	 * Builds the GraphQL context of one call from the tool context (the run's
+	 * `context`, the abort signal). Default: the run's `context` as is.
+	 */
+	context?: (tool: ToolContext<TContext>) => unknown | PromiseLike<unknown>;
+	/** `Type.field` names no operation may select; checked when building. */
+	forbidFields?: readonly string[];
+	/** Longest serialised result handed to the model; default 20000. */
+	maxResultChars?: number;
+}
+
+export const DEFAULT_MAX_RESULT_CHARS = 20_000;
+
+const NO_VARIABLES = z.object({});
+
+function buildTool<TContext>(
+	op: GraphqlOperation,
+	options: GraphqlToolsOptions<TContext>,
+	forbidden: ReadonlySet<string>,
+	max: number,
+): AnyTool {
+	const { document, node } = compileOperation(op, options.schema, forbidden);
+	const operationName = node.name?.value;
+	return defineTool({
+		name: op.name,
+		description: op.description,
+		input: op.variables ?? NO_VARIABLES,
+		confirm: node.operation === 'mutation',
+		async execute(variables, tool: ToolContext<TContext>) {
+			tool.signal.throwIfAborted();
+			let contextValue: unknown = tool.context;
+			if (options.context) {
+				try {
+					contextValue = await options.context(tool);
+				} catch (cause) {
+					tool.signal.throwIfAborted();
+					throw internalFailure(cause);
+				}
+			}
+			let result: Awaited<ReturnType<typeof execute>>;
+			try {
+				result = await execute({
+					schema: options.schema,
+					document,
+					variableValues: variables as Record<string, unknown>,
+					contextValue,
+					...(operationName === undefined ? {} : { operationName }),
+				});
+			} catch (error) {
+				tool.signal.throwIfAborted();
+				// Never the message: it can carry internals.
+				throw failure([
+					error instanceof GraphQLError
+						? toToolError(error)
+						: { code: 'INTERNAL_ERROR' },
+				]);
+			}
+			const { data, errors } = result as {
+				data?: unknown;
+				errors?: readonly GraphQLError[];
+			};
+			const mapped = errors?.map(toToolError);
+			if (
+				mapped?.length &&
+				(node.operation === 'mutation' ||
+					data === null ||
+					data === undefined ||
+					rootsAllNull(data))
+			) {
+				throw failure(mapped);
+			}
+			const output: GraphqlToolOutput = {
+				data,
+				...(mapped?.length ? { errors: mapped } : {}),
+			};
+			try {
+				return fitOutput(output, max);
+			} catch (cause) {
+				// BigInt or a cycle in the data: not serialisable.
+				throw internalFailure(cause);
+			}
+		},
+	});
+}
+
+/**
+ * Turns allow-listed GraphQL operations into tools for `runAgent`, executed in
+ * process against `schema` with graphql-js. Each operation is parsed, checked
+ * against the schema and scanned for `forbidFields` when this is called; a
+ * problem throws `GraphqlToolsError` here, never while an agent runs. A
+ * mutation becomes a tool with `confirm: true`; a query runs directly.
+ */
+export function graphqlTools<TContext = unknown>(
+	options: GraphqlToolsOptions<TContext>,
+): AnyTool[] {
+	const forbidden = parseForbidden(options.forbidFields ?? []);
+	const max = options.maxResultChars ?? DEFAULT_MAX_RESULT_CHARS;
+	if (!Number.isInteger(max) || max < 100) {
+		throw new GraphqlToolsError(
+			'INVALID_OPERATION',
+			'maxResultChars must be an integer of at least 100: a truncation marker needs room.',
+			{ operation: '' },
+		);
+	}
+	const seen = new Set<string>();
+	return options.operations.map((op) => {
+		if (seen.has(op.name)) {
+			throw new GraphqlToolsError(
+				'DUPLICATE_OPERATION',
+				`Two operations are named "${op.name}".`,
+				{ operation: op.name },
+			);
+		}
+		seen.add(op.name);
+		return buildTool(op, options, forbidden, max);
+	});
+}
