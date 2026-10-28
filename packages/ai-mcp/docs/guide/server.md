@@ -9,7 +9,8 @@ stdio or Streamable HTTP.
 - [Input and errors](#input-and-errors)
 - [Confirm tools](#confirm-tools)
 - [What clients read](#what-clients-read)
-- [Abort](#abort)
+- [Abort and timeout](#abort-and-timeout)
+- [Over fetch: methods and batches](#over-fetch-methods-and-batches)
 - [Test your server](#test-your-server)
 
 ## Serve
@@ -69,12 +70,14 @@ The tool's schema validates the arguments before `execute` runs, as for an
 agent. A failure of any kind is an MCP result with `isError: true` and a text
 that is a code and nothing else:
 
-| Text                            | Cause                                                     |
-| ------------------------------- | --------------------------------------------------------- |
-| `{"code":"INVALID_TOOL_INPUT"}` | the arguments do not match the schema                     |
-| `{"code":"UNKNOWN_TOOL"}`       | the name is not served                                    |
-| `{"code":"TOOL_FAILED"}`        | the tool or `context` threw                               |
-| `{"code":"<code>"}`             | the tool threw an `AiError`: its code (`RATE_LIMITED`, …) |
+| Text                             | Cause                                                     |
+| -------------------------------- | --------------------------------------------------------- |
+| `{"code":"INVALID_TOOL_INPUT"}`  | the arguments do not match the schema                     |
+| `{"code":"UNKNOWN_TOOL"}`        | the name is not served                                    |
+| `{"code":"TOOL_FAILED"}`         | the tool or `context` threw                               |
+| `{"code":"TOOL_TIMEOUT"}`        | the tool ran past `timeoutMs`                             |
+| `{"code":"INVALID_TOOL_OUTPUT"}` | the tool has an `output` schema and its result breaks it  |
+| `{"code":"<code>"}`              | the tool threw an `AiError`: its code (`RATE_LIMITED`, …) |
 
 No message, stack or cause is sent, so a database error or a path never
 reaches the client. Log in your tool.
@@ -110,10 +113,41 @@ This is what `mcpTools` reads, so a tool served here and used there keeps its
 name, description and schema, and a served confirm tool comes back
 `confirm: true`.
 
-## Abort
+## Abort and timeout
 
-The signal the tool receives is aborted when the client cancels the request or
-the connection closes. Pass it to `fetch` and database calls.
+The signal the tool receives is aborted when:
+
+- the client cancels the request (all transports);
+- the connection closes (stdio and `connect`);
+- over `fetch`, the HTTP client disconnects: the signal combines the MCP
+  request's with the `Request`'s own, because in stateless JSON mode the MCP
+  one is never tied to the HTTP connection;
+- `timeoutMs` passes.
+
+Pass it to `fetch` and database calls.
+
+```ts
+const server = mcpServer({
+	tools,
+	name: 'docs',
+	version: '1.0.0',
+	timeoutMs: 10_000,
+});
+```
+
+`timeoutMs` (default: no limit) aborts the tool's signal and answers
+`{"code":"TOOL_TIMEOUT"}` at once, even if the tool ignores its signal (it then
+keeps running in the background, so honour the signal). It must be a positive
+number, or `mcpServer` throws `INVALID_OPTIONS`.
+
+## Over fetch: methods and batches
+
+`fetch` serves `POST` only. Any other method (`GET` opens an SSE stream in the
+SDK, `DELETE` ends a session; there is no session here) answers `405` with
+`Allow: POST`, before anything is built.
+
+A JSON-RPC batch (a JSON array body) answers `400` with a JSON-RPC error
+(`-32600`): MCP 2025-06-18 dropped batching. Send one message per request.
 
 ## Test your server
 

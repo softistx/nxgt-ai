@@ -62,7 +62,8 @@ Bun.serve({ port: 3000, fetch: (request) => server.fetch(request) }); // or HTTP
 
 Input is validated with the tool's schema before it runs. A failed call
 answers `isError` with `{"code":"…"}` only (`INVALID_TOOL_INPUT`,
-`TOOL_FAILED`, `UNKNOWN_TOOL`, or the code of an `AiError` the tool threw).
+`TOOL_FAILED`, `UNKNOWN_TOOL`, `TOOL_TIMEOUT`, `INVALID_TOOL_OUTPUT` when a tool's
+`output` schema rejects its result, or the code of an `AiError` the tool threw).
 See the [server guide](docs/guide/server.md).
 
 ## API
@@ -80,7 +81,7 @@ See the [server guide](docs/guide/server.md).
 | `DEFAULT_MAX_RESULT_CHARS`                                       | 20000                                                                                                                                |
 | `mcpServer(options)` (`./server`)                                | Returns a `McpServerHandle`; throws `McpServerError`                                                                                 |
 | `McpServerError`, `MCP_SERVER_ERROR_CODES`, `McpServerErrorCode` | `INVALID_OPTIONS`; carries `tool`                                                                                                    |
-| `McpServerOptions`                                               | `{ tools, name, version, context?, allowConfirmTools? }`                                                                             |
+| `McpServerOptions`                                               | `{ tools, name, version, context?, allowConfirmTools?, timeoutMs? }`                                                                 |
 | `McpServerHandle`                                                | `{ stdio(), fetch(request), connect(transport) }`                                                                                    |
 | `McpContextInfo`                                                 | What `context` receives: `{ request? }`, no request over stdio or `connect`                                                          |
 
@@ -98,6 +99,7 @@ See the [server guide](docs/guide/server.md).
 - Only tools are used: resources and prompts are not (see the roadmap).
 - **Server: `confirm: true` tools are refused.** MCP has no confirmation step, so `mcpServer` throws `INVALID_OPTIONS` for one unless you pass `allowConfirmTools: true`, and then the client runs it without a human saying yes. Tools that are not `confirm` are listed with `readOnlyHint: true`, which the `mcpTools` client reads as "run directly".
 - **Server: the model never reads an error message.** A failed call is `{"code":"…"}` only: no message, stack or cause.
+- **Server: `fetch` is `POST` only and refuses batches.** Other methods answer `405` (`Allow: POST`); a JSON-RPC batch array answers `400`, since MCP 2025-06-18 dropped batching. Disconnecting aborts the tool's signal; `timeoutMs` bounds a call (`TOOL_TIMEOUT`).
 - **Server: `fetch` is stateless and unauthenticated.** One server per request, JSON answers, no session. Authenticate in your route before calling it, and build the tool context from the request in `context`.
 
 ## Install

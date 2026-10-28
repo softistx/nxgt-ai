@@ -36,6 +36,12 @@ export interface McpServerOptions<TContext = unknown> {
 	 * would run the mutation without a human saying yes.
 	 */
 	allowConfirmTools?: boolean;
+	/**
+	 * Aborts a tool that runs longer than this many milliseconds and answers
+	 * `{"code":"TOOL_TIMEOUT"}`. Default: no limit. A tool that ignores its
+	 * signal keeps running, but the client gets its answer at once.
+	 */
+	timeoutMs?: number;
 }
 
 export interface McpServerHandle {
@@ -46,6 +52,16 @@ export interface McpServerHandle {
 	/** Streamable HTTP, stateless, answered as JSON. Mount it on one route. */
 	fetch(request: Request): Promise<Response>;
 }
+
+const BATCH_REFUSED = {
+	jsonrpc: '2.0',
+	error: {
+		code: -32600,
+		message:
+			'JSON-RPC batches are not supported: send one message per request.',
+	},
+	id: null,
+};
 
 const failure = (code: string) => ({
 	isError: true as const,
@@ -63,15 +79,18 @@ function serialise(output: unknown): string {
 	return JSON.stringify(output) ?? '';
 }
 
-/**
- * Serves `@nxgt/ai-core` tools over MCP. The tool's schema validates the
- * input; a failure of any kind answers `isError` with `{"code":"…"}` and
- * nothing else: no message, stack or cause leaves the process. Tools with
- * `confirm: true` are refused (`INVALID_OPTIONS`) unless `allowConfirmTools`.
- */
-export function mcpServer<TContext = unknown>(
-	options: McpServerOptions<TContext>,
-): McpServerHandle {
+interface ServedTools {
+	byName: Map<string, AnyTool>;
+	listed: {
+		name: string;
+		description: string;
+		inputSchema: unknown;
+		annotations?: { readOnlyHint: true };
+	}[];
+}
+
+/** Validates the options and indexes the tools; throws `INVALID_OPTIONS`. */
+function assertTools(options: McpServerOptions<unknown>): ServedTools {
 	if (
 		typeof options.name !== 'string' ||
 		options.name === '' ||
@@ -81,6 +100,15 @@ export function mcpServer<TContext = unknown>(
 		throw new McpServerError(
 			'INVALID_OPTIONS',
 			'name and version are required: clients read them in the handshake.',
+		);
+	}
+	if (
+		options.timeoutMs !== undefined &&
+		!(Number.isFinite(options.timeoutMs) && options.timeoutMs > 0)
+	) {
+		throw new McpServerError(
+			'INVALID_OPTIONS',
+			'timeoutMs must be a positive number of milliseconds.',
 		);
 	}
 	const byName = new Map<string, AnyTool>();
@@ -105,74 +133,137 @@ export function mcpServer<TContext = unknown>(
 		name: tool.name,
 		description: tool.description,
 		inputSchema: tool.inputSchema,
-		...(tool.confirm ? {} : { annotations: { readOnlyHint: true } }),
+		...(tool.confirm ? {} : { annotations: { readOnlyHint: true as const } }),
 	}));
+	return { byName, listed };
+}
 
-	/** `getContext` is memoised by the caller for one HTTP request. */
-	function build(getContext: () => Promise<unknown>): Server {
-		const server = new Server(
-			{ name: options.name, version: options.version },
-			{ capabilities: { tools: {} } },
+const TIMED_OUT = Symbol('timed out');
+
+/**
+ * One MCP `Server` wired to the tools. `getContext` is memoised by the caller
+ * for one HTTP request; `requestSignal` is the HTTP request's own signal, the
+ * only one that fires when the client disconnects in stateless JSON mode.
+ */
+function buildServer(
+	options: McpServerOptions<unknown>,
+	{ byName, listed }: ServedTools,
+	getContext: () => Promise<unknown>,
+	requestSignal?: AbortSignal,
+): Server {
+	const server = new Server(
+		{ name: options.name, version: options.version },
+		{ capabilities: { tools: {} } },
+	);
+	server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: listed }));
+	server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+		const tool = byName.get(request.params.name);
+		if (!tool) return failure('UNKNOWN_TOOL');
+		let context: unknown;
+		try {
+			context = await getContext();
+		} catch {
+			return failure('TOOL_FAILED');
+		}
+		const timeout =
+			options.timeoutMs === undefined
+				? undefined
+				: AbortSignal.timeout(options.timeoutMs);
+		const signal = AbortSignal.any(
+			[extra.signal, requestSignal, timeout].filter(
+				(s): s is AbortSignal => s !== undefined,
+			),
 		);
-		server.setRequestHandler(ListToolsRequestSchema, () => ({
-			tools: listed,
-		}));
-		server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-			const tool = byName.get(request.params.name);
-			if (!tool) return failure('UNKNOWN_TOOL');
-			let context: unknown;
-			try {
-				context = await getContext();
-			} catch {
-				return failure('TOOL_FAILED');
+		try {
+			const running = executeTool(
+				tool,
+				{
+					type: 'tool-call',
+					id: String(extra.requestId),
+					name: tool.name,
+					input: request.params.arguments ?? {},
+				},
+				{ context, signal },
+			);
+			const timedOut = timeout
+				? new Promise<typeof TIMED_OUT>((resolve) =>
+						timeout.addEventListener('abort', () => resolve(TIMED_OUT)),
+					)
+				: undefined;
+			const result = await (timedOut
+				? Promise.race([running, timedOut])
+				: running);
+			if (result === TIMED_OUT || timeout?.aborted) {
+				running.catch(() => undefined);
+				return failure('TOOL_TIMEOUT');
 			}
-			try {
-				const result = await executeTool(
-					tool,
-					{
-						type: 'tool-call',
-						id: String(extra.requestId),
-						name: tool.name,
-						input: request.params.arguments ?? {},
-					},
-					{ context, signal: extra.signal },
-				);
-				if (result.isError) return failure(result.error.code);
-				const output = result.output;
-				return {
-					content: [{ type: 'text' as const, text: serialise(output) }],
-					...(isPlainObject(output) ? { structuredContent: output } : {}),
-				};
-			} catch (error) {
-				// Only an abort rejects `executeTool`; the client is gone or
-				// cancelled, so the answer is never read.
-				if (extra.signal.aborted) throw error;
-				return failure('TOOL_FAILED');
-			}
-		});
-		return server;
+			if (result.isError) return failure(result.error.code);
+			const output = result.output;
+			return {
+				content: [{ type: 'text' as const, text: serialise(output) }],
+				...(isPlainObject(output) ? { structuredContent: output } : {}),
+			};
+		} catch (error) {
+			if (timeout?.aborted) return failure('TOOL_TIMEOUT');
+			// Otherwise only an abort rejects `executeTool`; the client is gone
+			// or cancelled, so the answer is never read.
+			if (signal.aborted) throw error;
+			return failure('TOOL_FAILED');
+		}
+	});
+	return server;
+}
+
+/**
+ * Serves `@nxgt/ai-core` tools over MCP. The tool's schema validates the
+ * input; a failure of any kind answers `isError` with `{"code":"…"}` and
+ * nothing else: no message, stack or cause leaves the process. Tools with
+ * `confirm: true` are refused (`INVALID_OPTIONS`) unless `allowConfirmTools`.
+ */
+export function mcpServer<TContext = unknown>(
+	options: McpServerOptions<TContext>,
+): McpServerHandle {
+	const served = assertTools(options);
+
+	async function connect(transport: Transport) {
+		const server = buildServer(options, served, async () =>
+			options.context?.({}),
+		);
+		await server.connect(transport);
+		return { close: () => server.close() };
 	}
 
 	return {
-		async connect(transport) {
-			const server = build(async () => options.context?.({}));
-			await server.connect(transport);
-			return { close: () => server.close() };
-		},
-		stdio() {
-			return this.connect(new StdioServerTransport());
-		},
+		connect,
+		stdio: () => connect(new StdioServerTransport()),
 		async fetch(request) {
+			if (request.method !== 'POST') {
+				return new Response(null, { status: 405, headers: { Allow: 'POST' } });
+			}
+			const batch = await request
+				.clone()
+				.json()
+				.then(Array.isArray, () => false);
+			if (batch) return Response.json(BATCH_REFUSED, { status: 400 });
 			let memo: Promise<unknown> | undefined;
-			const server = build(() => {
-				memo ??= Promise.resolve(options.context?.({ request }));
-				return memo;
-			});
-			const transport = new WebStandardStreamableHTTPServerTransport({
-				enableJsonResponse: true,
-			});
-			await server.connect(transport);
-			return transport.handleRequest(request);
+			const server = buildServer(
+				options,
+				served,
+				() => {
+					memo ??= Promise.resolve(options.context?.({ request }));
+					return memo;
+				},
+				request.signal,
+			);
+			try {
+				const transport = new WebStandardStreamableHTTPServerTransport({
+					enableJsonResponse: true,
+				});
+				await server.connect(transport);
+				return await transport.handleRequest(request);
+			} finally {
+				await server.close();
+			}
 		},
 	};
 }
