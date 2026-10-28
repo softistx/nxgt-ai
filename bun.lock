@@ -18,7 +18,7 @@
       "version": "0.1.1",
       "devDependencies": {
         "@alxia/core": "^0.17.0",
-        "@alxia/language": "^0.3.12",
+        "@alxia/language": "^0.3.13",
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
         "@types/bun": "^1.4.4",
@@ -167,7 +167,7 @@
   "packages": {
     "@alxia/core": ["@alxia/core@0.17.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-FzASRI4Wi7iN56xAHgyhnPFvorcE8ixvL3wZo7uT/CbczIUpRPx9u7SRZ5C36rTH/wMlhqyNsLHfH0Tezc6KxQ=="],
 
-    "@alxia/language": ["@alxia/language@0.3.12", "", { "peerDependencies": { "@alxia/core": "^0.16.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-j79YZuv33IDxJ7Beastu/uKQ4F9xpJB1Uf8k4izkSLcdD0eyFTdq7iyukey4DEuHddh3qDGQG5v7RyBJixHK2g=="],
+    "@alxia/language": ["@alxia/language@0.3.13", "", { "peerDependencies": { "@alxia/core": "^0.17.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-H5LXN5tDdLR6MeBoGVin7SQySuMGcWTDwk82ZHcqxSISw37wrG8r2tmXUI09+Ukd5wPVJsLAy3TqgEhIvofBPg=="],
 
     "@ardatan/relay-compiler": ["@ardatan/relay-compiler@13.0.2", "", { "dependencies": { "@babel/runtime": "^8.0.0", "immutable": "^5.1.9", "invariant": "^2.2.4" }, "peerDependencies": { "graphql": "*" } }, "sha512-VFpv9UP820SiwDUPYtq7PmD3jifzZlevkQ26bhbSzFeruSTys0eHzQCZyKg+IhgmZzwPI9AFjPe26ABNjGeIKg=="],
 
@@ -1080,8 +1080,6 @@
     "zod": ["zod@4.6.5", "", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, "sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA=="],
-
-    "@alxia/language/@alxia/core": ["@alxia/core@0.16.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-9ZHNLXum6f5VDVvoodtgIQmRYH4qmOn4EJGJU9V9fIqeKY4bgGoWTKPR25NXCJwtL8jODZDWbMErmokzW96Ilw=="],
 
     "@babel/core/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 
