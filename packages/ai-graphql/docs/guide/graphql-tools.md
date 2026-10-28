@@ -61,6 +61,17 @@ When the model sends input the Zod schema refuses, the call answers
 `INVALID_TOOL_INPUT` with the issues and the operation does not run. The model
 can read it and correct itself.
 
+### List variables
+
+`@nxgt/graphql-codegen-zod` writes a list variable (or a list field of an
+input object) so that a single value is also accepted, which Zod cannot turn
+into JSON Schema. `graphqlTools` shows the model the plain array (`type:
+"array"`, items typed by the item schema) and validates with your Zod
+schema unchanged, so `{ ids: ["a"] }` passes, `{ ids: [1] }` is refused, and
+the single-value form still works for any caller that sends it. Any other
+type JSON Schema cannot express still fails at build with
+`GraphqlToolsError` `INVALID_OPERATION`.
+
 ## Context
 
 `context` builds the GraphQL context of each call from the tool context, which
