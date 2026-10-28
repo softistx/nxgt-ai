@@ -30,18 +30,18 @@ const model = anthropic({
 
 ## What is sent
 
-| Core                            | Anthropic                                                               |
-| ------------------------------- | ----------------------------------------------------------------------- |
-| `system` blocks                 | `system: [{ type: 'text', text }]`                                      |
-| `maxTokens`                     | `max_tokens`, `4096` when absent (the API requires one)                 |
-| `temperature`                   | `temperature`                                                           |
-| tool specs                      | `tools: [{ name, description, input_schema }]` (the core's JSON Schema) |
-| `text`, `tool-call` parts       | `text`, `tool_use` blocks                                               |
-| `thinking` part                 | `thinking` block with its signature; dropped when it has none           |
-| `thinking` part with `redacted` | `redacted_thinking` block with its `data`                               |
-| `tool-result` part              | `tool_result` block (`is_error: true` on failure), in a user message    |
-| `proposed-action` part          | not sent: it is for the user, not the model                             |
-| `providerOptions`               | merged into the body last, so it can override any field (see below)     |
+| Core                            | Anthropic                                                                                                                                                                              |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `system` blocks                 | `system: [{ type: 'text', text }]`                                                                                                                                                     |
+| `maxTokens`                     | `max_tokens`, `4096` when absent (the API requires one)                                                                                                                                |
+| `temperature`                   | `temperature`; a non-default value is an API 400 on the newest models, with or without thinking ([Anthropic API 400](../troubleshooting.md#anthropic-api-400--also-404-413-other-4xx)) |
+| tool specs                      | `tools: [{ name, description, input_schema }]` (the core's JSON Schema)                                                                                                                |
+| `text`, `tool-call` parts       | `text`, `tool_use` blocks                                                                                                                                                              |
+| `thinking` part                 | `thinking` block with its signature; dropped when it has none                                                                                                                          |
+| `thinking` part with `redacted` | `redacted_thinking` block with its `data`                                                                                                                                              |
+| `tool-result` part              | `tool_result` block (`is_error: true` on failure), in a user message                                                                                                                   |
+| `proposed-action` part          | not sent: it is for the user, not the model                                                                                                                                            |
+| `providerOptions`               | merged into the body last, so it can override any field (see below)                                                                                                                    |
 
 A `providerOptions.thinking` that is not `{ type: 'disabled' }` replaces the
 typed thinking and is treated like it: `temperature` is dropped, a

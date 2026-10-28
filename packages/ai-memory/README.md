@@ -1,6 +1,6 @@
 # @nxgt/ai-memory
 
-Conversation memory for [`@nxgt/ai-core`](../ai-core) agents: a `MemoryStore`
+Conversation memory for [`@nxgt/ai-core`](https://www.npmjs.com/package/@nxgt/ai-core) agents: a `MemoryStore`
 port scoped by owner on every call, an in-process store, and a contract suite
 to test your own stores. Peers: `@nxgt/ai-core`, `zod`.
 
@@ -165,7 +165,7 @@ The factory returns a fresh, empty store each time. The suite runs under
 bun add @nxgt/ai-memory @nxgt/ai-core zod
 ```
 
-Requires `"moduleResolution": "bundler"`. This package is not published yet.
+Requires `"moduleResolution": "bundler"`.
 See the [guide](docs/guide/memory.md).
 
 ## Documentation
