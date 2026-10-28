@@ -117,7 +117,7 @@ the connection closes. Pass it to `fetch` and database calls.
 
 ## Test your server
 
-Link a client to the server in memory:
+Link a client to the server in memory. `InMemoryTransport` comes from the MCP SDK (`@modelcontextprotocol/sdk`, installed with this package), not from `@nxgt/ai-mcp`:
 
 ```ts
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
