@@ -1,6 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
 	CallToolRequestSchema,
@@ -8,6 +7,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { type AnyTool, executeTool } from '@nxgt/ai-core';
 import { McpServerError } from './server-errors';
+import { serveFetch } from './server-fetch';
 
 export type { McpServerErrorCode } from './server-errors';
 export { MCP_SERVER_ERROR_CODES, McpServerError } from './server-errors';
@@ -52,16 +52,6 @@ export interface McpServerHandle {
 	/** Streamable HTTP, stateless, answered as JSON. Mount it on one route. */
 	fetch(request: Request): Promise<Response>;
 }
-
-const BATCH_REFUSED = {
-	jsonrpc: '2.0',
-	error: {
-		code: -32600,
-		message:
-			'JSON-RPC batches are not supported: send one message per request.',
-	},
-	id: null,
-};
 
 const failure = (code: string) => ({
 	isError: true as const,
@@ -236,34 +226,18 @@ export function mcpServer<TContext = unknown>(
 	return {
 		connect,
 		stdio: () => connect(new StdioServerTransport()),
-		async fetch(request) {
-			if (request.method !== 'POST') {
-				return new Response(null, { status: 405, headers: { Allow: 'POST' } });
-			}
-			const batch = await request
-				.clone()
-				.json()
-				.then(Array.isArray, () => false);
-			if (batch) return Response.json(BATCH_REFUSED, { status: 400 });
-			let memo: Promise<unknown> | undefined;
-			const server = buildServer(
-				options,
-				served,
-				() => {
-					memo ??= Promise.resolve(options.context?.({ request }));
-					return memo;
-				},
-				request.signal,
-			);
-			try {
-				const transport = new WebStandardStreamableHTTPServerTransport({
-					enableJsonResponse: true,
-				});
-				await server.connect(transport);
-				return await transport.handleRequest(request);
-			} finally {
-				await server.close();
-			}
-		},
+		fetch: (request) =>
+			serveFetch(request, (requestSignal) => {
+				let memo: Promise<unknown> | undefined;
+				return buildServer(
+					options,
+					served,
+					() => {
+						memo ??= Promise.resolve(options.context?.({ request }));
+						return memo;
+					},
+					requestSignal,
+				);
+			}),
 	};
 }

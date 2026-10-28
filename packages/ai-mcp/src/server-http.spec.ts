@@ -107,6 +107,30 @@ describe('mcpServer().fetch over Streamable HTTP', () => {
 		});
 	});
 
+	it('answers 413 for a body over 4 MiB, declared or streamed', async () => {
+		const big = 'x'.repeat(4 * 1024 * 1024 + 1);
+		const declared = await fetch(`http://localhost:${http.port}/mcp`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: big,
+		});
+		expect(declared.status).toBe(413);
+		const streamed = await server.fetch(
+			new Request('http://localhost/mcp', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(new TextEncoder().encode(big));
+						controller.close();
+					},
+				}),
+				duplex: 'half',
+			} as RequestInit),
+		);
+		expect(streamed.status).toBe(413);
+	});
+
 	it('aborts the tool when the HTTP client disconnects', async () => {
 		const seen: ServerSeen = { aborted: false, started: false };
 		const slow = mcpServer({

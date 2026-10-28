@@ -16,7 +16,7 @@
 - [A mutation never runs](#a-mutation-never-runs)
 - [A client sees `{"code":"INVALID_TOOL_OUTPUT"}`](#a-client-sees-codeinvalid_tool_output)
 - [A client sees `{"code":"TOOL_TIMEOUT"}`](#a-client-sees-codetool_timeout)
-- [`fetch` answers 405 or 400](#fetch-answers-405-or-400)
+- [`fetch` answers 405, 400 or 413](#fetch-answers-405-400-or-413)
 - [The stdio server process stays up](#the-stdio-server-process-stays-up)
 - [An abort does not stop the server's work](#an-abort-does-not-stop-the-servers-work)
 
@@ -166,8 +166,8 @@ mcpServer({
 **Why:** the tool ran longer than the `timeoutMs` passed to `mcpServer`; its signal was aborted.
 **Fix:** make the tool faster, raise `timeoutMs`, or honour `signal` so the work stops.
 
-## `fetch` answers 405 or 400
+## `fetch` answers 405, 400 or 413
 
-**When:** a client gets `405` with `Allow: POST`, or `400` with a JSON-RPC error `-32600`.
-**Why:** `fetch` is stateless and serves `POST` only (no SSE stream, no session to delete), and MCP 2025-06-18 dropped JSON-RPC batches, so an array body is refused.
+**When:** a client gets `405` with `Allow: POST`, `400` with a JSON-RPC error (`-32600` for a batch, `-32700` for invalid JSON), or `413`.
+**Why:** `fetch` is stateless and serves `POST` only (no SSE stream, no session to delete), and MCP 2025-06-18 dropped JSON-RPC batches, so an array body is refused. A body over 4 MiB is refused with `413`.
 **Fix:** send one JSON-RPC message per `POST`. A client that probes with `GET` can ignore the 405.

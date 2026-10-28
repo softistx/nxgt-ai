@@ -148,6 +148,7 @@ SDK, `DELETE` ends a session; there is no session here) answers `405` with
 
 A JSON-RPC batch (a JSON array body) answers `400` with a JSON-RPC error
 (`-32600`): MCP 2025-06-18 dropped batching. Send one message per request.
+A body over 4 MiB answers `413`; an invalid JSON body answers `400` (`-32700`).
 
 ## Test your server
 
