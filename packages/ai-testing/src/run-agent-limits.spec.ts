@@ -116,6 +116,41 @@ describe('runAgent limits and abort', () => {
 		expect(part).toMatchObject({ isError: true, error: { code: 'ABORTED' } });
 	});
 
+	test('abort does not wait for a tool that ignores its signal', async () => {
+		let finished = false;
+		const stubborn = defineTool({
+			name: 'stubborn',
+			description: 'Ignores its signal for 300 ms',
+			input: z.object({}),
+			execute: async () => {
+				await new Promise((resolve) => setTimeout(resolve, 300));
+				finished = true;
+				return { done: true };
+			},
+		});
+		const model = fakeModel([
+			{ toolCalls: [call('stubborn', {})] },
+			{ text: 'no' },
+		]);
+		const run = runAgent({ model, messages: user, tools: [stubborn] });
+		const started = performance.now();
+		setTimeout(() => run.abort(), 20);
+		const events = await collect(run);
+		const result = await run.result;
+		expect(performance.now() - started).toBeLessThan(200);
+		expect(result.reason).toBe('aborted');
+		expect(result.error?.code).toBe('ABORTED');
+		expect(model.requests).toHaveLength(1);
+		expect(result.messages[1]?.parts[0]).toMatchObject({
+			isError: true,
+			error: { code: 'ABORTED' },
+		});
+		expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'aborted' });
+		await new Promise((resolve) => setTimeout(resolve, 350));
+		expect(finished).toBe(true);
+		expect(result.messages[1]?.parts[0]).toMatchObject({ isError: true });
+	});
+
 	test('an already aborted signal makes no model call', async () => {
 		const model = fakeModel([{ text: 'x' }]);
 		const run = runAgent({

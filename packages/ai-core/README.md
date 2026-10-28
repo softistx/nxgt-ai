@@ -103,6 +103,18 @@ An expired (`ACTION_EXPIRED`) or non-pending (`ACTION_NOT_PENDING`) action is
 refused, and the input is validated again. `estimateTokens(text | messages)` is
 a characters / 4 estimate. See [Proposed actions](docs/guide/actions.md).
 
+## Traps
+
+- **A tool must honour its `signal`.** After an abort the run does not wait
+  for a tool that ignores `ToolContext.signal`: it answers `ABORTED` at once
+  and the run ends `aborted`, but the tool keeps running in the background
+  and its side effects still happen. Pass the signal to `fetch`, queries and
+  timers.
+- **`AgentRun` has one consumer.** Events are read from a shared queue, so two
+  `for await` loops split them. Leaving the loop early (`break`, `return`, a
+  throw) does not abort the run: it goes on and `run.result` still settles.
+  Call `run.abort()` to stop it.
+
 ## Errors
 
 `AiError` has a `code` (`INVALID_TOOL_INPUT`, `TOOL_FAILED`, …) and `issues`.

@@ -104,6 +104,46 @@ closed and the signal each tool receives (`ToolContext.signal`) aborts. A tool
 cut short answers with an `ABORTED` result so `result.messages` stays a valid
 conversation; a model call cut short adds nothing. The run ends `aborted`.
 
+### Tools must honour their signal
+
+The loop does not wait for a tool that ignores its signal. When the run
+aborts, every tool still running answers `ABORTED` at once, the run ends
+`aborted`, and whatever the tool returns later is dropped. The tool itself is
+not stopped: it finishes in the background and its side effects (a write, a
+payment, a message) still happen. Pass `ToolContext.signal` to everything that
+can wait.
+
+```ts
+const search = defineTool({
+	name: 'search',
+	description: 'Searches the catalogue',
+	input: z.object({ q: z.string() }),
+	execute: async ({ q }, { signal }) => {
+		const res = await fetch(`https://example.test/search?q=${q}`, { signal });
+		return res.json();
+	},
+});
+```
+
+### One consumer, and leaving early
+
+An `AgentRun` is a single-consumer iterator: its events sit in one queue and
+each is delivered once, so two `for await` loops split the events between
+them. Leaving a loop early (`break`, `return`, an exception) does not abort the
+run. It keeps calling the model and the tools, and `run.result` still settles.
+Call `run.abort()` when you stop reading.
+
+```ts
+const run = runAgent({ model, messages, tools });
+try {
+	for await (const event of run) {
+		if (event.type === 'text-delta' && enough(event.text)) break;
+	}
+} finally {
+	run.abort(); // a no-op once the run has ended
+}
+```
+
 ## Observers
 
 ```ts
