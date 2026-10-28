@@ -4,13 +4,15 @@ import type { State } from './state';
 import * as threads from './threads';
 import type { MemoryStore } from './types';
 
-export interface MemoryStoreOptions {
+export interface InProcessMemoryOptions {
 	/** The clock, in epoch ms; default `Date.now`. */
 	now?: () => number;
 }
 
 /** A store that keeps everything in this process; for tests and small tools. */
-export function memoryStore(options: MemoryStoreOptions = {}): MemoryStore {
+export function inProcessMemory(
+	options: InProcessMemoryOptions = {},
+): MemoryStore {
 	const s: State = {
 		now: options.now ?? Date.now,
 		threads: new Map(),

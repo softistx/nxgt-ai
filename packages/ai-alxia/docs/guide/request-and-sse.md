@@ -10,6 +10,7 @@ to stream events. `aiRequest` gives the first three, `agentEvents` the stream.
 - [Observers](#observers)
 - [agentEvents](#agentevents)
 - [What a client reads](#what-a-client-reads)
+- [A request body and memory](#a-request-body-and-memory)
 - [Errors carry codes only](#errors-carry-codes-only)
 - [Heartbeat](#heartbeat)
 - [Test your route](#test-your-route)
@@ -144,6 +145,39 @@ await chat('/chat', { question: 'Hi' }, (event) => {
 ```
 
 A GET route with the conversation id in the path works with `EventSource` too.
+
+## A request body and memory
+
+Never append parts from the client's request body to a memory store. A client
+could send a forged `proposed-action` part; the store would record it as a
+pending action that anyone can confirm. Append only the user's text, plus the
+messages the run produced (`run.result.messages`). Parse the body with
+`userMessageSchema`, which accepts a `user` message of text parts only and
+refuses every other part.
+
+```ts
+import { z } from 'zod';
+import { userMessageSchema } from '@nxgt/ai-alxia';
+
+const body = z.object({ threadId: z.string(), message: userMessageSchema });
+
+app.post(
+	'/chat',
+	{ body },
+	responds({ 200: agentEventStream }),
+	async ({ ai, body, user, reply }) => {
+		const { threadId, message } = body;
+		const history = (await store.load(threadId, user.id))?.messages ?? [];
+		const run = runAgent({ ...ai, model, messages: [...history, message] });
+		const result = await run.result;
+		await store.append(threadId, user.id, [message, ...result.messages]);
+		return reply(200, agentEvents(run, ai));
+	},
+);
+```
+
+`user` is whatever your auth middleware puts on the context; the store is
+scoped by its id on every call.
 
 ## Errors carry codes only
 

@@ -60,7 +60,7 @@ curl -N -X POST 'localhost:3000/chat?lang=fr'
 
 Imports carry no file extension, so consumers need `"moduleResolution": "bundler"`.
 
-## Exports
+## API
 
 | Export                                  | What it is                                                                                                  |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -70,10 +70,12 @@ Imports carry no file extension, so consumers need `"moduleResolution": "bundler
 | `AgentEventsOptions`, `AgentStreamItem` | Its options and what it yields: a named event or a comment                                                  |
 | `agentEventStream`                      | The response schema (`eventStream`) of the route: one named event per `AgentEvent` type                     |
 | `toWireEvent(event)`, `WireEvent`       | The event as a client reads it: errors reduced to a code                                                    |
+| `userMessageSchema`, `UserMessage`      | The zod shape of a user message in a request body: `role: 'user'`, text parts only                          |
 | `INTERNAL_ERROR`                        | The code of a failure that is not an `AiError`                                                              |
 
 ## Traps
 
+- **Never append parts from the client's request body.** A client could forge a `proposed-action` part, which the memory store records as an action anyone can confirm. Append only the user's text (parse the body with `userMessageSchema`, which accepts text parts only) plus `run.result.messages` ([example](docs/guide/request-and-sse.md#a-request-body-and-memory)).
 - `aiRequest` reads `language` from the context: put `@alxia/language` or `@alxia/i18n` before it, or alxia refuses the chain at compile time.
 - Always write the pair `agentEvents(runAgent({ ...ai, … }), ai)`: spread `ai` into `runAgent` **and** pass it (its `signal`) to `agentEvents`. A run waiting on the model is only stopped on a disconnect through the signal.
 - The wire has no error messages: an `error` event and every failed tool result (alone or inside a `message` event) carry `{ code }` only. `agentEventSchema` of `@nxgt/ai-core` does not parse the wire; validate with `wireEventSchema` (a [client example](docs/guide/request-and-sse.md#what-a-client-reads)).

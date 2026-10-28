@@ -1,2 +1,2 @@
 export { memoryStoreContract } from './contract';
-export { memoryStore } from './memory-store';
+export { inProcessMemory } from './in-process';

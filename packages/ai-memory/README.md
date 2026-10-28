@@ -5,9 +5,9 @@ port scoped by owner on every call, an in-process store, and a contract suite
 to test your own stores. Peers: `@nxgt/ai-core`, `zod`.
 
 ```ts
-import { memoryStore } from '@nxgt/ai-memory';
+import { inProcessMemory } from '@nxgt/ai-memory';
 
-const store = memoryStore();
+const store = inProcessMemory();
 const thread = await store.createThread({ ownerId: 'user-1', title: 'Trip' });
 
 await store.append(thread.id, 'user-1', [
@@ -132,7 +132,7 @@ The factory returns a fresh, empty store each time. The suite runs under
 | Export                                                                                             | What it is                                                                                                                                                  |
 | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MemoryStore`                                                                                      | the port: `createThread`, `getThread`, `listThreads`, `append`, `load`, `setSummary`, `findAction`, `updateAction`, `deleteThread`, each with the `ownerId` |
-| `memoryStore({ now? })`                                                                            | an in-process store; `now` is the clock in epoch ms                                                                                                         |
+| `inProcessMemory({ now? })`                                                                        | an in-process store; `now` is the clock in epoch ms                                                                                                         |
 | `compact(messages, { budget, summarize, keepLast?, truncateToolResultsTo?, summary?, estimate? })` | cuts old tool results, then folds the oldest messages into a summary; returns `{ summary?, throughMessageId?, messages, tokens }`                           |
 | `summarizeWith(model, { system?, maxTokens?, signal? })`                                           | a `summarize` for `compact` backed by an `@nxgt/ai-core` model adapter                                                                                      |
 | `MemoryError`, `MEMORY_ERROR_CODES`                                                                | the error of a failed write; `code` is `THREAD_NOT_FOUND`, `MESSAGE_NOT_FOUND`, `INVALID_CURSOR`, `INVALID_OWNER` or `EMPTY_SUMMARY`                        |
@@ -142,12 +142,13 @@ The factory returns a fresh, empty store each time. The suite runs under
 | `redisMemory({ client, prefix?, expireAfterSeconds?, now? })`                                      | from `@nxgt/ai-memory/redis`: a store over Redis keys                                                                                                       |
 | `RedisMemoryOptions`                                                                               | from `@nxgt/ai-memory/redis`: the options of `redisMemory`                                                                                                  |
 | `RedisCommands`                                                                                    | from `@nxgt/ai-memory/redis`: the one method of the client the store calls, `send(command, args)`                                                           |
-| `memoryStoreContract(make)`                                                                        | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `memoryStore`                                                                          |
+| `memoryStoreContract(make)`                                                                        | from `@nxgt/ai-memory/testing`: the suite a store must pass, next to `inProcessMemory`                                                                      |
 
 ## Traps
 
 - Mongo store: create the indexes first (a missing unique index is not caught), and mind that a TTL monitor deletes expired documents up to a minute late.
 - Redis store: unlike the Mongo store, messages do not expire one by one; the whole thread expires from its last write (plus `expireAfterSeconds`), and it needs Redis 6.2 or later outside cluster mode.
+- **Never append parts from a client's request body.** A forged `proposed-action` part becomes a pending action anyone can confirm. Append only the user's text taken from the request, plus `run.result.messages` (`@nxgt/ai-alxia` has `userMessageSchema` for the body).
 - A foreign owner reads as absent, never as forbidden.
 - `updateAction` returns `undefined` when the action is absent, foreign or no longer `pending`.
 - The store never checks `expiresAt`; the core checks it when the action is confirmed.

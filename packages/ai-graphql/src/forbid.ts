@@ -21,9 +21,9 @@ export function parseForbidden(list: readonly string[]): Set<string> {
 	for (const entry of list) {
 		if (!/^[_A-Za-z][_0-9A-Za-z]*\.[_A-Za-z][_0-9A-Za-z]*$/.test(entry)) {
 			throw new GraphqlToolsError(
-				'INVALID_OPERATION',
+				'INVALID_OPTIONS',
 				`forbidFields entry ${JSON.stringify(entry)} must look like "Type.field".`,
-				{ operation: '' },
+				{},
 			);
 		}
 		set.add(entry);
