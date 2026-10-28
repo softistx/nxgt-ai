@@ -51,7 +51,7 @@ if (!thread) return notFound();
 
 ## `MemoryError` INVALID_SCOPE
 
-**When:** `mongoMemory` throws `Scope field "…" …` while it is built.
+**When:** `mongoMemory` throws `Scope field "…" …` while it is built, or `scopedThreadIndexes` / `scopedMessageIndexes` throw `Index prefix field "…" is already a key of the index.`
 **Why:** a scope field is named like a field the store writes (`ownerId`, `threadId`, `seq`, `_id`, `meta`, ...), starts with `$`, holds a `.`, or its value is not a string, a finite number, a boolean or a BSON value such as an `ObjectId`.
 **Fix:** use a tenant field of your own (`tenantId`) with a primitive or `ObjectId` value:
 
