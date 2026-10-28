@@ -1,7 +1,6 @@
 {
 	"name": "@nxgt/ai-graphql",
 	"version": "0.0.0",
-	"private": true,
 	"description": "GraphQL operations as @nxgt/ai-core tools: an allow-list run in process with graphql-js, forbidden fields rejected at build, mutations behind a confirmation",
 	"license": "MIT",
 	"type": "module",

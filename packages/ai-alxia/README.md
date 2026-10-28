@@ -1,7 +1,7 @@
 # @nxgt/ai-alxia
 
 [alxia](https://www.npmjs.com/package/@alxia/core) glue for
-[`@nxgt/ai-core`](../ai-core). `aiRequest` is a middleware that gives a handler
+[`@nxgt/ai-core`](https://www.npmjs.com/package/@nxgt/ai-core). `aiRequest` is a middleware that gives a handler
 what `runAgent` needs from the request (an abort signal, the request language,
 the app's observers). `agentEvents` streams a run's events as Server-Sent
 Events, written by alxia's own SSE support. Peers: `@alxia/core`,

@@ -42,6 +42,8 @@ dropped and `max_tokens` resized. Name either in `providerOptions` to set it
 yourself. The override replaces the typed `thinking` field, whatever its `mode`;
 a typed `effort` is still sent.
 
+**Warning:** a non-default `temperature` is an API 400 on the newest models (the Claude 5 family, Opus 4.7 and 4.8), with or without thinking. Leave it unset there; see the Troubleshooting entry [`Anthropic API 400`](docs/troubleshooting.md#anthropic-api-400--also-404-413-other-4xx).
+
 `bun run smoke:anthropic` in the repository tries it against the real API
 (local only, needs `ANTHROPIC_API_KEY`).
 

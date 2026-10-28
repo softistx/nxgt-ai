@@ -1,6 +1,6 @@
 # Roadmap
 
-A direction, not a commitment. See the [repository roadmap](../../../docs/roadmap.md) for the whole SDK.
+A direction, not a commitment. See the [repository roadmap](https://github.com/softistx/nxgt-ai/blob/develop/docs/roadmap.md) for the whole SDK.
 
 ## Now
 

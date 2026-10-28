@@ -1,7 +1,6 @@
 {
 	"name": "@nxgt/ai-memory",
 	"version": "0.0.0",
-	"private": true,
 	"description": "Conversation memory for @nxgt/ai-core agents: an owner-scoped store port, an in-process store and a contract suite for your own stores",
 	"license": "MIT",
 	"type": "module",
