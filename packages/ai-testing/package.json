@@ -1,6 +1,6 @@
 {
 	"name": "@nxgt/ai-testing",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Deterministic tests for nxgt-ai agents: a scripted fake model and collect",
 	"license": "MIT",
 	"type": "module",

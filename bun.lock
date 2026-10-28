@@ -15,7 +15,7 @@
     },
     "packages/ai-alxia": {
       "name": "@nxgt/ai-alxia",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@alxia/core": "^0.16.0",
         "@alxia/language": "^0.3.12",
@@ -33,7 +33,7 @@
     },
     "packages/ai-anthropic": {
       "name": "@nxgt/ai-anthropic",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
@@ -47,7 +47,7 @@
     },
     "packages/ai-core": {
       "name": "@nxgt/ai-core",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@types/bun": "^1.4.4",
         "zod": "4.6.5",
@@ -59,7 +59,7 @@
     },
     "packages/ai-graphql": {
       "name": "@nxgt/ai-graphql",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@graphql-codegen/cli": "7.4.6",
         "@graphql-codegen/plugin-helpers": "^7",
@@ -85,7 +85,7 @@
     },
     "packages/ai-memory": {
       "name": "@nxgt/ai-memory",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
@@ -104,7 +104,7 @@
     },
     "packages/ai-ollama": {
       "name": "@nxgt/ai-ollama",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@types/bun": "^1.4.4",
@@ -116,7 +116,7 @@
     },
     "packages/ai-telemetry": {
       "name": "@nxgt/ai-telemetry",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
@@ -132,7 +132,7 @@
     },
     "packages/ai-testing": {
       "name": "@nxgt/ai-testing",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@types/bun": "^1.4.4",

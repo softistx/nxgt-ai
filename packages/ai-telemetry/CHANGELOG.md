@@ -1,5 +1,16 @@
 # @nxgt/ai-telemetry
 
+## 0.2.0
+
+### Minor Changes
+
+- [#65](https://github.com/softistx/nxgt-ai/pull/65) [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The `ai.tool.call` span of a proposed action (a `confirm` tool the loop did not run) carries `ai.tool.proposed: true` and stays `ok`; a normal tool's span has no such attribute. The README, the guide and the status table document it, and that an aborted tool shows `cancelled` with `ai.error.code` `ABORTED`.
+
+### Patch Changes
+
+- Updated dependencies [[`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc), [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc), [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc), [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc)]:
+  - @nxgt/ai-core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

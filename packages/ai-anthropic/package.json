@@ -1,6 +1,6 @@
 {
 	"name": "@nxgt/ai-anthropic",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Anthropic Messages API adapter for @nxgt/ai-core on Bun fetch, with no third-party client",
 	"license": "MIT",
 	"type": "module",
