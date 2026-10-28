@@ -8,13 +8,19 @@ Events, written by alxia's own SSE support. Peers: `@alxia/core`,
 `@nxgt/ai-core`, `zod`. The language comes from `@alxia/language` or
 `@alxia/i18n`, which you already use.
 
+```sh
+bun add @nxgt/ai-alxia @alxia/core @nxgt/ai-core zod
+```
+
+The example below uses `fakeModel` from `@nxgt/ai-testing`, a separate install
+(`bun add -d @nxgt/ai-testing`); in production give `runAgent` a real model.
+
 ```ts
 import { alxia, responds } from '@alxia/core';
 import { language } from '@alxia/language';
 import { runAgent } from '@nxgt/ai-core';
 import { fakeModel } from '@nxgt/ai-testing';
 import { agentEvents, agentEventStream, aiRequest } from '@nxgt/ai-alxia';
-import { z } from 'zod';
 
 // A scripted model for the example; use @nxgt/ai-anthropic or @nxgt/ai-ollama in production.
 const model = fakeModel([{ text: 'Hello!' }]);
@@ -34,10 +40,7 @@ const app = alxia()
 			messages,
 			...ai,
 		});
-		return reply(
-			200,
-			agentEvents(run, { signal: ai.signal, heartbeatMs: 15_000 }),
-		);
+		return reply(200, agentEvents(run, { ...ai, heartbeatMs: 15_000 }));
 	});
 
 app.listen(3000);
@@ -72,8 +75,8 @@ Imports carry no file extension, so consumers need `"moduleResolution": "bundler
 ## Traps
 
 - `aiRequest` reads `language` from the context: put `@alxia/language` or `@alxia/i18n` before it, or alxia refuses the chain at compile time.
-- Spread `ai` into `runAgent` **and** pass `ai.signal` to `agentEvents`. A run waiting on the model is only stopped on a disconnect through the signal.
-- The wire has no messages: an `error` event, and a failed `tool-result`, carry `{ code }` only. A client that parses events with `agentEventSchema` from `@nxgt/ai-core` fails on them; read `code`.
+- Always write the pair `agentEvents(runAgent({ ...ai, … }), ai)`: spread `ai` into `runAgent` **and** pass it (its `signal`) to `agentEvents`. A run waiting on the model is only stopped on a disconnect through the signal.
+- The wire has no error messages: an `error` event and every failed tool result (alone or inside a `message` event) carry `{ code }` only. `agentEventSchema` of `@nxgt/ai-core` does not parse the wire; validate with `wireEventSchema` (a [client example](docs/guide/request-and-sse.md#what-a-client-reads)).
 - `data:` is JSON on one line: a line break in text is escaped (`\n`), never a second `data:` line. alxia writes the frames, the `content-type`, `cache-control: no-cache` and `x-accel-buffering: no`.
 - alxia already writes `: keep-alive` every 8 s of silence. `heartbeatMs` adds a `: heartbeat` comment of your own period, for a proxy with a shorter timeout.
 - The stream ends after the `done` event, and after an `error` event the run did not follow with `done` (a failure of the stream itself).

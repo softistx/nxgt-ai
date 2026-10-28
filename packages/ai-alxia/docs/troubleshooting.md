@@ -31,24 +31,23 @@ alxia()
 
 **When:** the model keeps streaming, or tools keep running, after a disconnect.
 **Why:** the run was not given the request's signal, or `agentEvents` was not (a run waiting on a model is only seen by the signal).
-**Fix:** spread `ai` into `runAgent` and pass `ai.signal` to `agentEvents`.
+**Fix:** write the pair: spread `ai` into `runAgent` and pass `ai` to `agentEvents`.
 
 ```ts
-const run = runAgent({ model, messages, ...ai });
-reply(200, agentEvents(run, { signal: ai.signal }));
+reply(200, agentEvents(runAgent({ ...ai, model, messages }), ai));
 ```
 
 ## The client sees no error message
 
-**When:** an `error` event is `{ "code": "MODEL_ERROR" }` with nothing else.
-**Why:** by design: messages can hold provider or tool details.
-**Fix:** map the code to your own text on the client, and read the server logs or an observer (`onRunEnd`'s `error`) for the message.
+**When:** an `error` event is `{ "code": "MODEL_ERROR" }` with nothing else, or `INTERNAL_ERROR`.
+**Why:** by design: messages can hold provider or tool details. `INTERNAL_ERROR` means the stream itself failed with something that is not an `AiError` (a bug or an unexpected exception on the server).
+**Fix:** map the code to your own text on the client; for the cause, check the server logs or an observer (`onRunEnd`'s `error`).
 
 ## `agentEventSchema` fails on an event
 
-**When:** `agentEventSchema.parse` from `@nxgt/ai-core` rejects an `error` event or a failed `tool-result`.
+**When:** `agentEventSchema.parse` from `@nxgt/ai-core` rejects an `error` event or a failed tool result.
 **Why:** that schema requires `message`; the wire has none.
-**Fix:** parse those two with a schema of your own, or read `error.code` before parsing.
+**Fix:** parse with `wireEventSchema` from `@nxgt/ai-alxia`.
 
 ## The events arrive all at once
 
@@ -60,7 +59,7 @@ reply(200, agentEvents(run, { signal: ai.signal }));
 
 **When:** the stream drops after some seconds of silence, before any event.
 **Why:** a proxy or load balancer cuts idle connections, more often than alxia's 8 s keep-alive.
-**Fix:** `agentEvents(run, { heartbeatMs: 5000 })`, below the proxy's idle timeout.
+**Fix:** `agentEvents(run, { ...ai, heartbeatMs: 5000 })`, below the proxy's idle timeout.
 
 ## `EventSource` cannot call my POST route
 

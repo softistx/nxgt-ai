@@ -1,5 +1,5 @@
 import { type SseComment, sseComment } from '@alxia/core';
-import type { AgentRun } from '@nxgt/ai-core';
+import type { AgentEvent, AgentRun } from '@nxgt/ai-core';
 import type { agentEventStream } from './events';
 import { codeOf, toWireEvent } from './wire';
 
@@ -72,7 +72,7 @@ export async function* agentEvents(
 				yield sseComment('heartbeat');
 				continue;
 			}
-			const step = won as IteratorResult<Parameters<typeof toWireEvent>[0]>;
+			const step = won as IteratorResult<AgentEvent>;
 			if (step.done) return;
 			const wire = toWireEvent(step.value);
 			yield { event: wire.type, data: wire } as AgentStreamItem;
@@ -81,8 +81,8 @@ export async function* agentEvents(
 		}
 	} catch (error) {
 		if (!signal?.aborted) {
-			const wire = { type: 'error', error: { code: codeOf(error) } };
-			yield { event: 'error', data: wire } as AgentStreamItem;
+			const data = { type: 'error' as const, error: { code: codeOf(error) } };
+			yield { event: 'error' as const, data };
 		}
 	} finally {
 		stop.stop();

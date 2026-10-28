@@ -33,28 +33,21 @@ three keys are those of `runAgent`'s options, so `...ai` spreads them.
 ## The abort signal
 
 `ai.signal` is the request's own signal, which alxia aborts when the client
-hangs up. Give it to `runAgent` and the model stream and running tools stop.
-Give it to `agentEvents` too, so the stream stops at once:
+hangs up. `...ai` gives it to `runAgent` (the model stream and running tools
+stop); `agentEvents(run, ai)` stops the stream at once and aborts the run:
 
 ```ts
-const run = runAgent({ model, messages, ...ai });
-return reply(200, agentEvents(run, { signal: ai.signal }));
+return reply(200, agentEvents(runAgent({ ...ai, model, messages }), ai));
 ```
 
 ## The language
 
-`aiRequest` does not read the language itself: `@alxia/language` or
-`@alxia/i18n` does (query, cookie, path, `Accept-Language`, then the
-fallback), and `ai.language` is what they decided. Use it in the system
-prompt, or to pick a tool's wording:
+`ai.language` is what `@alxia/language` or `@alxia/i18n` decided (query,
+cookie, path, `Accept-Language`, then the fallback). Use it in the system
+prompt or to pick a tool's wording:
 
 ```ts
-const run = runAgent({
-	model,
-	system: `Answer in ${ai.language}.`,
-	messages,
-	...ai,
-});
+runAgent({ ...ai, model, system: `Answer in ${ai.language}.`, messages });
 ```
 
 ## Observers
@@ -71,27 +64,23 @@ alxia().use(aiRequest({ observers: [aiTelemetry()] }));
 
 ## agentEvents
 
-`agentEvents(run, { signal?, heartbeatMs? })` is an async generator. alxia
-turns an async iterable reply into `text/event-stream`, with the headers
-`content-type: text/event-stream`, `cache-control: no-cache` and
-`x-accel-buffering: no`, and closes the generator when the client leaves.
-Declare the route with `agentEventStream` so each event is written under its
-name:
+`agentEvents(run, { signal?, heartbeatMs? })` is an async generator for
+`reply(200, …)`. alxia turns it into `text/event-stream` (`no-cache`,
+`x-accel-buffering: no`) and closes it when the client leaves. Declare the
+route with `agentEventStream` so each event is written under its name:
 
 ```ts
 app.post('/chat', responds({ 200: agentEventStream }), ({ ai, reply }) =>
-	reply(200, agentEvents(runAgent({ model, messages, ...ai }), ai)),
+	reply(200, agentEvents(runAgent({ ...ai, model, messages }), ai)),
 );
 ```
 
-(`ai` also has `signal`, so passing it as the options is enough.)
-
-The generator ends after `done`. When it is closed, or `signal` aborts, it
-aborts the run.
+It ends after `done`, and aborts the run when it is closed or the signal aborts.
 
 ## What a client reads
 
-One block per event: `event:` is the `AgentEvent` type, `data:` its JSON.
+One block per event: `event:` is the `AgentEvent` type, `data:` its JSON, on one
+line (JSON escapes line breaks, so text cannot forge another field).
 
 ```text
 event: text-delta
@@ -101,17 +90,67 @@ event: done
 data: {"type":"done","reason":"end","usage":{"inputTokens":3,"outputTokens":2,"cacheReadTokens":0,"cacheWriteTokens":0}}
 ```
 
-JSON escapes line breaks, so text with several lines stays on one `data:` line
-and cannot forge another field. In a browser, `EventSource` only does GET; for
-a POST read the body of `fetch` as a stream, or use a GET route with the
-conversation id in the path.
+`wireEventSchema` validates one event; `agentEventSchema` of `@nxgt/ai-core`
+does not parse the wire (it wants the error `message`). `EventSource` only does
+GET, so for a POST read the body of `fetch`:
+
+```ts
+import { type WireEvent, wireEventSchema } from '@nxgt/ai-alxia';
+
+async function chat(
+	url: string,
+	body: unknown,
+	onEvent: (event: WireEvent) => void,
+) {
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(body),
+	});
+	if (!response.ok || !response.body)
+		throw new Error(`HTTP ${response.status}`);
+	const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+	let buffer = '';
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) return;
+		buffer += value;
+		let end: number;
+		while ((end = buffer.indexOf('\n\n')) !== -1) {
+			const block = buffer.slice(0, end);
+			buffer = buffer.slice(end + 2);
+			// a block is `event:` and `data:` lines; a `:` line is a comment
+			const data = block.split('\n').find((line) => line.startsWith('data: '));
+			if (!data) continue;
+			const event = wireEventSchema.parse(JSON.parse(data.slice(6)));
+			onEvent(event);
+			if (event.type === 'done') return reader.cancel();
+		}
+	}
+}
+
+await chat('/chat', { question: 'Hi' }, (event) => {
+	switch (event.type) {
+		case 'text-delta':
+			console.log(event.text);
+			break;
+		case 'error':
+			console.error('failed:', event.error.code); // a code, never a message
+			break;
+		default:
+			break; // keep a default: newer servers add event types
+	}
+});
+```
+
+A GET route with the conversation id in the path works with `EventSource` too.
 
 ## Errors carry codes only
 
 An `error` event is `{ "type": "error", "error": { "code": "RATE_LIMITED" } }`.
 The message of a run error can hold what a provider or a tool said, so it
-stays in the server's logs and observers. The same holds for a failed
-`tool-result` (`code` only, no `message` or `issues`). A failure of the stream
+stays in the server's logs and observers. Every failed tool result, alone or inside a `message` event, is reduced the
+same way. A failure of the stream
 itself ends it with `INTERNAL_ERROR`, or the code of the `AiError`.
 `toWireEvent` is the function that does it, if you write your own transport.
 
@@ -121,7 +160,7 @@ alxia writes `: keep-alive` after eight silent seconds. A proxy that cuts idle
 connections sooner needs your own period:
 
 ```ts
-agentEvents(run, { signal: ai.signal, heartbeatMs: 10_000 });
+agentEvents(run, { ...ai, heartbeatMs: 10_000 });
 ```
 
 A comment is a line `EventSource` skips; it is not an event and moves no id.

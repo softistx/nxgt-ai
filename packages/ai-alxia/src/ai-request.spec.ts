@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { alxia, responds } from '@alxia/core';
 import { language } from '@alxia/language';
-import { type AgentObserver, runAgent } from '@nxgt/ai-core';
+import { type AgentObserver, defineTool, runAgent } from '@nxgt/ai-core';
 import { fakeModel } from '@nxgt/ai-testing';
+import { z } from 'zod';
 import { agentEvents } from './agent-events';
 import { aiRequest } from './ai-request';
 import { agentEventStream } from './events';
@@ -109,4 +110,32 @@ describe('SSE framing', () => {
 		);
 		expect(body).not.toContain('org-9');
 	});
+});
+
+test('a tool exception text never reaches the client', async () => {
+	const leaky = defineTool({
+		name: 'leaky',
+		description: 'Always throws',
+		input: z.object({}),
+		execute: async () => {
+			throw new Error('password=hunter2');
+		},
+	});
+	const model = fakeModel([
+		{ toolCalls: [{ name: 'leaky', input: {} }] },
+		{ text: 'ok' },
+	]);
+	const app = alxia()
+		.use(language({ supported: ['en'] as const, fallback: 'en' }))
+		.use(aiRequest())
+		.get('/chat', responds({ 200: agentEventStream }), ({ ai, reply }) =>
+			reply(
+				200,
+				agentEvents(runAgent({ ...ai, model, messages, tools: [leaky] }), ai),
+			),
+		);
+	const body = await (await app.request('/chat')).text();
+	expect(body).toContain('TOOL_FAILED');
+	expect(body).not.toContain('hunter2');
+	expect(body).not.toContain('failed');
 });

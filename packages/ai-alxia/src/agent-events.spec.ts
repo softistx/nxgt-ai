@@ -1,7 +1,24 @@
 import { describe, expect, test } from 'bun:test';
-import { AiError, runAgent } from '@nxgt/ai-core';
+import { AiError, defineTool, runAgent } from '@nxgt/ai-core';
 import { collect, fakeModel } from '@nxgt/ai-testing';
+import { z } from 'zod';
 import { agentEvents } from './agent-events';
+import { wireEventSchemas } from './wire';
+
+const SECRET = 'connect ECONNREFUSED 10.0.0.7 password=hunter2';
+const leaky = defineTool({
+	name: 'leaky',
+	description: 'Always throws',
+	input: z.object({ n: z.number() }),
+	execute: async () => {
+		throw new Error(SECRET);
+	},
+});
+const leakyScript = [
+	{ toolCalls: [{ name: 'leaky', input: { n: 'bad' } }] },
+	{ toolCalls: [{ name: 'leaky', input: { n: 1 } }] },
+	{ text: 'done' },
+];
 
 const user = [
 	{ role: 'user' as const, parts: [{ type: 'text' as const, text: 'hi' }] },
@@ -102,5 +119,37 @@ describe('agentEvents', () => {
 		const run = runAgent({ model: fakeModel([{ text: 'a' }]), messages: user });
 		const items = await collect(agentEvents(run));
 		expect(items.every((i) => 'event' in i)).toBe(true);
+	});
+
+	test('no tool error text reaches any event, messages included', async () => {
+		const run = runAgent({
+			model: fakeModel(leakyScript),
+			messages: user,
+			tools: [leaky],
+		});
+		const items = await collect(agentEvents(run));
+		const text = JSON.stringify(items);
+		expect(text).not.toContain('hunter2');
+		expect(text).not.toContain('ECONNREFUSED');
+		expect(text).not.toContain('failed');
+		expect(text).toContain('"code":"TOOL_FAILED"');
+		expect(text).toContain('"code":"INVALID_TOOL_INPUT"');
+	});
+
+	test('every yielded event parses with its wire schema', async () => {
+		const model = fakeModel(leakyScript);
+		const run = runAgent({ model, messages: user, tools: [leaky] });
+		const items = await collect(agentEvents(run));
+		expect(items.length).toBeGreaterThan(5);
+		for (const item of items) {
+			const { event, data } = item as {
+				event: keyof typeof wireEventSchemas;
+				data: unknown;
+			};
+			expect(event as string).toBe((data as { type: string }).type);
+			const parsed = (wireEventSchemas[event] as z.ZodType).safeParse(data);
+			expect(parsed.success).toBe(true);
+			expect(parsed.data).toEqual(data);
+		}
 	});
 });
