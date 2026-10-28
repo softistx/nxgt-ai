@@ -6,6 +6,10 @@
 - [`McpClientError` TOOL_NOT_FOUND](#mcpclienterror-tool_not_found)
 - [`McpClientError` INVALID_TOOL](#mcpclienterror-invalid_tool)
 - [`McpClientError` DUPLICATE_TOOL](#mcpclienterror-duplicate_tool)
+- [`McpServerError` INVALID_OPTIONS](#mcpservererror-invalid_options)
+- [A client sees `{"code":"TOOL_FAILED"}`](#a-client-sees-codetool_failed)
+- [A client sees `{"code":"INVALID_TOOL_INPUT"}`](#a-client-sees-codeinvalid_tool_input)
+- [A client sees `{"code":"UNKNOWN_TOOL"}`](#a-client-sees-codeunknown_tool)
 - [The model sees `MCP_TOOL_FAILED`](#the-model-sees-mcp_tool_failed)
 - [The model sees `MCP_UNAVAILABLE`](#the-model-sees-mcp_unavailable)
 - [The model sees `{ truncated: true, preview }`](#the-model-sees--truncated-true-preview-)
@@ -114,3 +118,35 @@ try {
 **When:** a run is aborted, but the server keeps working.
 **Why:** an abort sends a cancellation to the server and stops waiting; whether the server obeys is its choice.
 **Fix:** none from the client; make the server honour the cancellation.
+
+## `McpServerError` INVALID_OPTIONS
+
+**When:** `mcpServer` throws `The tool "…" is confirm: true and MCP has no confirmation step…`, `Two tools are named "…".` or `name and version are required…`.
+**Why:** a served tool is `confirm: true` (a mutation) and `allowConfirmTools` is not set, two tools share a name, or `name` or `version` is empty. `error.tool` names the tool.
+**Fix:** leave the confirm tool out of `tools`, or opt in knowing that the MCP client runs it without a human confirming.
+
+```ts
+mcpServer({
+	tools: allTools.filter((tool) => !tool.confirm),
+	name: 'docs',
+	version: '1.0.0',
+});
+```
+
+## A client sees `{"code":"TOOL_FAILED"}`
+
+**When:** a call answers `isError: true` with the text `{"code":"TOOL_FAILED"}`.
+**Why:** the tool threw, or `context` threw. The message, stack and cause are never sent, on purpose.
+**Fix:** log inside the tool or in `context`; to give the client a more precise code, throw an `AiError` with one of ai-core's codes (`RATE_LIMITED`, `AUTHENTICATION`, …).
+
+## A client sees `{"code":"INVALID_TOOL_INPUT"}`
+
+**When:** a call answers `isError: true` with `{"code":"INVALID_TOOL_INPUT"}`.
+**Why:** the arguments do not match the tool's schema. The server validates before the tool runs and does not send the details.
+**Fix:** send arguments that match the `inputSchema` listed by `tools/list`.
+
+## A client sees `{"code":"UNKNOWN_TOOL"}`
+
+**When:** a call answers `isError: true` with `{"code":"UNKNOWN_TOOL"}`.
+**Why:** the name is not served: a typo, or a `confirm: true` tool that is not served by default.
+**Fix:** call a name from `tools/list`.
