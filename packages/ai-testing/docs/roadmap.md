@@ -21,6 +21,8 @@ Nothing in progress.
 
 ## Shipped
 
+- **`@nxgt/ai-testing` 0.1.1** — Built against `@nxgt/ai-core` 0.2.0; no change to its own surface.
+
 - **`@nxgt/ai-testing` 0.1.0** — Test agents without a network:
   - `fakeModel`: a scripted `ModelAdapter` (an array of turns, or a function), with text, thinking, tool calls, usage and finish reason per turn, deterministic `chunk` splitting, `delayMs`, and every request recorded in `requests`.
   - Injected errors: a turn can throw an `AiError` to test failure paths.

@@ -21,6 +21,8 @@ Nothing in progress.
 
 ## Shipped
 
+- **`@nxgt/ai-ollama` 0.2.0** — `providerOptions.options` merged key by key over the mapped temperature and output limit, and a `numCtx` option for the context window.
+
 - **`@nxgt/ai-ollama` 0.1.0** — A `ModelAdapter` for a local Ollama server on Bun `fetch`:
   - `ollama()` over `/api/chat` NDJSON streaming, robust to any byte split, with text and thinking deltas.
   - Whole tool calls with generated ids, and tool results sent back.

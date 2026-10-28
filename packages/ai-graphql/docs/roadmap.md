@@ -4,14 +4,7 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 
 ## Now
 
-- **GraphQL tools** — `graphqlTools`: you get:
-  - an allow-list of operations (name, description, Zod variables) as `@nxgt/ai-core` tools, run in process with graphql-js;
-  - `forbidFields` checked at build, fragments included, with a typed error naming the operation and the field path;
-  - mutations behind a confirmation, GraphQL errors as codes, and results cut to `maxResultChars`.
-- **Operations manifest codegen** — `@nxgt/ai-graphql/codegen`: a graphql-codegen plugin that writes the manifest for `graphqlTools` from your documents, you get:
-  - one entry per query or mutation, with its fragments and the `z<Op>Variables` schema of `@nxgt/graphql-codegen-zod`;
-  - the description from the operation or a `# tool:` comment, and a clear error for a missing one, a subscription or a duplicate;
-  - sorted, stable output.
+Nothing in progress.
 
 ## Next
 
@@ -19,7 +12,7 @@ Nothing yet.
 
 ## Later
 
-Nothing yet.
+- **Error options that always name the operation** — every error code except an invalid-options error would carry its operation in the type ([#72](https://github.com/softistx/nxgt-ai/issues/72)).
 
 ## Not planned
 
@@ -29,4 +22,10 @@ Nothing yet.
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-graphql` 0.1.0** — GraphQL as agent tools:
+  - `graphqlTools`: an allow-list of operations (name, description, Zod variables) as `@nxgt/ai-core` tools, run in process with graphql-js.
+  - `forbidFields` checked at build, fragments included, with a typed error naming the operation and the field path.
+  - Mutations behind a confirmation, GraphQL errors as codes, and results cut to `maxResultChars`.
+  - `@nxgt/ai-graphql/codegen`: a graphql-codegen plugin that writes the operations manifest, with one entry per query or mutation, its fragments and its variables schema, and clear errors for a missing description, a subscription or a duplicate.
+
+Releases are listed in `CHANGELOG.md`.

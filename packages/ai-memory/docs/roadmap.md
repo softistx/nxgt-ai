@@ -4,15 +4,7 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 
 ## Now
 
-- **The memory port and the in-process store** — you get:
-  - `MemoryStore`, scoped by owner on every call: threads, messages, a rolling summary and proposed actions.
-  - `inProcessMemory()`, an in-process store.
-  - `memoryStoreContract` in `@nxgt/ai-memory/testing`, to test your own stores.
-- **Compaction** — you get:
-  - `compact`, which trims old tool results first, then keeps a rolling summary without splitting a tool call from its result.
-  - `summarizeWith(model)`, a summarizer over any model adapter.
-- **MongoDB store** — `@nxgt/ai-memory/mongo`: `mongoMemory` over two collections, with optional expiry; it passes the same contract.
-- **Redis store** — `@nxgt/ai-memory/redis`: `redisMemory` over the `@nxgt/redis` client, with optional expiry; it passes the same contract.
+Nothing in progress.
 
 ## Next
 
@@ -20,7 +12,7 @@ Nothing yet.
 
 ## Later
 
-Nothing yet.
+- **Mongo expiry that only moves forward** — a late write could no longer shorten a thread's expiry ([#71](https://github.com/softistx/nxgt-ai/issues/71)).
 
 ## Not planned
 
@@ -28,4 +20,10 @@ Nothing yet.
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-memory` 0.1.0** — Conversation memory scoped by owner:
+  - `MemoryStore` and `inProcessMemory()`: threads, messages, a rolling summary and proposed actions, with `memoryStoreContract` in `@nxgt/ai-memory/testing` to test your own stores.
+  - `compact` and `summarizeWith(model)`: old tool results trimmed first, then a rolling summary, never splitting a tool call from its result.
+  - `@nxgt/ai-memory/mongo`: `mongoMemory` over two collections, with optional expiry.
+  - `@nxgt/ai-memory/redis`: `redisMemory` over the `@nxgt/redis` client, with optional expiry.
+
+Releases are listed in `CHANGELOG.md`.

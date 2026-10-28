@@ -4,10 +4,7 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 
 ## Now
 
-- **Request middleware and SSE reply** — `aiRequest` and `agentEvents`: you get:
-  - `ctx.ai = { signal, language, observers }` to spread into `runAgent`, the signal aborting when the client leaves;
-  - a run's events as named Server-Sent Events written by alxia, typed by `agentEventStream`, with an optional heartbeat comment;
-  - errors on the wire as codes only, and the run stopped on disconnect.
+Nothing in progress.
 
 ## Next
 
@@ -24,4 +21,9 @@ Nothing yet.
 
 ## Shipped
 
-Nothing yet. Releases are listed in `CHANGELOG.md`.
+- **`@nxgt/ai-alxia` 0.1.0** — Request middleware and SSE reply:
+  - `aiRequest`: `ctx.ai = { signal, language, observers }` to spread into `runAgent`, the signal aborting when the client leaves.
+  - `agentEvents`: a run's events as named Server-Sent Events written by alxia, typed by `agentEventStream`, with an optional heartbeat comment.
+  - Errors on the wire as codes only, and the run stopped on disconnect.
+
+Releases are listed in `CHANGELOG.md`.
