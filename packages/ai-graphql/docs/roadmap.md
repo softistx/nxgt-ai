@@ -8,10 +8,14 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
   - an allow-list of operations (name, description, Zod variables) as `@nxgt/ai-core` tools, run in process with graphql-js;
   - `forbidFields` checked at build, fragments included, with a typed error naming the operation and the field path;
   - mutations behind a confirmation, GraphQL errors as codes, and results cut to `maxResultChars`.
+- **Operations manifest codegen** — `@nxgt/ai-graphql/codegen`: a graphql-codegen plugin that writes the manifest for `graphqlTools` from your documents, you get:
+  - one entry per query or mutation, with its fragments and the `z<Op>Variables` schema of `@nxgt/graphql-codegen-zod`;
+  - the description from the operation or a `# tool:` comment, and a clear error for a missing one, a subscription or a duplicate;
+  - sorted, stable output.
 
 ## Next
 
-- **Operations manifest codegen** — `@nxgt/ai-graphql/codegen`: a plugin that writes the operations manifest from your documents and `@nxgt/graphql-codegen-zod` variables schemas.
+Nothing yet.
 
 ## Later
 

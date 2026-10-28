@@ -3,6 +3,10 @@
 - [`GraphqlToolsError` FORBIDDEN_FIELD](#graphqltoolserror-forbidden_field)
 - [`GraphqlToolsError` INVALID_OPERATION](#graphqltoolserror-invalid_operation)
 - [`GraphqlToolsError` DUPLICATE_OPERATION](#graphqltoolserror-duplicate_operation)
+- [Codegen: `has no description`](#codegen-has-no-description)
+- [Codegen: `is a subscription`, `anonymous operation`](#codegen-is-a-subscription-anonymous-operation)
+- [Codegen: `two operations are named`](#codegen-two-operations-are-named)
+- [Codegen: the generated file does not typecheck](#codegen-the-generated-file-does-not-typecheck)
 - [`INVALID_TOOL_INPUT` on a tool call](#invalid_tool_input-on-a-tool-call)
 - [`TOOL_FAILED` with `The GraphQL operation failed`](#tool_failed-with-the-graphql-operation-failed)
 - [The model sees `INTERNAL_ERROR`](#the-model-sees-internal_error)
@@ -80,3 +84,40 @@ try {
 **When:** the run is aborted while a query is executing.
 **Why:** graphql-js `execute` takes no signal; the abort is checked before the operation starts.
 **Fix:** read `signal` from your `context` builder (`context: ({ signal }) => ({ signal })`) and pass it to your data sources.
+
+## Codegen: `has no description`
+
+**When:** graphql-codegen fails with `@nxgt/ai-graphql/codegen: operation "FindTickets" has no description.`
+**Why:** the model reads the description to choose the tool, so the plugin will not write a tool without one. The operation has no graphql 17 description and no `# tool:` comment _directly_ above it (a blank line cuts it off; so does a comment inside the braces).
+**Fix:** add the comment on the lines just above the operation.
+
+```graphql
+# tool: List the open tickets of a customer, newest first.
+query FindTickets($customerId: ID!) {
+	tickets(customerId: $customerId) {
+		id
+	}
+}
+```
+
+## Codegen: `is a subscription`, `anonymous operation`
+
+**When:** generation fails with `operation "…" is a subscription` or `an anonymous operation cannot become a tool`.
+**Why:** a tool call is one request and one answer, and an anonymous operation has no name for the tool or for its `z<Op>Variables` schema.
+**Fix:** keep subscriptions out of the documents this plugin reads (use a separate `generates` entry with its own `documents`), and name every query and mutation.
+
+## Codegen: `two operations are named`
+
+**When:** generation fails with `two operations are named "…"`.
+**Why:** tool names are unique; two operations (or an operation and a `names` mapping) give the same one.
+**Fix:** rename one operation, or map it: `config: { names: { FindTickets: 'find_tickets' } }`.
+
+## Codegen: the generated file does not typecheck
+
+**When:** `tsc` reports `has no exported member 'zFindTicketsQueryVariables'` or cannot find `./zod`.
+**Why:** the manifest imports the schema under the name `@nxgt/graphql-codegen-zod` gives it, from `zodImport` (default `./zod`, relative to the manifest). A different `schemaPrefix`, `dedupeOperationSuffix` or `omitOperationSuffix` there, a manifest written elsewhere, or `moduleResolution: nodenext` (which wants `.js`) breaks it.
+**Fix:** set the same options on both plugins and point `zodImport` at the generated zod file.
+
+```ts
+config: { zodImport: './zod.js', schemaPrefix: 'z', dedupeOperationSuffix: true },
+```

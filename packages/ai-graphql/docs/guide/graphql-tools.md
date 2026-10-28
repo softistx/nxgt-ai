@@ -46,7 +46,7 @@ const tools = graphqlTools({ schema, operations: [findTickets] });
 This is the whole shape on purpose: a manifest of
 `{ name, description, document, variables }` (with `variables` the
 `z<Op>Variables` of `@nxgt/graphql-codegen-zod`) is what the `./codegen` plugin
-will emit, and it can be passed as `operations` as is.
+emits ([codegen guide](codegen.md)), and it can be passed as `operations` as is.
 
 Each operation is parsed and validated against the schema when `graphqlTools`
 is called. A `DocumentNode` is copied (printed and parsed again) at that moment,
