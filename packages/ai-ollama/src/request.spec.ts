@@ -110,4 +110,60 @@ describe('buildBody', () => {
 		});
 		expect(body).toMatchObject({ format: 'json', options: { seed: 1 } });
 	});
+
+	test('providerOptions.options merge one level and win per key', () => {
+		const body = buildBody(o, {
+			messages: [],
+			temperature: 0.2,
+			maxTokens: 50,
+			providerOptions: {
+				options: { num_ctx: 8192, temperature: 0.9 },
+				format: 'json',
+			},
+		});
+		expect(body['options']).toEqual({
+			temperature: 0.9,
+			num_predict: 50,
+			num_ctx: 8192,
+		});
+		expect(body['format']).toBe('json');
+		const kept = buildBody(o, {
+			messages: [],
+			temperature: 0.2,
+			maxTokens: 50,
+			providerOptions: { options: { num_ctx: 8192 } },
+		});
+		expect(kept['options']).toEqual({
+			temperature: 0.2,
+			num_predict: 50,
+			num_ctx: 8192,
+		});
+	});
+
+	test('a non-object providerOptions.options replaces the mapped ones', () => {
+		const base = { messages: [], temperature: 0.2 };
+		const nul = buildBody(o, { ...base, providerOptions: { options: null } });
+		expect(nul['options']).toBeNull();
+		const arr = buildBody(o, { ...base, providerOptions: { options: [1] } });
+		expect(arr['options']).toEqual([1]);
+	});
+
+	test('numCtx maps to options.num_ctx beside the other options', () => {
+		expect(
+			buildBody({ ...o, numCtx: 4096 }, { messages: [] })['options'],
+		).toEqual({
+			num_ctx: 4096,
+		});
+		expect(
+			buildBody({ ...o, numCtx: 4096 }, { messages: [], maxTokens: 9 })[
+				'options'
+			],
+		).toEqual({ num_predict: 9, num_ctx: 4096 });
+		expect(
+			buildBody(
+				{ ...o, numCtx: 4096 },
+				{ messages: [], providerOptions: { options: { num_ctx: 1 } } },
+			)['options'],
+		).toEqual({ num_ctx: 1 });
+	});
 });

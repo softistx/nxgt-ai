@@ -1,17 +1,14 @@
-import {
-	AiError,
-	type Message,
-	type ModelRequest,
-	type Part,
-	type ThinkingOptions,
-	type ToolResultPart,
+import type {
+	Message,
+	ModelRequest,
+	Part,
+	ToolResultPart,
 } from '@nxgt/ai-core';
 
 import { type Block, placeBreakpoints } from './cache';
+import { DEFAULT_THINKING_BUDGET, resolveThinking } from './thinking';
 
 export const DEFAULT_MAX_TOKENS = 4096;
-/** The API's minimum thinking budget; used when the request names none. */
-export const DEFAULT_THINKING_BUDGET = 1024;
 
 interface WireBody {
 	model: string;
@@ -93,84 +90,20 @@ function maxTokens(asked: number | undefined, budget: number | undefined) {
 	return Math.max(asked ?? DEFAULT_MAX_TOKENS + budget, budget + 1);
 }
 
-const family = (...ids: string[]) =>
-	new RegExp(`^claude-(?:${ids.join('|')})(?:[-@]|$)`);
-/** Models whose API rejects `budget_tokens` with a 400 (adaptive only). */
-const NO_BUDGET = family(
-	'fable-5',
-	'mythos-5',
-	'sonnet-5',
-	'opus-5',
-	'opus-4-7',
-	'opus-4-8',
-	'haiku-5',
-);
-/** Models before adaptive thinking (Claude 4.6). */
-const NO_ADAPTIVE = family('haiku-4-5', 'sonnet-4-5', 'opus-4-5', 'opus-4-1');
-/** Models without the effort parameter. */
-const NO_EFFORT = family('haiku-4-5', 'sonnet-4-5');
-/** Models whose effort stops at `high` (`max` on 4.6; `xhigh` came with 4.7). */
-const NO_XHIGH = family('opus-4-5', 'opus-4-6', 'sonnet-4-6');
-
-const invalid = (message: string) =>
-	new AiError('INVALID_REQUEST', `Anthropic thinking: ${message}`);
-
-type Resolved =
-	| { mode: 'budget'; budget: number }
-	| { mode: 'adaptive' }
-	| { mode: 'none' };
-
-/**
- * Refuses, before any call, the combinations the API rejects with a 400 and
- * that the model id lets us know. An unknown model id is never refused.
- */
-function resolveThinking(model: string, t: ThinkingOptions): Resolved {
-	const mode =
-		t.mode ??
-		(t.budgetTokens === undefined && t.effort !== undefined
-			? 'none'
-			: 'budget');
-	if (mode === 'adaptive' && t.budgetTokens !== undefined)
-		throw invalid('`budgetTokens` cannot be used with `mode: "adaptive"`');
-	if (mode === 'none' && t.display !== undefined)
-		throw invalid('`display` needs `mode: "adaptive"` or `budgetTokens`');
-	if (mode === 'budget' && NO_BUDGET.test(model))
-		throw invalid(
-			`${model} rejects \`budgetTokens\`; use \`mode: "adaptive"\` with \`effort\``,
-		);
-	if (mode === 'adaptive' && NO_ADAPTIVE.test(model))
-		throw invalid(
-			`${model} has no adaptive thinking; use \`budgetTokens\` instead`,
-		);
-	if (t.effort !== undefined) {
-		if (NO_EFFORT.test(model))
-			throw invalid(`${model} has no \`effort\` parameter`);
-		if (t.effort === 'xhigh' && NO_XHIGH.test(model))
-			throw invalid(`${model} does not support effort "xhigh"`);
-		if (t.effort === 'max' && family('opus-4-5').test(model))
-			throw invalid(`${model} does not support effort "max"`);
-	}
-	if (mode === 'budget')
-		return {
-			mode,
-			budget: Math.max(
-				t.budgetTokens ?? DEFAULT_THINKING_BUDGET,
-				DEFAULT_THINKING_BUDGET,
-			),
-		};
-	return { mode };
-}
-
 /**
  * The JSON body of `POST /v1/messages` for `req`. With `thinking`, the API
- * allows no `temperature` (adaptive too) and needs `max_tokens` above a
- * budget, so the former is dropped and an absent `maxTokens` leaves room for the answer.
+ * allows no `temperature` and a budget needs `max_tokens` above it, so the
+ * former is dropped (adaptive thinking too) and an absent `maxTokens` leaves
+ * room for the answer. `effort` alone sends `output_config` and no `thinking`.
+ * A `providerOptions.thinking` override that is not `disabled` gets the same:
+ * `temperature` is dropped, its `budget_tokens` is raised to the minimum and
+ * `max_tokens` is resized, each unless `providerOptions` names that key.
  */
 export function buildBody(
 	model: string,
 	req: ModelRequest,
 ): Record<string, unknown> {
-	const thinking = req.thinking && resolveThinking(model, req.thinking);
+	const thinking = req.thinking && resolveThinking(req.thinking);
 	const budget = thinking?.mode === 'budget' ? thinking.budget : undefined;
 	const body: WireBody = {
 		model,
@@ -201,5 +134,42 @@ export function buildBody(
 	if (body.thinking === undefined && req.temperature !== undefined)
 		body.temperature = req.temperature;
 	if (req.cache !== 'off') placeBreakpoints(body);
-	return { ...body, ...req.providerOptions };
+	const extra = req.providerOptions;
+	const over = thinkingOverride(extra);
+	if (over === undefined) return { ...body, ...extra };
+	// Temperature and max_tokens follow the override as they follow the typed
+	// option, unless providerOptions names them itself.
+	if (!('temperature' in (extra ?? {}))) delete body.temperature;
+	const merged: Record<string, unknown> = { ...body, ...extra };
+	if (over.budget !== undefined) {
+		merged['thinking'] = { ...over.thinking, budget_tokens: over.budget };
+		if (!('max_tokens' in (extra ?? {})))
+			merged['max_tokens'] = maxTokens(req.maxTokens, over.budget);
+	}
+	return merged;
+}
+
+/**
+ * A `providerOptions.thinking` that turns thinking on: any object whose `type`
+ * is not `'disabled'`. `budget` is its `budget_tokens` raised to the minimum,
+ * or `undefined` when it has none (such as an adaptive type).
+ */
+function thinkingOverride(
+	extra: Record<string, unknown> | undefined,
+):
+	| { thinking: Record<string, unknown>; budget: number | undefined }
+	| undefined {
+	const t = extra?.['thinking'];
+	if (typeof t !== 'object' || t === null || Array.isArray(t)) return undefined;
+	const thinking = t as Record<string, unknown>;
+	if (thinking['type'] === undefined || thinking['type'] === 'disabled')
+		return undefined;
+	const raw = thinking['budget_tokens'];
+	return {
+		thinking,
+		budget:
+			typeof raw === 'number'
+				? Math.max(raw, DEFAULT_THINKING_BUDGET)
+				: undefined,
+	};
 }

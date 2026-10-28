@@ -153,7 +153,7 @@ const logger: AgentObserver = {
 	onModelStart: ({ runId, step }) => {},
 	onModelCall: ({ runId, step, durationMs, usage, finishReason, error }) => {},
 	onToolStart: ({ runId, step, call }) => {},
-	onToolCall: ({ runId, step, call, result, durationMs }) => {},
+	onToolCall: ({ runId, step, call, result, durationMs, proposed }) => {},
 	onRunEnd: (result) => {},
 };
 ```
@@ -161,7 +161,9 @@ const logger: AgentObserver = {
 Hooks are awaited in order. One that throws is ignored: telemetry never fails
 a run. `onModelStart` and `onToolStart` fire before the work, so an observer
 can open a span that covers it; each is followed by its `onModelCall` or
-`onToolCall`, which carries the outcome. Every hook receives the run's
+`onToolCall`, which carries the outcome. For a `confirm` tool the loop does not
+run the tool: `onToolCall` has `proposed: true` and a `result` that only says the
+action is pending. Every hook receives the run's
 `runId` (also on `AgentResult` and on each `step-start` event), so one observer
 built once can serve concurrent runs: key its state by `runId`. The id is a
 `crypto.randomUUID()`; a test passes `newId` to `runAgent` for a fixed one.

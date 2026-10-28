@@ -41,7 +41,16 @@ const model = anthropic({
 | `thinking` part with `redacted` | `redacted_thinking` block with its `data`                               |
 | `tool-result` part              | `tool_result` block (`is_error: true` on failure), in a user message    |
 | `proposed-action` part          | not sent: it is for the user, not the model                             |
-| `providerOptions`               | merged into the body last, so it can override any field                 |
+| `providerOptions`               | merged into the body last, so it can override any field (see below)     |
+
+A `providerOptions.thinking` that is not `{ type: 'disabled' }` replaces the
+typed thinking and is treated like it: `temperature` is dropped, a
+`budget_tokens` below 1024 is raised to 1024, and `max_tokens` is recomputed
+for the budget (the asked `maxTokens`, or the default plus the budget, and
+always above the budget). A type with no budget (such as `adaptive`) only drops
+`temperature`. The override wins over a typed `mode`; see Adaptive thinking
+below. A `temperature` or `max_tokens` named in `providerOptions` is
+sent as is.
 
 Consecutive messages of one role are merged, as the API requires; a `tool`
 message becomes a user message. A tool output that is not a string is sent as
@@ -141,6 +150,12 @@ The budget is at least 1024 (the API's minimum) and defaults to it. With
 thinking on, `temperature` is not sent (the API refuses it) and an absent
 `maxTokens` becomes `4096 + budget`; an explicit `maxTokens` not above the budget is raised to `budget + 1`, since `max_tokens` must exceed the budget.
 
+The model's thinking arrives as `thinking-delta` events; `generate` folds them
+into a `thinking` part that keeps its `signature`. Put that assistant message
+back in `messages` on the next turn and the part is sent as it came: the API
+needs the signed thinking block in front of a tool result. A thinking part
+without a signature is dropped. A `redacted_thinking` block (the API encrypts that reasoning) arrives as a `thinking-delta` with an empty `text` and `redacted` set to the block's `data`; `generate` keeps it as its own `thinking` part and the adapter sends it back as a `redacted_thinking` block, unchanged. Do not read, edit or drop it: the API refuses a tool-use continuation that lacks it. Non-streamed responses map the same way. A `thinking-delta` may carry only a `signature` (empty `text`); a UI must not render it as new text.
+
 ### Adaptive thinking and effort
 
 Recent models decide for themselves when and how much to think, and take an
@@ -158,36 +173,36 @@ await generate(model, {
 | `{ budgetTokens }`     | `thinking: { type: 'enabled', budget_tokens }` (as above)                                   |
 | `{ mode: 'adaptive' }` | `thinking: { type: 'adaptive' }`; no `temperature`, `max_tokens` as asked (default 4096)    |
 | `effort`               | `output_config: { effort }`, beside either mode or alone (effort alone sends no `thinking`) |
-| `display`              | `thinking.display`: `'summarized'` returns a summary, `'omitted'` returns empty text        |
+| `display`              | `thinking.display` (`'summarized'` or `'omitted'`), with either mode                        |
 
-`effort` is `low`, `medium`, `high`, `xhigh` or `max`. The API's default is
-`high`, except `medium` on Claude Opus 5.5 and Claude Haiku 5.5, so set it
-explicitly where it matters. `display` defaults to `'omitted'` on the newest
-models: the thinking block then has an empty text and only a `signature`, which
-arrives as a `thinking-delta` with `text: ''` (set `display: 'summarized'` to
-stream the reasoning to a UI). Keep that block in `messages` all the same.
+`effort` is `low`, `medium`, `high`, `xhigh` or `max`; the adapter sends the
+level you give and the API refuses one the model lacks. Effort works with or
+without thinking. The API's default is `high`, except `medium` on Claude Opus 5.5
+and Claude Haiku 5.5, so set it explicitly where it matters.
 
-With adaptive thinking `max_tokens` is not raised for you: thinking counts
-against it, so pass a `maxTokens` generous enough for thinking and the answer.
+`display` defaults to `'omitted'` on the newest models (Claude 5 family, Opus
+4.7 and 4.8) and to `'summarized'` on Opus 4.6, Sonnet 4.6 and earlier. With
+`'omitted'` the thinking block has an empty text and only a `signature`, which
+arrives as a `thinking-delta` with `text: ''`; set `display: 'summarized'` to
+stream the reasoning to a UI. Keep that block in `messages` all the same.
 
-Refused before the call, as an `AiError` with code
-`INVALID_REQUEST` (the model id decides; an unknown id is never refused):
+`max_tokens` is not raised for adaptive thinking: it stays as asked (default
+4096), and thinking counts toward it. At `high` effort and above the answer can
+be cut off (`finish` reason `max-tokens`), so pass a `maxTokens` with room for
+thinking and the answer.
 
-- `budgetTokens` (or a bare `thinking: {}`) on Claude Fable 5, Mythos 5, Sonnet 5 / 5.5,
-  Opus 5 / 5.5 / 4.7 / 4.8 and Haiku 5.5: the API answers 400; use `mode: 'adaptive'`.
-- `mode: 'adaptive'` together with `budgetTokens`.
-- `mode: 'adaptive'` on a model before Claude 4.6 (Haiku 4.5, Sonnet 4.5, Opus 4.5).
-- `effort` on Haiku 4.5 and Sonnet 4.5; `xhigh` on Opus 4.5 / 4.6 and Sonnet 4.6; `max` on Opus 4.5.
-- `display` with `effort` alone.
+The adapter refuses only what is contradictory, whatever the model: `mode:
+'adaptive'` with `budgetTokens`, and `display` with `effort` alone (no thinking
+object is sent for it to apply to). It throws an `AiError` with code
+`INVALID_REQUEST` before the call. What only some models refuse, such as
+`budgetTokens` on the newest ones, is left to the API's 400: see the known
+limits in [Troubleshooting](../troubleshooting.md#anthropic-api-400--also-404-413-other-4xx).
 
-Source: the Claude API documentation (Messages API thinking and effort
-parameters, model migration notes).
-
-The model's thinking arrives as `thinking-delta` events; `generate` folds them
-into a `thinking` part that keeps its `signature`. Put that assistant message
-back in `messages` on the next turn and the part is sent as it came: the API
-needs the signed thinking block in front of a tool result. A thinking part
-without a signature is dropped. A `redacted_thinking` block (the API encrypts that reasoning) arrives as a `thinking-delta` with an empty `text` and `redacted` set to the block's `data`; `generate` keeps it as its own `thinking` part and the adapter sends it back as a `redacted_thinking` block, unchanged. Do not read, edit or drop it: the API refuses a tool-use continuation that lacks it. Non-streamed responses map the same way. A `thinking-delta` may carry only a `signature` (empty `text`); a UI must not render it as new text.
+Typed `thinking` and a `providerOptions.thinking` override can be mixed: the
+override replaces the `thinking` field, so `{ mode: 'adaptive', effort: 'high' }`
+with `providerOptions: { thinking: { type: 'enabled', budget_tokens: 5000 } }`
+sends the enabled budget (sized as in the previous section) and still the typed
+`output_config.effort`.
 
 ## Prompt cache
 

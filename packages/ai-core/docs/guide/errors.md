@@ -25,15 +25,15 @@ class AiError extends Error {
 }
 ```
 
-| Code                      | Raised or reported when                                                                                   |
-| ------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `INVALID_TOOL_DEFINITION` | thrown by `defineTool` / `jsonSchemaTool`: bad name, empty description, input schema not an object        |
-| `INVALID_TOOL_INPUT`      | a tool result: the model's input failed validation; `issues` locate each problem                          |
-| `INVALID_TOOL_OUTPUT`     | a tool result: the return value failed the `output` schema                                                |
-| `TOOL_FAILED`             | a tool result: `execute` threw                                                                            |
-| `ACTION_EXPIRED`          | thrown by `runConfirmedAction` / `rejectAction`: the action's `expiresAt` has passed                      |
-| `ACTION_NOT_PENDING`      | thrown by the same: the action is already confirmed, rejected, expired or failed                          |
-| `INVALID_REQUEST`         | thrown by a model adapter: the request cannot be sent as asked (for example, an option the model rejects) |
+| Code                      | Raised or reported when                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `INVALID_TOOL_DEFINITION` | thrown by `defineTool` / `jsonSchemaTool`: bad name, empty description, input schema not an object |
+| `INVALID_TOOL_INPUT`      | a tool result: the model's input failed validation; `issues` locate each problem                   |
+| `INVALID_TOOL_OUTPUT`     | a tool result: the return value failed the `output` schema                                         |
+| `TOOL_FAILED`             | a tool result: `execute` threw                                                                     |
+| `ACTION_EXPIRED`          | thrown by `runConfirmedAction` / `rejectAction`: the action's `expiresAt` has passed               |
+| `ACTION_NOT_PENDING`      | thrown by the same: the action is already confirmed, rejected, expired or failed                   |
+| `INVALID_REQUEST`         | thrown by a model adapter: the request contradicts itself and cannot be sent                       |
 
 These codes exist for the next slices and are not raised yet: `UNKNOWN_TOOL`,
 `MODEL_ERROR`, `RATE_LIMITED`, `AUTHENTICATION`, `ABORTED`, `MAX_STEPS`,

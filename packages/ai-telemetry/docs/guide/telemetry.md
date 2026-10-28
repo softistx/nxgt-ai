@@ -49,12 +49,12 @@ whatever span was current where the tool was called, not under the tool call.
 
 ## Attributes
 
-| Span            | Attributes                                                                                                                                                            |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| all model spans | `gen_ai.provider.name`, `gen_ai.system` (older backends), `gen_ai.request.model`                                                                                      |
-| `ai.agent.run`  | `gen_ai.operation.name` = `invoke_agent`, `ai.agent.tools`, `ai.agent.steps`, `ai.agent.reason`, usage summed over the run                                            |
-| `ai.model.call` | `gen_ai.operation.name` = `chat`, `ai.step`, `ai.duration_ms`, `gen_ai.response.finish_reasons` (`stop`, `tool_calls`, `length`, `content_filter`), usage of the call |
-| `ai.tool.call`  | `gen_ai.operation.name` = `execute_tool`, `gen_ai.tool.name`, `gen_ai.tool.call.id`, `ai.step`, `ai.duration_ms`                                                      |
+| Span            | Attributes                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| all model spans | `gen_ai.provider.name`, `gen_ai.system` (older backends), `gen_ai.request.model`                                                                                         |
+| `ai.agent.run`  | `gen_ai.operation.name` = `invoke_agent`, `ai.agent.tools`, `ai.agent.steps`, `ai.agent.reason`, usage summed over the run                                               |
+| `ai.model.call` | `gen_ai.operation.name` = `chat`, `ai.step`, `ai.duration_ms`, `gen_ai.response.finish_reasons` (`stop`, `tool_calls`, `length`, `content_filter`), usage of the call    |
+| `ai.tool.call`  | `gen_ai.operation.name` = `execute_tool`, `gen_ai.tool.name`, `gen_ai.tool.call.id`, `ai.step`, `ai.duration_ms`, `ai.tool.proposed` (`true` only for a proposed action) |
 
 Usage is `gen_ai.usage.input_tokens` (all input tokens, the cached ones
 included, as the OpenTelemetry convention says), `gen_ai.usage.output_tokens`,
@@ -76,14 +76,16 @@ personal data.
 
 ## Errors and aborts
 
-| What happened                    | Span status                                                 |
-| -------------------------------- | ----------------------------------------------------------- |
-| tool result with `isError`       | `ai.tool.call` is `error`, `ai.error.code` is the tool code |
-| model call failed                | `ai.model.call` and `ai.agent.run` are `error`              |
-| run ends `max-steps` or `budget` | `ai.agent.run` is `error` with `ai.error.code`              |
-| the run is aborted               | the open spans are `cancelled`, not `error` (`ABORTED`)     |
+| What happened                    | Span status                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| tool result with `isError`       | `ai.tool.call` is `error`, `ai.error.code` is the tool code                   |
+| model call failed                | `ai.model.call` and `ai.agent.run` are `error`                                |
+| run ends `max-steps` or `budget` | `ai.agent.run` is `error` with `ai.error.code`                                |
+| tool proposed (`confirm`)        | `ai.tool.call` is `ok` with `ai.tool.proposed` = `true`; the tool did not run |
+| the run is aborted               | the open spans are `cancelled`, not `error` (`ABORTED`)                       |
 
-A tool that fails does not fail the run: the model sees the error result and
+An aborted tool is recognisable on its span: status `cancelled` and
+`ai.error.code` = `ABORTED`. A tool that fails does not fail the run: the model sees the error result and
 `ai.agent.run` stays `ok` unless the run itself ends in error.
 
 ## Testing
