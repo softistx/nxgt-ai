@@ -122,5 +122,22 @@ export function buildBody(
 		body.thinking = { type: 'enabled', budget_tokens: budget };
 	else if (req.temperature !== undefined) body.temperature = req.temperature;
 	if (req.cache !== 'off') placeBreakpoints(body);
-	return { ...body, ...req.providerOptions };
+	const extra = req.providerOptions;
+	const override = extra?.['thinking'];
+	// A thinking override through providerOptions resizes max_tokens as the
+	// typed option does, unless providerOptions names max_tokens itself.
+	if (
+		extra !== undefined &&
+		!('max_tokens' in extra) &&
+		typeof override === 'object' &&
+		override !== null &&
+		(override as { type?: unknown }).type === 'enabled' &&
+		typeof (override as { budget_tokens?: unknown }).budget_tokens === 'number'
+	) {
+		body.max_tokens = maxTokens(
+			req.maxTokens,
+			(override as { budget_tokens: number }).budget_tokens,
+		);
+	}
+	return { ...body, ...extra };
 }

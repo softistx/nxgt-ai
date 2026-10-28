@@ -42,6 +42,16 @@ anthropic({ apiKey, model: 'claude-sonnet-4-5' }); // check the model id spellin
 
 Not retried.
 
+### `Anthropic API 400: ... max_tokens must be greater than thinking.budget_tokens`
+
+**When:** thinking is set through `providerOptions` with a `max_tokens` also set there.
+**Why:** a `max_tokens` named in `providerOptions` is sent as is; without it, the adapter sizes `max_tokens` for the overriding `budget_tokens`.
+**Fix:** drop `max_tokens` from `providerOptions`, or set it above the budget.
+
+```ts
+providerOptions: { thinking: { type: 'enabled', budget_tokens: 8000 } }; // max_tokens follows
+```
+
 ## Capacity
 
 ### `Anthropic API 429: ...`

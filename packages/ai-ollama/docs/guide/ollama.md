@@ -12,6 +12,7 @@ const model = ollama({
 	baseUrl: 'http://gpu-box:11434',
 	keepAlive: '30m',
 	think: true,
+	numCtx: 8192,
 });
 ```
 
@@ -23,6 +24,7 @@ const model = ollama({
 | `baseUrl`   | `http://localhost:11434` | another host or a proxy; a trailing slash is ignored                |
 | `keepAlive` | server default (`5m`)    | how long the model stays loaded: `'10m'`, seconds, `-1`, `0`        |
 | `think`     | on when a request asks   | `true`, `false` or a level (`'low'`, `'medium'`, `'high'`, `'max'`) |
+| `numCtx`    | server default           | context window in tokens, sent as `options.num_ctx`                 |
 | `fetch`     | global `fetch`           | replace it in tests                                                 |
 | `newId`     | `call_<uuid>`            | replace the tool call id generator in tests                         |
 
@@ -38,7 +40,13 @@ const model = ollama({
 | `thinking` part            | the assistant message's `thinking`                                           |
 | `cache`                    | ignored: Ollama keeps its own KV cache                                       |
 | `thinking` request         | `think: true` when the adapter's `think` is unset                            |
-| `providerOptions`          | merged into the body, for `format`, `options.seed`, ...                      |
+| `providerOptions`          | merged into the body, for `format`, ...; `options` merges key by key         |
+
+`providerOptions` keys replace the body's top-level keys, except `options`,
+which is merged deeply: the mapped `temperature`, `num_predict` and `num_ctx`
+come first and `providerOptions.options` is laid over them, key by key. So
+`providerOptions: { options: { seed: 1 } }` keeps the request's temperature
+and `maxTokens`; to override one of them, name that key.
 
 Ollama has no thinking token budget, so `budgetTokens` is ignored.
 

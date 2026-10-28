@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message } from '@nxgt/ai-core';
+import type { Message, ModelRequest } from '@nxgt/ai-core';
 import { buildBody } from './request';
 import { events, fixture, json, setup } from './test-helpers';
 
@@ -163,6 +163,48 @@ describe('buildBody', () => {
 		});
 		expect(body).toMatchObject({ top_k: 5, max_tokens: 9 });
 		expect(JSON.stringify(body)).toContain('"content":"plain"');
+	});
+});
+
+describe('providerOptions thinking override', () => {
+	const messages: ModelRequest['messages'] = [];
+	const thinking = { type: 'enabled', budget_tokens: 8000 };
+
+	test('max_tokens is sized for the overriding budget', () => {
+		const body = buildBody('m', { messages, providerOptions: { thinking } });
+		expect(body['thinking']).toEqual(thinking);
+		expect(body['max_tokens']).toBe(4096 + 8000);
+		const asked = buildBody('m', {
+			messages,
+			maxTokens: 100,
+			providerOptions: { thinking },
+		});
+		expect(asked['max_tokens']).toBe(8001);
+	});
+
+	test('it replaces the budget of the typed option', () => {
+		const body = buildBody('m', {
+			messages,
+			thinking: { budgetTokens: 2000 },
+			providerOptions: { thinking },
+		});
+		expect(body['max_tokens']).toBe(4096 + 8000);
+	});
+
+	test('an explicit max_tokens in providerOptions wins', () => {
+		const body = buildBody('m', {
+			messages,
+			providerOptions: { thinking, max_tokens: 20000 },
+		});
+		expect(body['max_tokens']).toBe(20000);
+	});
+
+	test('other thinking values leave max_tokens alone', () => {
+		const body = buildBody('m', {
+			messages,
+			providerOptions: { thinking: { type: 'disabled' } },
+		});
+		expect(body['max_tokens']).toBe(4096);
 	});
 });
 
