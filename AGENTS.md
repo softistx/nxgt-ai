@@ -45,9 +45,9 @@ shared are copied byte for byte from nxgt-data; fix a drift there first.
   `"moduleResolution": "bundler"` (each README says so).
 - A package is `"private": true` until its effort's release-readiness slice
   removes it, in a commit of its own. Phases 1a (`ai-core`, `ai-testing`,
-  `ai-anthropic`, `ai-ollama`, `ai-telemetry`) and 1b (`ai-memory`,
-  `ai-graphql`, `ai-alxia`) are publishable, first version 0.1.0 from their
-  `minor` changesets; the packages of phase 1c stay private until theirs.
+  `ai-anthropic`, `ai-ollama`, `ai-telemetry`), 1b (`ai-memory`,
+  `ai-graphql`, `ai-alxia`) and 1c (`ai-mcp`) are publishable, first version
+  0.1.0 from their `minor` changesets.
 - Every package has a README, `docs/guide/`, `docs/troubleshooting.md` (one
   entry per error a consumer can hit) and `docs/roadmap.md`.
 - Every slice carries specs, README/docs, a changeset and a green bar:
