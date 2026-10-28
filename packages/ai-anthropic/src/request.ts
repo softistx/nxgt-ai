@@ -6,10 +6,9 @@ import type {
 } from '@nxgt/ai-core';
 
 import { type Block, placeBreakpoints } from './cache';
+import { DEFAULT_THINKING_BUDGET, resolveThinking } from './thinking';
 
 export const DEFAULT_MAX_TOKENS = 4096;
-/** The API's minimum thinking budget; used when the request names none. */
-export const DEFAULT_THINKING_BUDGET = 1024;
 
 interface WireBody {
 	model: string;
@@ -18,7 +17,10 @@ interface WireBody {
 	system?: Block[];
 	tools?: Block[];
 	temperature?: number;
-	thinking?: { type: 'enabled'; budget_tokens: number };
+	thinking?:
+		| { type: 'enabled'; budget_tokens: number; display?: string }
+		| { type: 'adaptive'; display?: string };
+	output_config?: { effort: string };
 }
 interface WireMessage {
 	role: 'user' | 'assistant';
@@ -82,7 +84,7 @@ export function toWireMessages(messages: readonly Message[]): WireMessage[] {
 	return out;
 }
 
-/** `max_tokens` must exceed the thinking budget, so it is raised to fit. */
+/** `max_tokens` must exceed the thinking budget, so it is raised to fit (adaptive and effort-only have none). */
 function maxTokens(asked: number | undefined, budget: number | undefined) {
 	if (budget === undefined) return asked ?? DEFAULT_MAX_TOKENS;
 	return Math.max(asked ?? DEFAULT_MAX_TOKENS + budget, budget + 1);
@@ -90,8 +92,9 @@ function maxTokens(asked: number | undefined, budget: number | undefined) {
 
 /**
  * The JSON body of `POST /v1/messages` for `req`. With `thinking`, the API
- * allows no `temperature` and needs `max_tokens` above the budget, so the
- * former is dropped and an absent `maxTokens` leaves room for the answer.
+ * allows no `temperature` and a budget needs `max_tokens` above it, so the
+ * former is dropped (adaptive thinking too) and an absent `maxTokens` leaves
+ * room for the answer. `effort` alone sends `output_config` and no `thinking`.
  * A `providerOptions.thinking` override that is not `disabled` gets the same:
  * `temperature` is dropped, its `budget_tokens` is raised to the minimum and
  * `max_tokens` is resized, each unless `providerOptions` names that key.
@@ -100,12 +103,8 @@ export function buildBody(
 	model: string,
 	req: ModelRequest,
 ): Record<string, unknown> {
-	const budget = req.thinking
-		? Math.max(
-				req.thinking.budgetTokens ?? DEFAULT_THINKING_BUDGET,
-				DEFAULT_THINKING_BUDGET,
-			)
-		: undefined;
+	const thinking = req.thinking && resolveThinking(req.thinking);
+	const budget = thinking?.mode === 'budget' ? thinking.budget : undefined;
 	const body: WireBody = {
 		model,
 		max_tokens: maxTokens(req.maxTokens, budget),
@@ -121,9 +120,19 @@ export function buildBody(
 			input_schema: t.inputSchema,
 		}));
 	}
-	if (budget !== undefined)
-		body.thinking = { type: 'enabled', budget_tokens: budget };
-	else if (req.temperature !== undefined) body.temperature = req.temperature;
+	const display = req.thinking?.display;
+	if (thinking?.mode === 'budget')
+		body.thinking = {
+			type: 'enabled',
+			budget_tokens: thinking.budget,
+			...(display && { display }),
+		};
+	else if (thinking?.mode === 'adaptive')
+		body.thinking = { type: 'adaptive', ...(display && { display }) };
+	if (req.thinking?.effort !== undefined)
+		body.output_config = { effort: req.thinking.effort };
+	if (body.thinking === undefined && req.temperature !== undefined)
+		body.temperature = req.temperature;
 	if (req.cache !== 'off') placeBreakpoints(body);
 	const extra = req.providerOptions;
 	const over = thinkingOverride(extra);

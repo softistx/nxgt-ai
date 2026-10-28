@@ -40,7 +40,33 @@ Fail at startup when the variable is empty. Not retried.
 anthropic({ apiKey, model: 'claude-sonnet-4-5' }); // check the model id spelling
 ```
 
+**Known thinking limits** (checked 2026-10-27 against the Claude API documentation; they change with the models, so the API's message is the authority). The adapter sends your options as they are and does not check them against the model:
+
+- `budgetTokens` returns 400 on Claude Opus 5.5, Opus 5, Opus 4.8, Opus 4.7, Sonnet 5.5, Sonnet 5, Haiku 5.5, Fable 5 and 5.1, and Mythos 5 and 5.1. Use `mode: 'adaptive'`. Opus 4.6 and Sonnet 4.6 still accept it (deprecated); Opus 4.5, Sonnet 4.5 and Haiku 4.5 need it.
+- `mode: 'adaptive'` returns 400 on Opus 4.5, Sonnet 4.5 and Haiku 4.5.
+- `effort` is not available on Haiku 4.5 or Sonnet 4.5. `xhigh` is not available on Opus 4.5, Opus 4.6 and Sonnet 4.6.
+- A non-default `temperature` returns 400 on the Claude 5 family, Opus 4.7 and Opus 4.8, thinking or not. The adapter does not send `temperature` when it sends a thinking mode.
+
+Sources: [Thinking](https://platform.claude.com/docs/en/build-with-claude/thinking#configuring-thinking) (per-model table of `thinking` values, `display` defaults, sampling limits) and [Effort](https://platform.claude.com/docs/en/build-with-claude/effort#effort-levels) (levels and defaults per model).
+
 Not retried.
+
+### `Anthropic thinking: ...`
+
+**When:** `thinking` contradicts itself: `mode: 'adaptive'` with `budgetTokens`, or `display` with `effort` alone. Thrown before any call as an `AiError` with code `INVALID_REQUEST` (not an `AnthropicError`, not retried).
+**Why:** the two options cannot be sent together, or `display` has no thinking object to apply to.
+**Fix:** keep one.
+
+```ts
+thinking: { mode: 'adaptive', effort: 'high' }; // adaptive: effort, no budget
+thinking: { budgetTokens: 2048, display: 'summarized' }; // budget
+```
+
+### Thinking blocks arrive with an empty text
+
+**When:** thinking on the newest models.
+**Why:** `display` defaults to `'omitted'` there; the block still carries its `signature`.
+**Fix:** `thinking: { mode: 'adaptive', display: 'summarized' }` to read a summary. Keep the block in `messages` either way.
 
 ### `Anthropic API 400: ...` about `max_tokens` with thinking
 

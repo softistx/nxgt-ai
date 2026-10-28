@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message, ModelRequest } from '@nxgt/ai-core';
+import { AiError, type Message, type ModelRequest } from '@nxgt/ai-core';
 import { buildBody } from './request';
 import { events, fixture, json, setup } from './test-helpers';
 
@@ -280,5 +280,134 @@ describe('headers and response', () => {
 			input: { city: 'Lyon' },
 		});
 		expect(out.at(-1)).toEqual({ type: 'finish', reason: 'tool-use' });
+	});
+});
+
+describe('buildBody thinking modes', () => {
+	const messages: Message[] = [
+		{ role: 'user', parts: [{ type: 'text', text: 'hi' }] },
+	];
+	const build = (thinking: ModelRequest['thinking'], model = 'claude-test') =>
+		buildBody(model, {
+			cache: 'off',
+			messages,
+			temperature: 0.3,
+			...(thinking && { thinking }),
+		});
+	const refused = (thinking: ModelRequest['thinking']) => {
+		try {
+			build(thinking);
+		} catch (e) {
+			return e;
+		}
+		throw new Error('expected a refusal');
+	};
+
+	test('budgetTokens keeps sending an enabled budget', () => {
+		const body = build({ budgetTokens: 2000 });
+		expect(body['thinking']).toEqual({
+			type: 'enabled',
+			budget_tokens: 2000,
+		});
+		expect(body['max_tokens']).toBe(6096);
+		expect(body['temperature']).toBeUndefined();
+		expect(body['output_config']).toBeUndefined();
+	});
+
+	test('adaptive sends type adaptive, no budget, no temperature, the plain max_tokens', () => {
+		const body = build({ mode: 'adaptive' });
+		expect(body['thinking']).toEqual({ type: 'adaptive' });
+		expect(body['max_tokens']).toBe(4096);
+		expect(body['temperature']).toBeUndefined();
+		expect(body['output_config']).toBeUndefined();
+	});
+
+	test('adaptive with effort and display; an explicit maxTokens is kept', () => {
+		const body = buildBody('claude-opus-5-5', {
+			cache: 'off',
+			messages,
+			maxTokens: 9000,
+			thinking: { mode: 'adaptive', effort: 'xhigh', display: 'summarized' },
+		});
+		expect(body['thinking']).toEqual({
+			type: 'adaptive',
+			display: 'summarized',
+		});
+		expect(body['output_config']).toEqual({ effort: 'xhigh' });
+		expect(body['max_tokens']).toBe(9000);
+	});
+
+	test('display goes with a budget too', () => {
+		const body = build({ budgetTokens: 1024, display: 'omitted' });
+		expect(body['thinking']).toEqual({
+			type: 'enabled',
+			budget_tokens: 1024,
+			display: 'omitted',
+		});
+	});
+
+	test('effort alone sends only output_config and keeps temperature', () => {
+		const body = build({ effort: 'low' });
+		expect(body['thinking']).toBeUndefined();
+		expect(body['output_config']).toEqual({ effort: 'low' });
+		expect(body['temperature']).toBe(0.3);
+	});
+
+	test('effort works beside a budget', () => {
+		const body = build({ budgetTokens: 1024, effort: 'high' });
+		expect(body['thinking']).toEqual({
+			type: 'enabled',
+			budget_tokens: 1024,
+		});
+		expect(body['output_config']).toEqual({ effort: 'high' });
+	});
+
+	test('the model id never decides: what only some models refuse is sent', () => {
+		for (const model of ['claude-haiku-5-5', 'claude-haiku-4-5', 'x']) {
+			expect(build({ budgetTokens: 2000 }, model)['thinking']).toEqual({
+				type: 'enabled',
+				budget_tokens: 2000,
+			});
+			expect(build({ mode: 'adaptive', effort: 'max' }, model)).toMatchObject({
+				thinking: { type: 'adaptive' },
+				output_config: { effort: 'max' },
+			});
+		}
+	});
+
+	test('refuses adaptive together with budgetTokens', () => {
+		const e = refused({ mode: 'adaptive', budgetTokens: 2000 });
+		expect(e).toBeInstanceOf(AiError);
+		expect(e).toMatchObject({ code: 'INVALID_REQUEST' });
+	});
+
+	test('refuses display with effort alone', () => {
+		expect(refused({ effort: 'low', display: 'omitted' })).toMatchObject({
+			code: 'INVALID_REQUEST',
+		});
+	});
+
+	test('a typed adaptive mode plus a providerOptions budget override: the override wins and is sized like a budget', () => {
+		const body = buildBody('claude-test', {
+			cache: 'off',
+			messages,
+			temperature: 0.3,
+			thinking: { mode: 'adaptive', effort: 'high' },
+			providerOptions: { thinking: { type: 'enabled', budget_tokens: 5000 } },
+		});
+		expect(body['thinking']).toEqual({ type: 'enabled', budget_tokens: 5000 });
+		expect(body['output_config']).toEqual({ effort: 'high' });
+		expect(body['max_tokens']).toBe(4096 + 5000);
+		expect(body['temperature']).toBeUndefined();
+	});
+
+	test('providerOptions still win over the mapped fields', () => {
+		const body = buildBody('claude-test', {
+			cache: 'off',
+			messages,
+			thinking: { mode: 'adaptive' },
+			providerOptions: { thinking: { type: 'adaptive', display: 'omitted' } },
+		});
+		expect(body['thinking']).toEqual({ type: 'adaptive', display: 'omitted' });
 	});
 });
