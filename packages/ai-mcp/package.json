@@ -1,0 +1,65 @@
+{
+	"name": "@nxgt/ai-mcp",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Model Context Protocol for @nxgt/ai-core: the tools of an MCP server as agent tools, over stdio or Streamable HTTP",
+	"license": "MIT",
+	"type": "module",
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"package.json",
+		"LICENSE"
+	],
+	"exports": {
+		"./client": {
+			"types": "./dist/client.d.ts",
+			"import": "./dist/client.js",
+			"default": "./dist/client.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"keywords": [
+		"ai",
+		"agent",
+		"llm",
+		"mcp",
+		"model-context-protocol",
+		"tools",
+		"bun",
+		"typescript"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/softistx/nxgt-ai.git",
+		"directory": "packages/ai-mcp"
+	},
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org",
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun run ../../build.ts",
+		"test": "bun test src",
+		"typecheck": "tsc --noEmit"
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/client.ts"
+		]
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "1.32.2"
+	},
+	"devDependencies": {
+		"@nxgt/ai-core": "workspace:^",
+		"@types/bun": "^1.4.4",
+		"zod": "4.6.5"
+	},
+	"peerDependencies": {
+		"@nxgt/ai-core": "workspace:^",
+		"typescript": "^6.0.3 || ^7.0.0",
+		"zod": ">=4.6.5 <5"
+	}
+}
