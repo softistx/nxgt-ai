@@ -44,6 +44,17 @@ const tools = graphqlTools({ schema, operations: [findTickets] });
 | `summarize`     | Optional `(variables) => string`: the confirmation line of a mutation (`ProposedActionPart.summary`), for example `` `Renew loan of book ${v.bookId}` ``. Mutations only: a query is never proposed, so its `summarize` is never called. A throw leaves the summary out. Deriving it from the description and variables automatically is a follow-up. |
 | `operationName` | Which operation to run when the document holds several.                                                                                                                                                                                                                                                                                               |
 
+### List variables
+
+`@nxgt/graphql-codegen-zod` writes a list variable (or a list field of an
+input object) so that a single value is also accepted, which Zod cannot turn
+into JSON Schema. `graphqlTools` shows the model the plain array (`type:
+"array"`, items typed by the item schema) and validates with your Zod
+schema unchanged, so `{ ids: ["a"] }` passes, `{ ids: [1] }` is refused, and
+the single-value form still works for any caller that sends it. Any other
+type JSON Schema cannot express still fails at build with
+`GraphqlToolsError` `INVALID_OPERATION`.
+
 This is the whole shape on purpose: a manifest of
 `{ name, description, document, variables }` (with `variables` the
 `z<Op>Variables` of `@nxgt/graphql-codegen-zod`) is what the `./codegen` plugin

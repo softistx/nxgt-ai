@@ -1,4 +1,4 @@
-import { type AnyTool, defineTool, type ToolContext } from '@nxgt/ai-core';
+import { type AnyTool, jsonSchemaTool, type ToolContext } from '@nxgt/ai-core';
 import {
 	type DocumentNode,
 	execute,
@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { compileOperation } from './document';
 import { GraphqlToolsError } from './errors';
 import { parseForbidden } from './forbid';
+import { variablesIssues, variablesJsonSchema } from './input-schema';
 import {
 	failure,
 	fitOutput,
@@ -68,13 +69,20 @@ function buildTool<TContext>(
 ): AnyTool {
 	const { document, node } = compileOperation(op, options.schema, forbidden);
 	const operationName = node.name?.value;
-	return defineTool({
+	const input = op.variables ?? NO_VARIABLES;
+	return jsonSchemaTool<Record<string, unknown>, TContext>({
 		name: op.name,
 		description: op.description,
-		input: op.variables ?? NO_VARIABLES,
+		inputSchema: variablesJsonSchema(input, op.name),
+		validate(raw) {
+			const parsed = input.safeParse(raw);
+			return parsed.success
+				? { ok: true, value: parsed.data as Record<string, unknown> }
+				: { ok: false, issues: variablesIssues(parsed.error) };
+		},
 		confirm: node.operation === 'mutation',
 		...(op.summarize ? { summarize: op.summarize } : {}),
-		async execute(variables, tool: ToolContext<TContext>) {
+		async execute(variables, tool) {
 			tool.signal.throwIfAborted();
 			let contextValue: unknown = tool.context;
 			if (options.context) {
@@ -90,7 +98,7 @@ function buildTool<TContext>(
 				result = await execute({
 					schema: options.schema,
 					document,
-					variableValues: variables as Record<string, unknown>,
+					variableValues: variables,
 					contextValue,
 					...(operationName === undefined ? {} : { operationName }),
 				});
