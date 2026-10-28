@@ -143,8 +143,11 @@ export function runToolCalls(
 				call,
 			});
 			const started = performance.now();
+			// Aborted while the observers ran: neither run nor propose the call.
 			const guard = whenAborted(call, run.signal);
-			const result = await Promise.race([runOne(call, run), guard.aborted]);
+			const result = run.signal.aborted
+				? abortedResult(call)
+				: await Promise.race([runOne(call, run), guard.aborted]);
 			guard.release();
 			run.emit({ type: 'tool-result', result });
 			await notify(run.observers, 'onToolCall', {

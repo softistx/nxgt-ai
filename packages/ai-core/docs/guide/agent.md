@@ -110,7 +110,8 @@ The loop does not wait for a tool that ignores its signal. When the run
 aborts, every tool still running answers `ABORTED` at once, the run ends
 `aborted`, and whatever the tool returns later is dropped. The tool itself is
 not stopped: it finishes in the background and its side effects (a write, a
-payment, a message) still happen. Pass `ToolContext.signal` to everything that
+payment, a message) still happen. An observer (`onToolCall`) sees only the
+`ABORTED` result, never the late real one. Pass `ToolContext.signal` to everything that
 can wait.
 
 ```ts
