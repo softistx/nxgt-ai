@@ -59,7 +59,7 @@
     },
     "packages/ai-graphql": {
       "name": "@nxgt/ai-graphql",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "devDependencies": {
         "@graphql-codegen/cli": "7.4.6",
         "@graphql-codegen/plugin-helpers": "^7",

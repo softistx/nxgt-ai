@@ -1,5 +1,15 @@
 # @nxgt/ai-graphql
 
+## 0.3.0
+
+### Minor Changes
+
+- [#99](https://github.com/softistx/nxgt-ai/pull/99) [`d0dc758`](https://github.com/softistx/nxgt-ai/commit/d0dc758a94f715f58950ba9289df403e2dccc92e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - feat: a `mapErrors(errors, { operation })` option decides what the model reads of the GraphQL errors of a tool call, since the server's own error formatting does not apply in process. Its result is cut down to `code`, `path`, `fields` and scalar `params`; a hook that throws or returns junk falls back to the default mapping. Application codes with `.` and `-` (`auth.errors.forbidden`, up to 100 characters) now reach the model instead of `INTERNAL_ERROR`. Closes [#90](https://github.com/softistx/nxgt-ai/issues/90).
+
+### Patch Changes
+
+- [#97](https://github.com/softistx/nxgt-ai/pull/97) [`b28ac7d`](https://github.com/softistx/nxgt-ai/commit/b28ac7d8d4c8c897b6960b9e9f4324ca4775bc45) Thanks [@SteveGT96](https://github.com/SteveGT96)! - fix: variables written by `@nxgt/graphql-codegen-zod` for a list (a list variable, or an input object holding a list) now work as tool input. The model sees a JSON Schema array with typed items instead of `graphqlTools` throwing "Custom types cannot be represented in JSON Schema". Validation is unchanged, and other unrepresentable schemas still fail at build, now as `GraphqlToolsError` `INVALID_OPERATION`.
+
 ## 0.2.1
 
 ### Patch Changes
