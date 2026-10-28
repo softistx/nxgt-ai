@@ -393,7 +393,7 @@ skips the ids of expired threads and removes them as it goes.
 an atomic increment, and writes the messages and the new actions, so
 concurrent appends never share a position and a reader never sees a gap.
 `updateAction` is one script that matches only an action in a `from` status (`pending` by default); of
-two concurrent confirmations one gets the action and the other `undefined`. An
+two concurrent claims one gets the action and the other `undefined`. An
 action id is recorded once per owner, as in the other stores.
 
 ### Deleting
@@ -416,4 +416,4 @@ memoryStoreContract(() => myStore());
 Your `updateAction` must be atomic in the backing database (a conditional
 update on `status` in `from`), not a read then a write. Accept `patch`
 and `{ from }` as the in-process store does and validate the transition with
-the same table.
+the table above (`pending` to `running`, `rejected`, `expired`, `confirmed`, `failed`; `running` to `confirmed`, `failed`).
