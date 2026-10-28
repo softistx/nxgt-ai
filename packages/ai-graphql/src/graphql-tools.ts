@@ -141,7 +141,7 @@ function buildTool<TContext>(
 export function graphqlTools<TContext = unknown>(
 	options: GraphqlToolsOptions<TContext>,
 ): AnyTool[] {
-	const forbidden = parseForbidden(options.forbidFields ?? []);
+	const forbidden = parseForbidden(options.forbidFields ?? [], options.schema);
 	const max = options.maxResultChars ?? DEFAULT_MAX_RESULT_CHARS;
 	if (!Number.isInteger(max) || max < 100) {
 		throw new GraphqlToolsError(

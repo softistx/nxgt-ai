@@ -98,7 +98,7 @@ describe('graphqlTools: documents', () => {
 		expect(
 			build(
 				[{ ...book, document: '{ __typename member(id: "1") { name } }' }],
-				{ forbidFields: ['Query.__typename'] },
+				{ forbidFields: ['Person.phone'] },
 			),
 		).toHaveLength(1);
 		expect(
