@@ -12,13 +12,15 @@ Nothing in progress.
 
 ## Later
 
-- **Spans for proposed actions** — when one is confirmed or rejected.
+- **Spans for confirmed and rejected actions** — when a proposed action is confirmed or rejected, beyond the marker on its tool span.
 
 ## Not planned
 
 - **Recording content by default** — prompts and tool results can hold personal data, so it stays opt-in.
 
 ## Shipped
+
+- **`@nxgt/ai-telemetry` 0.2.0** — A tool call that became a proposed action is marked on its `ai.tool.call` span.
 
 - **`@nxgt/ai-telemetry` 0.1.0** — See an agent run in your traces:
   - `aiTelemetry()`, an `AgentObserver` that writes `@nxgt/telemetry` spans: `ai.agent.run`, `ai.model.call` and `ai.tool.call`, with `gen_ai.*` attributes.

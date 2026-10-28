@@ -20,6 +20,8 @@ Nothing in progress.
 
 ## Shipped
 
+- **`@nxgt/ai-anthropic` 0.2.0** — Adaptive thinking and effort mapped to the Messages API, and a `thinking` override in `providerOptions` treated like the typed option (temperature dropped, budget raised to the minimum, `max_tokens` resized).
+
 - **`@nxgt/ai-anthropic` 0.1.0** — A `ModelAdapter` for the Anthropic Messages API on Bun `fetch`:
   - `anthropic()`: system, messages, tool calls and results, tools and sampling mapped to a request.
   - SSE streaming, robust to any byte split, with `error` events raised as `AnthropicError`.
