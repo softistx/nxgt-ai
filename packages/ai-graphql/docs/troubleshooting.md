@@ -72,8 +72,8 @@ try {
 ## The model sees `INTERNAL_ERROR`
 
 **When:** an error carries `code: "INTERNAL_ERROR"`.
-**Why:** the GraphQL error has no `extensions.code`, or it is not letters, digits and `_` (at most 64). Messages are never forwarded.
-**Fix:** throw `new GraphQLError(message, { extensions: { code: 'NOT_FOUND' } })` from the resolver.
+**Why:** the GraphQL error has no `extensions.code`, or it is not letters, digits, `_`, `.` and `-` (at most 100), for example it holds a space. Messages are never forwarded.
+**Fix:** throw `new GraphQLError(message, { extensions: { code: 'NOT_FOUND' } })` from the resolver, or reshape your own codes with the `mapErrors` option. If `mapErrors` is set and still gives `INTERNAL_ERROR`, it threw, returned a promise or an empty list, or returned a code outside that pattern: the hook's result is ignored in those cases.
 
 ## The model sees `{ truncated: true, preview }`
 

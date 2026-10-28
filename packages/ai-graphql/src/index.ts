@@ -12,6 +12,8 @@ export {
 } from './graphql-tools';
 export type {
 	GraphqlToolOutput,
+	MapErrors,
+	MapErrorsInfo,
 	ToolGraphqlError,
 	TruncatedGraphqlOutput,
 } from './result';

@@ -15,6 +15,8 @@ import {
 	fitOutput,
 	type GraphqlToolOutput,
 	internalFailure,
+	type MapErrors,
+	mapToolErrors,
 	rootsAllNull,
 	toToolError,
 } from './result';
@@ -55,6 +57,17 @@ export interface GraphqlToolsOptions<TContext = unknown> {
 	forbidFields?: readonly string[];
 	/** Longest serialised result handed to the model; default 20000. */
 	maxResultChars?: number;
+	/**
+	 * Decides what the model reads of the errors of one call, since the schema
+	 * runs in process and the server's own error formatting does not apply.
+	 * Receives the `GraphQLError`s and `{ operation }` (the tool name); returns
+	 * the errors to show, each `{ code, path?, fields?, params? }`. The result is
+	 * cut down to those four, a code must be letters, digits, `_`, `.` or `-` (at
+	 * most 100), and a hook that throws or returns anything else falls back to
+	 * the default mapping. Default: `extensions.code`, `fields` and scalar
+	 * `params`, never a message.
+	 */
+	mapErrors?: MapErrors;
 }
 
 export const DEFAULT_MAX_RESULT_CHARS = 20_000;
@@ -115,7 +128,9 @@ function buildTool<TContext>(
 				data?: unknown;
 				errors?: readonly GraphQLError[];
 			};
-			const mapped = errors?.map(toToolError);
+			const mapped = errors?.length
+				? mapToolErrors(errors, options.mapErrors, { operation: op.name })
+				: undefined;
 			if (
 				mapped?.length &&
 				(node.operation === 'mutation' ||
@@ -155,6 +170,16 @@ export function graphqlTools<TContext = unknown>(
 		throw new GraphqlToolsError(
 			'INVALID_OPTIONS',
 			'maxResultChars must be an integer of at least 100: a truncation marker needs room.',
+			{},
+		);
+	}
+	if (
+		options.mapErrors !== undefined &&
+		typeof options.mapErrors !== 'function'
+	) {
+		throw new GraphqlToolsError(
+			'INVALID_OPTIONS',
+			'mapErrors must be a function.',
 			{},
 		);
 	}
