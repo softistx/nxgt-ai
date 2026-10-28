@@ -157,8 +157,8 @@ query FindTickets($customerId: ID!) {
 
 ## Codegen: schemaPrefix, typesPrefix, typesSuffix, zodImport, typesImport or namingConvention is refused
 
-**When:** generation fails with `schemaPrefix "a-b" must be letters, digits, "_" and "$" only.`, `zodImport must be a non-empty string.` or `namingConvention "…" is not one this plugin reads.`
-**Why:** these options build identifiers and import paths in the generated file; `namingConvention` accepts `keep`, a function, `change-case-all#<case>` and `change-case#<case>`, like `@nxgt/graphql-codegen-zod`.
+**When:** generation fails with `schemaPrefix "a-b" must be letters, digits, "_" and "$" only.` or `zodImport must be a non-empty string.`; a `namingConvention` it cannot read is refused by `@nxgt/graphql-codegen-zod`.
+**Why:** these options build identifiers and import paths in the generated file; `namingConvention` is the one of `@nxgt/graphql-codegen-zod` (`keep`, a function, `change-case-all#<case>`, `change-case#<case>`), which also computes the names.
 **Fix:** correct the option; give both plugins the same values.
 
 ## Codegen: The generated file does not typecheck

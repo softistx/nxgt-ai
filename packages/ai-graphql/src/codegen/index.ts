@@ -1,4 +1,5 @@
 import type { PluginFunction } from '@graphql-codegen/plugin-helpers';
+import { variablesSchemaName } from '@nxgt/graphql-codegen-zod/naming';
 import {
 	type FragmentDefinitionNode,
 	Kind,
@@ -12,7 +13,6 @@ import {
 } from './config';
 import { describe } from './description';
 import { addFragment, documentOf } from './document';
-import { variablesSchemaName } from './naming';
 import { type Entry, render } from './render';
 import { parseSource } from './source';
 
@@ -53,7 +53,8 @@ export const plugin: PluginFunction<OperationsManifestConfig> = (
 ) => {
 	checkConfig(config);
 	const names = config.names ?? {};
-	const schemaName = variablesSchemaName(config);
+	const schemaName = (operation: string, kind: 'query' | 'mutation') =>
+		variablesSchemaName(config, operation, kind);
 	const { found, fragments } = collect(documents);
 	for (const key of Object.keys(names)) {
 		if (!found.some((f) => f.node.name?.value === key)) {

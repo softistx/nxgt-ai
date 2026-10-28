@@ -17,8 +17,9 @@ you keep by hand.
 Install `@graphql-codegen/cli` and `@nxgt/graphql-codegen-zod` as dev
 dependencies. The plugin has two optional peers, used by `./codegen` only, so
 importing `@nxgt/ai-graphql` never needs them: `@graphql-codegen/plugin-helpers`
-(types; the CLI brings it) and `change-case` (`bun add -d change-case`, the
-converter `@nxgt/graphql-codegen-zod` names its schemas with).
+(types; the CLI brings it) and `@nxgt/graphql-codegen-zod` 0.4 (`>=0.4.0 <0.5.0`),
+which `./codegen` takes the schema names from. You install it anyway to
+generate the zod schemas.
 
 Write the manifest beside the zod file, as separate outputs:
 
@@ -155,10 +156,11 @@ Under `config` of the output:
 | `dedupeOperationSuffix`      | `false`             | Same: `TicketQuery` gives `zTicketQueryVariables`, not `zTicketQueryQueryVariables`.                          |
 | `omitOperationSuffix`        | `false`             | Same: `zFindTicketsVariables`.                                                                                |
 
-The last six mirror `@nxgt/graphql-codegen-zod`, whose naming is not exported:
-the plugin repeats its rules (`getHTTPThing` gives `zGetHttpThingQueryVariables`,
-`get_book` gives `zGet_BookQueryVariables`). Give both plugins the same values
-and the imported names exist (the mirror goes once `@nxgt/graphql-codegen-zod` exports its naming); a spec runs both on the same documents.
+The last six are `@nxgt/graphql-codegen-zod`'s options: the manifest names each
+schema with that plugin's own `variablesSchemaName` (`getHTTPThing` gives
+`zGetHttpThingQueryVariables`, `get_book` gives `zGet_BookQueryVariables`).
+Give both plugins the same values and the imported names exist; a spec runs
+both on the same documents.
 
 ## What it refuses
 
