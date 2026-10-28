@@ -131,6 +131,16 @@ describe('mcpServer().fetch over Streamable HTTP', () => {
 		expect(streamed.status).toBe(413);
 	});
 
+	it('answers 400 with -32700 for a body that is not JSON', async () => {
+		const response = await fetch(`http://localhost:${http.port}/mcp`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: '{nope',
+		});
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ error: { code: -32700 } });
+	});
+
 	it('aborts the tool when the HTTP client disconnects', async () => {
 		const seen: ServerSeen = { aborted: false, started: false };
 		const slow = mcpServer({
