@@ -180,7 +180,7 @@ const tools = graphqlTools({
 - It stays no-leak: each returned entry is cut down to `code`, `path`, `fields` and scalar `params` (the limits above). Anything else, such as a `message`, is dropped.
 - A `code` must be letters, digits, `_`, `.` or `-`, at most 100. A hook that throws, returns a promise, an empty list or an entry with another code is ignored and the default mapping applies to that call. The hook is synchronous.
 - It applies to both outcomes: the `errors` next to partial `data`, and the failure of a mutation or of a query that returned nothing. It does not apply to a throwing `context` builder or to an unserialisable result, which stay `INTERNAL_ERROR`.
-- Return the same number of errors you got unless you mean to hide some; the model reads exactly the list you return.
+- The model reads exactly the list you return (the first 50 entries); return one entry per error unless you mean to hide some.
 
 `fields` strings are cut to 200 characters. `params` scalars are shown as the resolver set them, so keep secrets out of them.
 

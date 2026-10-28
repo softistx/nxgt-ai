@@ -47,9 +47,9 @@ try {
 
 ## `GraphqlToolsError` INVALID_OPTIONS
 
-**When:** `graphqlTools` throws `forbidFields entry "…" must look like "Type.field".`, `forbidFields entry "…" names the type "…", which the schema does not have.`, `… names the field "…", which type "…" does not declare.`, `… is not an object or interface type …`, or `maxResultChars must be an integer of at least 100`.
+**When:** `graphqlTools` throws `forbidFields entry "…" must look like "Type.field".`, `forbidFields entry "…" names the type "…", which the schema does not have.`, `… names the field "…", which type "…" does not declare.`, `… is not an object or interface type …`, `maxResultChars must be an integer of at least 100`, or `mapErrors must be a function.`.
 **Why:** an option is malformed, or a `forbidFields` entry names nothing in the schema (a typo, or a type or field renamed since the entry was written: an entry that matched nothing would protect nothing, so it is refused). The field must be declared by the named type itself: `Person.nationalId` is refused when only `Librarian` declares `nationalId`; name `Librarian.nationalId`. A union has no fields, and an introspection field such as `__typename` is never checked, so listing it is refused too. `operation` is `undefined` because no operation is at fault.
-**Fix:** correct the entry to a `Type.field` the schema declares, or drop it; give `maxResultChars` an integer of at least 100.
+**Fix:** correct the entry to a `Type.field` the schema declares, or drop it; give `maxResultChars` an integer of at least 100; pass `mapErrors` a function or leave it out.
 
 ## `GraphqlToolsError` DUPLICATE_OPERATION
 
