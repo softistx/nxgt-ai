@@ -165,13 +165,19 @@ app.post(
 	'/chat',
 	{ body },
 	responds({ 200: agentEventStream }),
-	async ({ ai, body, user, reply }) => {
+	({ ai, body, user, reply }) => {
 		const { threadId, message } = body;
-		const history = (await store.load(threadId, user.id))?.messages ?? [];
-		const run = runAgent({ ...ai, model, messages: [...history, message] });
-		const result = await run.result;
-		await store.append(threadId, user.id, [message, ...result.messages]);
-		return reply(200, agentEvents(run, ai));
+		async function* stream() {
+			const history = (await store.load(threadId, user.id))?.messages ?? [];
+			const run = runAgent({ ...ai, model, messages: [...history, message] });
+			yield* agentEvents(run, ai);
+			// after the stream: the user's text, then what the run produced
+			await store.append(threadId, user.id, [
+				message,
+				...(await run.result).messages,
+			]);
+		}
+		return reply(200, stream());
 	},
 );
 ```
