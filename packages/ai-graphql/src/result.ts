@@ -1,3 +1,4 @@
+import { AiError } from '@nxgt/ai-core';
 import type { GraphQLError } from 'graphql';
 
 /** One GraphQL error as the model reads it: a code, never a stack or a message. */
@@ -98,4 +99,27 @@ export function fitOutput(
 		return marker(json.slice(0, lo), note);
 	}
 	return marker('', '');
+}
+
+export const rootsAllNull = (data: unknown): boolean =>
+	typeof data === 'object' &&
+	data !== null &&
+	Object.values(data).every((v) => v === null);
+
+export function failure(errors: readonly ToolGraphqlError[]): AiError {
+	return new AiError(
+		'TOOL_FAILED',
+		`The GraphQL operation failed: ${JSON.stringify(errors)}`,
+	);
+}
+
+const INTERNAL = [{ code: 'INTERNAL_ERROR' }] as const;
+
+/** The failure for an error whose cause must not reach the model. */
+export function internalFailure(cause: unknown): AiError {
+	return new AiError(
+		'TOOL_FAILED',
+		`The GraphQL operation failed: ${JSON.stringify(INTERNAL)}`,
+		{ cause },
+	);
 }

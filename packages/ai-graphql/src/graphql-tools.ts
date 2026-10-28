@@ -1,28 +1,20 @@
-import {
-	AiError,
-	type AnyTool,
-	defineTool,
-	type ToolContext,
-} from '@nxgt/ai-core';
+import { type AnyTool, defineTool, type ToolContext } from '@nxgt/ai-core';
 import {
 	type DocumentNode,
 	execute,
 	GraphQLError,
 	type GraphQLSchema,
-	Kind,
-	type OperationDefinitionNode,
-	parse,
-	print,
-	validate,
-	visit,
 } from 'graphql';
 import { z } from 'zod';
+import { compileOperation } from './document';
 import { GraphqlToolsError } from './errors';
-import { assertNoForbiddenFields, parseForbidden } from './forbid';
+import { parseForbidden } from './forbid';
 import {
+	failure,
 	fitOutput,
 	type GraphqlToolOutput,
-	type ToolGraphqlError,
+	internalFailure,
+	rootsAllNull,
 	toToolError,
 } from './result';
 
@@ -63,97 +55,13 @@ export const DEFAULT_MAX_RESULT_CHARS = 20_000;
 
 const NO_VARIABLES = z.object({});
 
-function parseDocument(op: GraphqlOperation): DocumentNode {
-	try {
-		// A caller's DocumentNode is copied, so changing it later changes nothing.
-		return parse(
-			typeof op.document === 'string' ? op.document : print(op.document),
-		);
-	} catch (cause) {
-		throw new GraphqlToolsError(
-			'INVALID_OPERATION',
-			`Operation "${op.name}" does not parse: ${cause instanceof Error ? cause.message : String(cause)}`,
-			{ operation: op.name, cause },
-		);
-	}
-}
-
-function pickOperation(
-	op: GraphqlOperation,
-	document: DocumentNode,
-): OperationDefinitionNode {
-	const ops = document.definitions.filter(
-		(d): d is OperationDefinitionNode => d.kind === Kind.OPERATION_DEFINITION,
-	);
-	const found =
-		op.operationName === undefined
-			? ops.length === 1
-				? ops[0]
-				: undefined
-			: ops.find((o) => o.name?.value === op.operationName);
-	if (!found) {
-		throw new GraphqlToolsError(
-			'INVALID_OPERATION',
-			ops.length > 1 || op.operationName !== undefined
-				? `Operation "${op.name}": set operationName to one of the document's operations.`
-				: `Operation "${op.name}": the document holds no operation.`,
-			{ operation: op.name },
-		);
-	}
-	if (found.operation === 'subscription') {
-		throw new GraphqlToolsError(
-			'INVALID_OPERATION',
-			`Operation "${op.name}" is a subscription; only queries and mutations become tools.`,
-			{ operation: op.name },
-		);
-	}
-	return found;
-}
-
-function assertNoIncremental(op: GraphqlOperation, document: DocumentNode) {
-	visit(document, {
-		Directive(node) {
-			if (node.name.value === 'defer' || node.name.value === 'stream') {
-				throw new GraphqlToolsError(
-					'INVALID_OPERATION',
-					`Operation "${op.name}" uses @${node.name.value}; incremental delivery is not supported.`,
-					{ operation: op.name },
-				);
-			}
-		},
-	});
-}
-
-const rootsAllNull = (data: unknown): boolean =>
-	typeof data === 'object' &&
-	data !== null &&
-	Object.values(data).every((v) => v === null);
-
-function failure(errors: readonly ToolGraphqlError[]): AiError {
-	return new AiError(
-		'TOOL_FAILED',
-		`The GraphQL operation failed: ${JSON.stringify(errors)}`,
-	);
-}
-
 function buildTool<TContext>(
 	op: GraphqlOperation,
 	options: GraphqlToolsOptions<TContext>,
 	forbidden: ReadonlySet<string>,
 	max: number,
 ): AnyTool {
-	const document = parseDocument(op);
-	const node = pickOperation(op, document);
-	assertNoIncremental(op, document);
-	const problems = validate(options.schema, document);
-	if (problems.length > 0) {
-		throw new GraphqlToolsError(
-			'INVALID_OPERATION',
-			`Operation "${op.name}" is not valid against the schema: ${problems.map((p) => p.message).join('; ')}`,
-			{ operation: op.name },
-		);
-	}
-	assertNoForbiddenFields(options.schema, document, node, forbidden, op.name);
+	const { document, node } = compileOperation(op, options.schema, forbidden);
 	const operationName = node.name?.value;
 	return defineTool({
 		name: op.name,
@@ -168,11 +76,7 @@ function buildTool<TContext>(
 					contextValue = await options.context(tool);
 				} catch (cause) {
 					tool.signal.throwIfAborted();
-					throw new AiError(
-						'TOOL_FAILED',
-						`The GraphQL operation failed: ${JSON.stringify([{ code: 'INTERNAL_ERROR' }])}`,
-						{ cause },
-					);
+					throw internalFailure(cause);
 				}
 			}
 			let result: Awaited<ReturnType<typeof execute>>;
@@ -215,11 +119,7 @@ function buildTool<TContext>(
 				return fitOutput(output, max);
 			} catch (cause) {
 				// BigInt or a cycle in the data: not serialisable.
-				throw new AiError(
-					'TOOL_FAILED',
-					`The GraphQL operation failed: ${JSON.stringify([{ code: 'INTERNAL_ERROR' }])}`,
-					{ cause },
-				);
+				throw internalFailure(cause);
 			}
 		},
 	});
