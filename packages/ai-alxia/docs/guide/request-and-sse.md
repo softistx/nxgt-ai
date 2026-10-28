@@ -156,9 +156,16 @@ messages the run produced (`run.result.messages`). Parse the body with
 refuses every other part.
 
 ```ts
+import { responds } from '@alxia/core';
+import { runAgent } from '@nxgt/ai-core';
 import { z } from 'zod';
-import { userMessageSchema } from '@nxgt/ai-alxia';
+import {
+	agentEvents,
+	agentEventStream,
+	userMessageSchema,
+} from '@nxgt/ai-alxia';
 
+// `app`, `model` and `store` are those of the first example and your memory store.
 const body = z.object({ threadId: z.string(), message: userMessageSchema });
 
 app.post(

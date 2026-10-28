@@ -117,16 +117,16 @@ options, what is refused and the limits.
 
 ## API
 
-| Export                                                           | What it is                                                                                                             |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `graphqlTools(options)`                                          | Builds the tools; throws `GraphqlToolsError` on the first problem                                                      |
-| `GraphqlOperation`                                               | `{ name, description, document, variables?, operationName? }`: the allow-list entry and the shape the codegen emits    |
-| `GraphqlToolsOptions`                                            | `{ schema, operations, context?, forbidFields?, maxResultChars? }`                                                     |
-| `GraphqlToolsError`, `GRAPHQL_TOOLS_ERROR_CODES`                 | `FORBIDDEN_FIELD`, `INVALID_OPERATION`, `INVALID_OPTIONS`, `DUPLICATE_OPERATION`; carries `operation`, `field`, `path` |
-| `GraphqlToolOutput`, `ToolGraphqlError`                          | What a call returns: `{ data, errors? }`, each error `{ code, path?, fields?, params? }`                               |
-| `TruncatedGraphqlOutput`                                         | `{ truncated: true, originalChars, preview, note }`, returned when the result exceeds `maxResultChars`                 |
-| `DEFAULT_MAX_RESULT_CHARS`                                       | 20000                                                                                                                  |
-| `@nxgt/ai-graphql/codegen`: `plugin`, `OperationsManifestConfig` | The codegen plugin and its `config` type                                                                               |
+| Export                                                           | What it is                                                                                                                                            |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `graphqlTools(options)`                                          | Builds the tools; throws `GraphqlToolsError` on the first problem                                                                                     |
+| `GraphqlOperation`                                               | `{ name, description, document, variables?, operationName? }`: the allow-list entry and the shape the codegen emits                                   |
+| `GraphqlToolsOptions`                                            | `{ schema, operations, context?, forbidFields?, maxResultChars? }`                                                                                    |
+| `GraphqlToolsError`, `GRAPHQL_TOOLS_ERROR_CODES`                 | `FORBIDDEN_FIELD`, `INVALID_OPERATION`, `INVALID_OPTIONS`, `DUPLICATE_OPERATION`; carries `operation` (absent for `INVALID_OPTIONS`), `field`, `path` |
+| `GraphqlToolOutput`, `ToolGraphqlError`                          | What a call returns: `{ data, errors? }`, each error `{ code, path?, fields?, params? }`                                                              |
+| `TruncatedGraphqlOutput`                                         | `{ truncated: true, originalChars, preview, note }`, returned when the result exceeds `maxResultChars`                                                |
+| `DEFAULT_MAX_RESULT_CHARS`                                       | 20000                                                                                                                                                 |
+| `@nxgt/ai-graphql/codegen`: `plugin`, `OperationsManifestConfig` | The codegen plugin and its `config` type                                                                                                              |
 
 ## Traps
 
