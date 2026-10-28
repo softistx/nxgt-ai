@@ -1,4 +1,4 @@
-import type { ProposedActionStatus } from '@nxgt/ai-core';
+import type { ProposedActionStatus, ToolResultPart } from '@nxgt/ai-core';
 import { MemoryError } from './errors';
 import type { ActionPatch, ActionUpdateOptions } from './types';
 
@@ -40,4 +40,24 @@ export function actionFrom(
 		}
 	}
 	return from;
+}
+
+/**
+ * The result a store keeps, or `undefined` when the patch has none. An error
+ * result keeps its code only: the message and the issues are dropped (the
+ * `message` stays as an empty string, the field being required), because apps
+ * may expose a stored `result` to clients. The single point where the three
+ * stores write an outcome.
+ */
+export function storedResult(patch: ActionPatch): ToolResultPart | undefined {
+	const result = patch.result;
+	if (result === undefined) return undefined;
+	if (!result.isError) return structuredClone(result);
+	return {
+		type: 'tool-result',
+		callId: result.callId,
+		name: result.name,
+		isError: true,
+		error: { code: result.error.code, message: '' },
+	};
 }

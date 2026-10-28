@@ -4,7 +4,7 @@ import {
 	toProposedAction,
 } from '@nxgt/ai-core';
 import { actionKey, assertOwner, type State, type ThreadRecord } from './state';
-import { actionFrom } from './transitions';
+import { actionFrom, storedResult } from './transitions';
 import type { ActionPatch, ActionUpdateOptions } from './types';
 
 /** Records the pending actions a message proposes. */
@@ -45,15 +45,14 @@ export function updateAction(
 ): ProposedAction | undefined {
 	assertOwner(ownerId);
 	const from = actionFrom(patch, options);
+	const result = storedResult(patch);
 	const record = s.actions.get(actionKey(ownerId, actionId));
 	// Synchronous from this check to the write: that is the compare-and-set.
 	if (!record || !from.includes(record.action.status)) return undefined;
 	record.action = {
 		...record.action,
 		status: patch.status,
-		...(patch.result === undefined
-			? {}
-			: { result: structuredClone(patch.result) }),
+		...(result === undefined ? {} : { result }),
 	};
 	return structuredClone(record.action);
 }

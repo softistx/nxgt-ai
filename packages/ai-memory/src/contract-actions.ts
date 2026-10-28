@@ -81,7 +81,11 @@ export function contractActions(
 		callId: 'c1',
 		name: 'archive',
 		isError: true,
-		error: { code: 'TOOL_FAILED', message: 'boom' },
+		error: {
+			code: 'TOOL_FAILED',
+			message: 'boom',
+			issues: [{ path: 'x', message: 'boom issue' }],
+		},
 	} as const;
 
 	const seeded = async () => {
@@ -121,7 +125,12 @@ export function contractActions(
 		);
 		const stored = await store.findAction('act-1', 'a');
 		expect(stored?.status).toBe('failed');
-		expect(stored?.result).toEqual(bad);
+		// the code is kept, the message and the issues are not
+		expect(stored?.result).toMatchObject({
+			isError: true,
+			error: { code: 'TOOL_FAILED' },
+		});
+		expect(JSON.stringify(stored)).not.toContain('boom');
 	});
 
 	it('moves a pending action to rejected, expired, confirmed or failed', async () => {

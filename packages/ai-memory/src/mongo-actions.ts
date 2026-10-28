@@ -5,7 +5,7 @@ import {
 } from '@nxgt/ai-core';
 import { assertOwner, type Ctx, scoped } from './mongo-ctx';
 import { pickAction } from './mongo-map';
-import { actionFrom } from './transitions';
+import { actionFrom, storedResult } from './transitions';
 import type { ActionPatch, ActionUpdateOptions } from './types';
 
 /** Per message, the actions it proposes that this owner has not recorded yet. */
@@ -48,6 +48,7 @@ export async function updateAction(
 ) {
 	assertOwner(ownerId);
 	const from = actionFrom(patch, options);
+	const result = storedResult(patch);
 	// One atomic write: it matches only while the action still has a `from` status.
 	const doc = await c.messages.findOneAndUpdate(
 		scoped(c, {
@@ -57,9 +58,7 @@ export async function updateAction(
 		{
 			$set: {
 				'actions.$.status': patch.status,
-				...(patch.result === undefined
-					? {}
-					: { 'actions.$.result': patch.result }),
+				...(result === undefined ? {} : { 'actions.$.result': result }),
 			},
 		},
 		{ returnDocument: 'after' },

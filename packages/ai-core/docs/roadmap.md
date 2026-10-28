@@ -12,7 +12,7 @@ Nothing in progress.
 
 ## Later
 
-- **Persisting proposed actions** — a documented shape to store and reload a pending action across processes.
+- **Persisting proposed actions** — `@nxgt/ai-memory` stores actions and records the claim and the outcome (`running`, then `confirmed` or `failed`); what remains is a documented shape in the core for storing and reloading an action in your own store.
 
 ## Not planned
 

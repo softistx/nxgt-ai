@@ -193,10 +193,11 @@ Any other pair, and an empty `from`, throws
 terminal action (`confirmed`, `failed`, `rejected`, `expired`) never moves.
 
 The outcome is the action's `result`, the tool result as `runConfirmedAction`
-returns it: the output when `confirmed`, the error when `failed`. The store
-keeps it as given; keep tool outputs small, as they are in messages. To tell
-the model, `actionOutcomeMessage` names only the error code of a failed
-action, never its text.
+returns it: the output when `confirmed`, the error code when `failed`. The store
+keeps an output as given (keep tool outputs small, as they are in messages)
+but keeps an error as its code only: the message and the issues are dropped
+(`message` is stored empty), so an app can expose `result` to a client.
+`actionOutcomeMessage` likewise names only the code.
 
 A crash between the claim and the write leaves the action `running` with no
 `result`: nobody can tell whether the tool ran. The store does not time a
