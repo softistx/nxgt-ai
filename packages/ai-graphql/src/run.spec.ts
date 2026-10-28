@@ -95,6 +95,20 @@ describe('graphqlTools: mutations', () => {
 		]);
 	});
 
+	it('carry the operation summarize to the tool', () => {
+		const [tool] = build([
+			{
+				name: 'renew_loan',
+				description: 'Renews a loan',
+				document:
+					'mutation Renew($bookId: ID!) { renewLoan(bookId: $bookId) { id title } }',
+				variables: z.object({ bookId: z.string() }),
+				summarize: (v) => `Renew loan of book ${String(v['bookId'])}`,
+			},
+		]);
+		expect(tool?.summarize?.({ bookId: 'b1' })).toBe('Renew loan of book b1');
+	});
+
 	it('are proposed by the loop, not run', async () => {
 		const tools = build([
 			{

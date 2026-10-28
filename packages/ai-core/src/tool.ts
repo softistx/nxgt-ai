@@ -35,6 +35,11 @@ export interface Tool<TInput = unknown, TOutput = unknown, TContext = unknown> {
 	readonly inputSchema: ToolInputSchema;
 	/** Checks the output when set; the result carries the parsed value. */
 	readonly outputSchema?: z.ZodType<TOutput>;
+	/**
+	 * A short line for the confirmation UI, from the validated input; it fills
+	 * `ProposedActionPart.summary`. Only read when the tool is proposed.
+	 */
+	summarize?(input: TInput): string;
 	validate(input: unknown): ToolValidation<TInput>;
 	execute(
 		input: TInput,
@@ -93,6 +98,12 @@ export interface DefineToolOptions<
 	output?: O;
 	/** Mark a mutation; default `false`. */
 	confirm?: boolean;
+	/**
+	 * A short human-readable line saying what the action will do, for the
+	 * confirmation UI (`ProposedActionPart.summary`). Pure and synchronous; a
+	 * throw, a non-string or an empty result leaves the summary out.
+	 */
+	summarize?(input: z.output<S>): string;
 	execute(
 		input: z.output<S>,
 		tool: ToolContext<TContext>,
@@ -120,6 +131,7 @@ export function defineTool<
 				: { ok: false, issues: zodIssues(parsed.error) };
 		},
 		execute: options.execute,
+		...(options.summarize ? { summarize: options.summarize } : {}),
 		...(options.output ? { outputSchema: options.output } : {}),
 	};
 	return tool as Tool<
@@ -135,6 +147,8 @@ export interface JsonSchemaToolOptions<TInput, TContext> {
 	/** JSON Schema of the input; its type must be `"object"`. */
 	inputSchema: JsonSchema;
 	confirm?: boolean;
+	/** See `summarize` on `defineTool`. */
+	summarize?(input: TInput): string;
 	/** Checks the model's input; without it the input is passed through as sent. */
 	validate?(input: unknown): ToolValidation<TInput>;
 	execute(
@@ -160,5 +174,6 @@ export function jsonSchemaTool<TInput = unknown, TContext = unknown>(
 		validate:
 			options.validate ?? ((input) => ({ ok: true, value: input as TInput })),
 		execute: options.execute,
+		...(options.summarize ? { summarize: options.summarize } : {}),
 	};
 }

@@ -31,6 +31,11 @@ export interface GraphqlOperation {
 	document: string | DocumentNode;
 	/** A Zod object schema of the operation's variables; default: no variables. */
 	variables?: z.ZodObject;
+	/**
+	 * One line for the confirmation UI, from the validated variables; used when
+	 * the operation is a mutation. See `summarize` on `defineTool`.
+	 */
+	summarize?(variables: Record<string, unknown>): string;
 	/** Which operation of the document to run when it holds several. */
 	operationName?: string;
 }
@@ -68,6 +73,7 @@ function buildTool<TContext>(
 		description: op.description,
 		input: op.variables ?? NO_VARIABLES,
 		confirm: node.operation === 'mutation',
+		...(op.summarize ? { summarize: op.summarize } : {}),
 		async execute(variables, tool: ToolContext<TContext>) {
 			tool.signal.throwIfAborted();
 			let contextValue: unknown = tool.context;

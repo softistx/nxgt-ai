@@ -35,13 +35,14 @@ const findTickets: GraphqlOperation = {
 const tools = graphqlTools({ schema, operations: [findTickets] });
 ```
 
-| Field           | Meaning                                                                                                                                            |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`          | The tool name: letters, digits, `_` and `-`, at most 64. Unique in the list.                                                                       |
-| `description`   | What the model reads to decide when to call the tool.                                                                                              |
-| `document`      | Source text, or a parsed `DocumentNode` (a `TypedDocumentNode` works). Fragments go in the same document.                                          |
-| `variables`     | A Zod object schema. It is the tool's input: its JSON Schema is sent to the model and the model's input is validated by it. Default: no variables. |
-| `operationName` | Which operation to run when the document holds several.                                                                                            |
+| Field           | Meaning                                                                                                                                                                                                                                                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`          | The tool name: letters, digits, `_` and `-`, at most 64. Unique in the list.                                                                                                                                                                                                                                                                          |
+| `description`   | What the model reads to decide when to call the tool.                                                                                                                                                                                                                                                                                                 |
+| `document`      | Source text, or a parsed `DocumentNode` (a `TypedDocumentNode` works). Fragments go in the same document.                                                                                                                                                                                                                                             |
+| `variables`     | A Zod object schema. It is the tool's input: its JSON Schema is sent to the model and the model's input is validated by it. Default: no variables.                                                                                                                                                                                                    |
+| `summarize`     | Optional `(variables) => string`: the confirmation line of a mutation (`ProposedActionPart.summary`), for example `` `Renew loan of book ${v.bookId}` ``. Mutations only: a query is never proposed, so its `summarize` is never called. A throw leaves the summary out. Deriving it from the description and variables automatically is a follow-up. |
+| `operationName` | Which operation to run when the document holds several.                                                                                                                                                                                                                                                                                               |
 
 This is the whole shape on purpose: a manifest of
 `{ name, description, document, variables }` (with `variables` the

@@ -99,6 +99,12 @@ const done = await runConfirmedAction(action, tools, { context }); // 'confirmed
 // or: rejectAction(action)
 ```
 
+Give the tool `summarize: (input) => 'Pay invoice A1'` to fill the
+confirmation line (`ProposedActionPart.summary`; a throw leaves it out). When
+the user answers in a later request, append `actionOutcomeMessage(done)` (or
+`actionOutcomeMessage(rejected, { reason })`) to the thread so the model learns
+the outcome: a user text turn, with the error code only for a failed action.
+
 An expired (`ACTION_EXPIRED`) or non-pending (`ACTION_NOT_PENDING`) action is
 refused, and the input is validated again. `estimateTokens(text | messages)` is
 a characters / 4 estimate. See [Proposed actions](docs/guide/actions.md).

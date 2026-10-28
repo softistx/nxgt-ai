@@ -47,6 +47,8 @@ export type {
 	ThinkingOptions,
 } from './model';
 export {
+	type ActionOutcomeOptions,
+	actionOutcomeMessage,
 	type ConfirmContext,
 	type ConfirmOptions,
 	type ProposedAction,
