@@ -87,7 +87,7 @@
       "name": "@nxgt/ai-mcp",
       "version": "0.0.0",
       "dependencies": {
-        "@modelcontextprotocol/sdk": "1.32.2",
+        "@modelcontextprotocol/sdk": "~1.32.2",
       },
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",

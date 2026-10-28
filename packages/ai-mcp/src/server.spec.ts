@@ -87,7 +87,8 @@ describe('mcpServer', () => {
 		expect(out).toMatchObject({
 			isError: false,
 			output: {
-				content: [{ type: 'text', text: '{"echoed":"hi"}' }],
+				// The text only repeats structuredContent, so the client drops it.
+				content: [],
 				structuredContent: { echoed: 'hi' },
 			},
 		});

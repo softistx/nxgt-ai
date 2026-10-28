@@ -54,11 +54,18 @@ const { tools } = await mcpTools({
 ```
 
 - `include` is the allow-list, by the server's own names. Without it, every
-  listed tool is exposed. A name the server does not list throws `TOOL_NOT_FOUND`.
+  listed tool is exposed. A name the server does not list throws `UNKNOWN_TOOL`.
 - `prefix` is put before each name for the model, to avoid collisions between
   servers or with your own tools. The call to the server uses the original name.
 - A tool name must be, with the prefix, 1 to 64 letters, digits, `_` or `-`,
-  or `INVALID_TOOL` is thrown. Allow-list around odd names.
+  or `INVALID_TOOL_DEFINITION` is thrown. Allow-list around odd names.
+- A description over 2048 characters or an input schema over 32 KiB (serialised)
+  also throws `INVALID_TOOL_DEFINITION`. Tool descriptions are untrusted: the
+  server writes what the model reads as the tool's description, so a hostile or
+  compromised server can put instructions there. The caps bound the size, not
+  the content. Expose only the tools you trust, with `include`.
+- A server that pages `tools/list` without end (a repeated cursor, more than 100
+  pages or 1000 tools) throws `MCP_LIST_FAILED`.
 
 ## Confirmation
 
@@ -80,14 +87,16 @@ Connecting and listing throw `McpClientError` with a `code` and the underlying
 error in `cause`. A call that fails while an agent runs gives the model a
 `TOOL_FAILED` result whose message holds a code only:
 
-| Message                      | When                                                       |
-| ---------------------------- | ---------------------------------------------------------- |
-| `{"code":"MCP_TOOL_FAILED"}` | the server returned `isError: true` or a protocol error    |
-| `{"code":"MCP_UNAVAILABLE"}` | the connection is gone, timed out, or `close()` was called |
+| Message                                                        | When                                                                       |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `{"code":"MCP_TOOL_FAILED"}`                                   | the server returned `isError: true` or a protocol error                    |
+| `{"code":"MCP_TOOL_FAILED","serverCode":"INVALID_TOOL_INPUT"}` | the `isError` text was exactly a bare code, as `@nxgt/ai-mcp/server` sends |
+| `{"code":"MCP_UNAVAILABLE"}`                                   | the connection is gone, timed out, or `close()` was called                 |
 
-A server's message never reaches the model or your client: it can carry paths,
-queries or secrets. For a protocol error, `cause` of the tool's error holds it
-for your logs.
+A server's message never reaches the model: it can carry paths, queries or
+secrets. Only a text that is exactly `{"code":"<UPPER_SNAKE, up to 40 characters>"}`
+is read, for its `serverCode`. For a protocol error, `cause` of the tool's error
+holds the server's message for your logs.
 
 ## Untrusted output and size
 
@@ -102,7 +111,8 @@ A successful call returns:
 }
 ```
 
-Text (and text resources) are passed on. Images, audio and binary resources are
+Text (and text resources) are passed on; a text block that only repeats
+`structuredContent` is dropped. Images, audio and binary resources are
 replaced by `{ type: 'omitted', kind, mimeType? }`, links by `{ type: 'link', uri }`.
 When the serialised output is longer than `maxResultChars` (default 20000, at
 least 100) the model gets `{ truncated: true, originalChars, preview, note }`.
@@ -119,7 +129,13 @@ answer `MCP_UNAVAILABLE`.
 ## Test your agent
 
 Run the real thing against a small server of your own with the SDK's in-memory
-transport:
+transport. The SDK is a dependency of `@nxgt/ai-mcp`, not something your
+project imports from; to import it yourself (a custom transport, a test
+server), add it as a dev dependency so your own range and lockfile name it:
+
+```sh
+bun add -d @modelcontextprotocol/sdk
+```
 
 ```ts
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
