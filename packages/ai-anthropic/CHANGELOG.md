@@ -1,5 +1,19 @@
 # @nxgt/ai-anthropic
 
+## 0.2.0
+
+### Minor Changes
+
+- [#65](https://github.com/softistx/nxgt-ai/pull/65) [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add adaptive thinking and effort: `ThinkingOptions` `mode: 'adaptive'` is sent as `thinking: { type: 'adaptive' }`, `effort` as `output_config.effort` (effort alone sends no `thinking`), and `display` is passed through. Options that contradict each other (adaptive with `budgetTokens`, `display` with effort alone) throw `INVALID_REQUEST` before the call; what only some models refuse is left to the API's 400, with the known limits in the troubleshooting page.
+
+### Patch Changes
+
+- [#65](https://github.com/softistx/nxgt-ai/pull/65) [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Document that a non-default `temperature` is an API 400 on the newest models, with or without thinking (README, guide, Troubleshooting link).
+
+- [#65](https://github.com/softistx/nxgt-ai/pull/65) [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Overriding `thinking` through `providerOptions` is now treated like the typed option: `temperature` is dropped, a `budget_tokens` below 1024 is raised, and `max_tokens` is resized for the budget, each unless `providerOptions` names that key. Documented in the README, the guide and the troubleshooting page.
+- Updated dependencies [[`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc), [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc), [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc), [`ee9324f`](https://github.com/softistx/nxgt-ai/commit/ee9324ffcf12842f7b33e39838a6da8d669f37bc)]:
+  - @nxgt/ai-core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
