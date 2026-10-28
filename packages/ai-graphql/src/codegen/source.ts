@@ -51,9 +51,6 @@ function readDisk(location: string | undefined): string | undefined {
 export function parseSource(file: SourceFile): Parsed {
 	const document = file.document;
 	const raw = file.rawSDL ? tryParse(file.rawSDL) : undefined;
-	if (raw && file.rawSDL?.includes('#')) {
-		return { definitions: raw.definitions, body: file.rawSDL };
-	}
 	const text = readDisk(file.location);
 	const disk = text === undefined ? undefined : tryParse(text);
 	const expected = operationNames(

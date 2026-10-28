@@ -1,3 +1,4 @@
+// Temporary, until @nxgt/graphql-codegen-zod#126 (export the naming)
 import * as changeCase from 'change-case';
 import {
 	fail,

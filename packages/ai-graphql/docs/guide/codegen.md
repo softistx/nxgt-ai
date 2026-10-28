@@ -158,7 +158,7 @@ Under `config` of the output:
 The last six mirror `@nxgt/graphql-codegen-zod`, whose naming is not exported:
 the plugin repeats its rules (`getHTTPThing` gives `zGetHttpThingQueryVariables`,
 `get_book` gives `zGet_BookQueryVariables`). Give both plugins the same values
-and the imported names exist; a spec runs both on the same documents.
+and the imported names exist (the mirror goes once `@nxgt/graphql-codegen-zod` exports its naming); a spec runs both on the same documents.
 
 ## What it refuses
 

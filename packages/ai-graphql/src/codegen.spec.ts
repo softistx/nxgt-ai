@@ -1,4 +1,7 @@
-import { describe, expect, test } from 'bun:test';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Types } from '@graphql-codegen/plugin-helpers';
 import { parse } from 'graphql';
 import { librarySchema } from '../test/fixtures';
@@ -209,5 +212,40 @@ describe('generated manifest', () => {
 		);
 		expect(get?.validate({ id: 'b1' }).ok).toBe(true);
 		expect(get?.validate({}).ok).toBe(false);
+	});
+});
+
+describe('comments read from disk', () => {
+	const dir = mkdtempSync(join(tmpdir(), 'ai-graphql-src-'));
+	afterAll(() => rmSync(dir, { recursive: true, force: true }));
+	const run = (location: string, rawSDL: string) =>
+		plugin(
+			schema,
+			[{ location, rawSDL, document: parse(rawSDL, { noLocation: true }) }],
+			{},
+			{ outputFile: 'x.ts' },
+		) as string;
+
+	test('a # inside a string does not hide the comment on disk', () => {
+		const file = join(dir, 'a.graphql');
+		const body = 'query A { book(id: "#1") { id } }';
+		writeFileSync(file, `# tool: From disk.\n${body}\n`);
+		expect(run(file, body)).toContain("description: 'From disk.'");
+	});
+
+	test('a missing file falls back to rawSDL', () => {
+		const out = run(
+			join(dir, 'missing.graphql'),
+			'# tool: From raw.\nquery A { books { id } }',
+		);
+		expect(out).toContain("description: 'From raw.'");
+	});
+
+	test('a file whose operations differ falls back to rawSDL', () => {
+		const file = join(dir, 'b.graphql');
+		writeFileSync(file, '# tool: Stale.\nquery Other { books { id } }');
+		const out = run(file, '# tool: Fresh.\nquery A { books { id } }');
+		expect(out).toContain("description: 'Fresh.'");
+		expect(out).not.toContain('Stale');
 	});
 });
