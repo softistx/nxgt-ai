@@ -78,7 +78,7 @@ await mcpTools({ transport, include: ['search_docs'], prefix: 'docs_' });
 
 **When:** a call answers `TOOL_FAILED` with `The MCP tool failed: {"code":"MCP_TOOL_FAILED"}`.
 **Why:** the server answered with `isError: true`, or with a protocol error (unknown tool, invalid arguments). The message is never shown to the model or the client, on purpose.
-**Fix:** read `error.cause` where you run the tool (a protocol error carries it), or the server's logs. An `isError` result keeps no cause: its text is dropped.
+**Fix:** read `error.cause` where you run the tool (a protocol error carries it), or the server's logs. An `isError` result keeps no cause: its text is dropped. The one trace it keeps is `serverCode`, added to the message (`{"code":"MCP_TOOL_FAILED","serverCode":"INVALID_TOOL_INPUT"}`) when the text was exactly a bare code.
 
 ## The model sees `MCP_UNAVAILABLE`
 
