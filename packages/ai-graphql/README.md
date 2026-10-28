@@ -13,8 +13,19 @@ import { fakeModel } from '@nxgt/ai-testing';
 import { buildSchema } from 'graphql';
 import { z } from 'zod';
 
-// Your executable schema, with its resolvers.
-declare const schema: ReturnType<typeof buildSchema>;
+// Your executable schema, with its resolvers (here one field, to stay short).
+const schema = buildSchema(`
+	type Book { id: ID! title: String! available: Boolean! shelfCode: String }
+	type Loan { id: ID! dueDate: String! }
+	type Query { books(title: String!, limit: Int): [Book!]! }
+	type Mutation { renewLoan(loanId: ID!): Loan! }
+`);
+const books = [{ id: '1', title: 'Dune', available: true }];
+const booksField = schema.getQueryType()?.getFields()['books'];
+if (booksField) {
+	booksField.resolve = (_source, args: { title: string }) =>
+		books.filter((b) => b.title.includes(args.title));
+}
 
 const tools = graphqlTools<{ userId: string }>({
 	schema,
@@ -40,7 +51,7 @@ const tools = graphqlTools<{ userId: string }>({
 	],
 	// The GraphQL context of each call, built from the run's context.
 	context: ({ context }) => ({ viewer: context.userId }),
-	forbidFields: ['Member.address', 'Member.phone', 'Librarian.nationalId'],
+	forbidFields: ['Book.shelfCode'],
 	maxResultChars: 8000,
 });
 
@@ -57,6 +68,7 @@ const messages = [
 ];
 
 const run = runAgent({ model, messages, tools, context: { userId: 'u1' } });
+for await (const event of run) console.log(event.type);
 ```
 
 `find_books` runs directly. `renew_loan` is a mutation, so the loop records a
@@ -79,6 +91,7 @@ proposed action (`confirm: true`) and runs it only after
 
 - `forbidFields` is checked when the tools are built, never at run time, and only against the operations you allow: the model cannot write its own query.
 - A field forbidden on an interface is forbidden on every type that implements it, and a field forbidden on a type is caught when read through an interface or a union. Aliases do not hide it.
+- A failed mutation may still have committed some of its root fields, so `failed` does not mean nothing changed.
 - `forbidFields` stops what an operation selects. It does not guard what your resolvers return, nor arguments and variables: a filter such as `where: { phone }` can act as a lookup oracle on a hidden field. The operation author controls the arguments; keep authorisation in the resolvers.
 - Introspection fields (`__typename`, `__schema`) are metadata and are skipped by the check.
 - `@defer` and `@stream` are rejected at build (incremental results of graphql 17 are not supported).

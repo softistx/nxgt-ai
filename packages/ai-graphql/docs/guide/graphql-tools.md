@@ -120,6 +120,9 @@ const done = await runConfirmedAction(action, tools, { context: { userId } });
 
 `runConfirmedAction` validates the stored input again before it runs.
 
+A failed mutation may still have committed some of its root fields, so
+`failed` does not mean nothing changed.
+
 ## Errors the model sees
 
 The model never gets a GraphQL message or a stack, only codes.
