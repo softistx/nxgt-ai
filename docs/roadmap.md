@@ -4,11 +4,11 @@ A direction, not a commitment: entries carry no dates, and the version an entry 
 
 ## Now
 
-- **Phase 1c: MCP client and server** (branch `feat/ai-mcp`, [#25](https://github.com/softistx/nxgt-ai/issues/25)) — `@nxgt/ai-mcp`: use tools from an MCP server over stdio or HTTP ([#20](https://github.com/softistx/nxgt-ai/issues/20)), and serve your own tools as an MCP server over stdio or a fetch handler ([#21](https://github.com/softistx/nxgt-ai/issues/21)), ready to publish ([#22](https://github.com/softistx/nxgt-ai/issues/22)).
+Nothing in progress.
 
 ## Next
 
-Nothing queued beyond phase 1c.
+Nothing queued.
 
 ## Later
 
@@ -24,6 +24,9 @@ Nothing queued beyond phase 1c.
 
 ## Shipped
 
+- **Phase 1c: MCP client and server** — `@nxgt/ai-mcp` 0.1.0. You get:
+  - `@nxgt/ai-mcp/client`: `mcpTools` returns the tools of an MCP server (stdio or Streamable HTTP) as agent tools, with an allow-list, a name prefix, confirmation for mutations, output framed as untrusted data and code-only errors.
+  - `@nxgt/ai-mcp/server`: `mcpServer` serves your own tools over stdio or a `fetch` handler, with the tool context built per request, schema-validated input and code-only errors.
 - **Phase 1b: memory, GraphQL tools and HTTP glue** — `@nxgt/ai-memory` 0.1.0, `@nxgt/ai-graphql` 0.1.0 and `@nxgt/ai-alxia` 0.1.0, with `@nxgt/ai-core` 0.2.0, `@nxgt/ai-anthropic` 0.2.0, `@nxgt/ai-ollama` 0.2.0, `@nxgt/ai-telemetry` 0.2.0 and `@nxgt/ai-testing` 0.1.1. You get:
   - `@nxgt/ai-memory`: a conversation store scoped by owner on every call, with in-process, MongoDB and Redis stores, a store contract suite for your own implementations, and compaction that trims old tool results first, then keeps a rolling summary without splitting a tool call from its result.
   - `@nxgt/ai-graphql`: expose a GraphQL schema as agent tools from an allow-list of operations, executed in-process, with forbidden fields rejected when the tools are built and every mutation requiring confirmation. A codegen plugin writes the operations manifest.
