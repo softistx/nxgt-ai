@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'bun:test';
 import { executeTool } from '@nxgt/ai-core';
-import { safeTools } from '../test/server-tools';
+import { type ServerSeen, safeTools } from '../test/server-tools';
 import { mcpTools } from './client';
 import { mcpServer } from './server';
 
@@ -75,5 +75,136 @@ describe('mcpServer().fetch over Streamable HTTP', () => {
 		} finally {
 			await close();
 		}
+	});
+
+	it('answers GET and DELETE with 405 and Allow: POST', async () => {
+		for (const method of ['GET', 'DELETE']) {
+			const response = await fetch(`http://localhost:${http.port}/mcp`, {
+				method,
+			});
+			expect(response.status).toBe(405);
+			expect(response.headers.get('allow')).toBe('POST');
+		}
+	});
+
+	it('refuses a JSON-RPC batch with 400 and a JSON-RPC error', async () => {
+		const response = await fetch(`http://localhost:${http.port}/mcp`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				accept: 'application/json, text/event-stream',
+			},
+			body: JSON.stringify([
+				{ jsonrpc: '2.0', id: 1, method: 'tools/list' },
+				{ jsonrpc: '2.0', id: 2, method: 'tools/list' },
+			]),
+		});
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({
+			jsonrpc: '2.0',
+			error: { code: -32600 },
+			id: null,
+		});
+	});
+
+	it('answers 413 for a body over 4 MiB, declared or streamed', async () => {
+		const big = 'x'.repeat(4 * 1024 * 1024 + 1);
+		const declared = await fetch(`http://localhost:${http.port}/mcp`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: big,
+		});
+		expect(declared.status).toBe(413);
+		const streamed = await server.fetch(
+			new Request('http://localhost/mcp', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(new TextEncoder().encode(big));
+						controller.close();
+					},
+				}),
+				duplex: 'half',
+			} as RequestInit),
+		);
+		expect(streamed.status).toBe(413);
+	});
+
+	it('answers 400 with -32700 for a body that is not JSON', async () => {
+		const response = await fetch(`http://localhost:${http.port}/mcp`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: '{nope',
+		});
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ error: { code: -32700 } });
+	});
+
+	it('aborts the tool when the HTTP client disconnects', async () => {
+		const seen: ServerSeen = { aborted: false, started: false };
+		const slow = mcpServer({
+			tools: safeTools(seen),
+			name: 'slow',
+			version: '1.0.0',
+		});
+		const listener = Bun.serve({
+			port: 0,
+			fetch: (request) => slow.fetch(request),
+		});
+		try {
+			const controller = new AbortController();
+			const pending = fetch(`http://localhost:${listener.port}/mcp`, {
+				method: 'POST',
+				signal: controller.signal,
+				headers: {
+					'content-type': 'application/json',
+					accept: 'application/json, text/event-stream',
+				},
+				body: JSON.stringify({
+					jsonrpc: '2.0',
+					id: 1,
+					method: 'tools/call',
+					params: { name: 'slow', arguments: {} },
+				}),
+			});
+			pending.catch(() => {});
+			const wait = async (flag: () => boolean) => {
+				const deadline = Date.now() + 3000;
+				while (!flag() && Date.now() < deadline) await Bun.sleep(10);
+			};
+			await wait(() => seen.started);
+			expect(seen.started).toBe(true);
+			controller.abort();
+			await wait(() => seen.aborted);
+			expect(seen.aborted).toBe(true);
+		} finally {
+			await listener.stop(true);
+		}
+	});
+
+	it('answers TOOL_TIMEOUT over fetch when timeoutMs passes', async () => {
+		const limited = mcpServer({
+			tools: safeTools(),
+			name: 'limited',
+			version: '1.0.0',
+			timeoutMs: 50,
+		});
+		const response = await limited.fetch(
+			new Request('http://localhost/mcp', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					accept: 'application/json, text/event-stream',
+				},
+				body: JSON.stringify({
+					jsonrpc: '2.0',
+					id: 1,
+					method: 'tools/call',
+					params: { name: 'slow', arguments: {} },
+				}),
+			}),
+		);
+		expect(JSON.stringify(await response.json())).toContain('TOOL_TIMEOUT');
 	});
 });
