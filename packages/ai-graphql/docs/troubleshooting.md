@@ -41,7 +41,7 @@ try {
 
 ## `GraphqlToolsError` INVALID_OPERATION
 
-**When:** `graphqlTools` throws at build with `does not parse`, `is not valid against the schema`, `is a subscription`, `set operationName`, or `cannot become a JSON Schema`.
+**When:** `graphqlTools` throws at build with `does not parse`, `is not valid against the schema`, `is a subscription`, `set operationName`, `cannot become a JSON Schema`, or `variables must be a Zod object schema`.
 **Why:** the document does not parse or does not validate against `schema` (an unknown field, a missing argument), is a subscription, or holds several operations. For `cannot become a JSON Schema`: the `variables` schema holds a type JSON Schema cannot express (a `z.date()`, a transform, a `z.custom` that is not a list written by `@nxgt/graphql-codegen-zod`). Lists written by the plugin are fine: the model sees a plain array.
 **Fix:** correct the document; set `operationName` when it holds several; for the variables, use a type JSON Schema can describe (`z.string()` plus a format, `z.number()`).
 
