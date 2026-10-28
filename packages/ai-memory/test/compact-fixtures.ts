@@ -1,5 +1,9 @@
 import type { Message } from '@nxgt/ai-core';
-import { type CompactOptions, memoryStore, type StoredMessage } from './index';
+import {
+	type CompactOptions,
+	memoryStore,
+	type StoredMessage,
+} from '../src/index';
 
 export const chars = (input: string | readonly Message[]) =>
 	typeof input === 'string' ? input.length : JSON.stringify(input).length;

@@ -137,6 +137,58 @@ describe('mongoMemory', () => {
 		expect(await store.getThread(t.id, 'a')).not.toHaveProperty('expiresAt');
 	});
 
+	it('moves every message of a thread to its expiry on each write', async () => {
+		let at = 1_000_000;
+		const db = await mongo.fresh();
+		const threads = db.collection('threads');
+		const messages = db.collection('messages');
+		const store = mongoMemory({
+			threads,
+			messages,
+			expireAfterSeconds: 60,
+			now: () => at,
+		});
+		const t = await store.createThread({ ownerId: 'a' });
+		const [first] = await store.append(t.id, 'a', [user('one')]);
+		at = 1_030_000;
+		await store.append(t.id, 'a', [user('two')]);
+		at = 1_050_000;
+		await store.setSummary(t.id, 'a', {
+			text: 's',
+			throughMessageId: first?.id ?? '',
+			tokens: 1,
+		});
+		const expected = new Date(1_050_000 + 60_000);
+		const stamps = await messages.find({}).toArray();
+		expect(stamps).toHaveLength(2);
+		for (const doc of stamps) expect(doc['expiresAt']).toEqual(expected);
+		expect((await threads.findOne({}))?.['expiresAt']).toEqual(expected);
+	});
+
+	it('removes the batch of an append that lost the race with deleteThread', async () => {
+		const { store, threads, messages } = await setup();
+		const t = await store.createThread({ ownerId: 'a' });
+		const racing = new Proxy(messages, {
+			get(target, prop) {
+				if (prop !== 'insertMany') return Reflect.get(target, prop, target);
+				return async (docs: never[]) => {
+					const done = await target.insertMany(docs);
+					await threads.deleteOne({ _id: t.id as never });
+					return done;
+				};
+			},
+		});
+		const raced = mongoMemory({
+			threads,
+			messages: racing as never,
+			now: () => 1_000_000,
+		});
+		await expect(raced.append(t.id, 'a', [user('x')])).rejects.toMatchObject({
+			code: 'THREAD_NOT_FOUND',
+		});
+		expect(await messages.countDocuments({})).toBe(0);
+	});
+
 	it('creates the TTL index with a zero delay on expiresAt', async () => {
 		const { db } = await setup(60);
 		const indexes = await db.collection('threads').indexes();
@@ -145,7 +197,7 @@ describe('mongoMemory', () => {
 		});
 	});
 
-	it('deletes the messages before the thread', async () => {
+	it('sweeps the messages around the thread', async () => {
 		const { store, threads, messages } = await setup();
 		const t = await store.createThread({ ownerId: 'a' });
 		await store.append(t.id, 'a', [user('x')]);
@@ -162,7 +214,7 @@ describe('mongoMemory', () => {
 			messages: spy('messages', messages),
 		});
 		expect(await wrapped.deleteThread(t.id, 'a')).toBe(true);
-		expect(order).toEqual(['messages', 'threads']);
+		expect(order).toEqual(['messages', 'threads', 'messages']);
 		expect(await messages.countDocuments({})).toBe(0);
 	});
 });

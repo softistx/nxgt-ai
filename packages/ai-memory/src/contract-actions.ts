@@ -1,5 +1,5 @@
 import { expect, it } from 'bun:test';
-import { proposal } from './contract-fixtures';
+import { proposal } from './contract-samples';
 import type { MemoryStore } from './types';
 
 export function contractActions(

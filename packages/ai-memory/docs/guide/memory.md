@@ -188,9 +188,10 @@ actions carries an `actions` array with their current status.
 
 ### Expiry
 
-`expireAfterSeconds` makes the store write an `expiresAt` date: a thread
-expires that long after its last write, a message that long after it was
-appended. Create `expiresAtIndex` on both collections so MongoDB deletes them.
+`expireAfterSeconds` makes the store write an `expiresAt` date, and a thread
+expires as one unit: each write (`append`, `setSummary`) moves the thread and
+all its messages to that long after the write, so a load never starts with a
+tool result whose call is gone. Create `expiresAtIndex` on both collections so MongoDB deletes them.
 
 ```ts
 import { expiresAtIndex } from '@nxgt/ai-memory/mongo';
@@ -208,8 +209,8 @@ const store = mongoMemory({
 ```
 
 MongoDB removes expired documents about once a minute, so they can be read for
-a little after their time. A long-lived thread loses its oldest messages first;
-`messageCount` keeps counting them.
+a little after their time. A thread that is not written to for that long is
+removed whole.
 
 ### Concurrency
 
@@ -221,10 +222,11 @@ leaves a gap in `seq`; `load` still orders by it.
 
 #### Deleting
 
-`deleteThread` deletes the messages first, then the thread. It returns `false`
-for a foreign or absent owner. A crash in between leaves an empty thread, which
-a retry removes. An `append` racing a delete can leave unreachable messages;
-the TTL (`expiresAt`) removes them.
+`deleteThread` deletes the messages, then the thread, then the messages again.
+It returns `false` for a foreign or absent owner. A crash in between leaves an
+empty thread, which a retry removes. An `append` racing a delete checks the
+thread after its insert and removes its own batch, throwing
+`THREAD_NOT_FOUND`; for a moment its messages can still be read by id.
 
 ## Redis store
 

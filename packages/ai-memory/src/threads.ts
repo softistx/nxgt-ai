@@ -1,18 +1,12 @@
 import { dropActions } from './actions';
-import { MemoryError } from './errors';
+import { invalidCursor, pageLimit } from './paging';
 import { assertOwner, own, type State } from './state';
 import type { CreateThreadInput, Page, Thread, ThreadPage } from './types';
-
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
 
 function parseCursor(cursor: string): number {
 	const order = /^\d+$/.test(cursor) ? Number(cursor) : Number.NaN;
 	if (!Number.isSafeInteger(order)) {
-		throw new MemoryError(
-			'INVALID_CURSOR',
-			`"${cursor}" is not a cursor this store gave.`,
-		);
+		throw invalidCursor(cursor);
 	}
 	return order;
 }
@@ -40,7 +34,7 @@ export function getThread(s: State, id: string, ownerId: string) {
 
 export function listThreads(s: State, ownerId: string, page: Page): ThreadPage {
 	assertOwner(ownerId);
-	const limit = Math.min(Math.max(page.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
+	const limit = pageLimit(page);
 	const before =
 		page.cursor === undefined ? Infinity : parseCursor(page.cursor);
 	const mine = [...s.threads.values()]
