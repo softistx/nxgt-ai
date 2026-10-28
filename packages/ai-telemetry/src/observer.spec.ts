@@ -171,6 +171,24 @@ describe('aiTelemetry', () => {
 		expect(only(spans, 'ai.agent.run').status).toBe('ok');
 	});
 
+	test('a confirm tool span is marked proposed, a normal one is not', async () => {
+		const pay = defineTool({
+			name: 'pay',
+			description: 'Pays',
+			input: z.object({}),
+			confirm: true,
+			execute: () => ({}),
+		});
+		const proposed = await traced({}, (o) => toolRun(o, pay));
+		const span = only(proposed, 'ai.tool.call');
+		expect(span.attributes['ai.tool.proposed']).toBe(true);
+		expect(span.status).toBe('ok');
+		const normal = await traced({}, (o) => toolRun(o, echo, { v: 'x' }));
+		expect(only(normal, 'ai.tool.call').attributes).not.toHaveProperty(
+			'ai.tool.proposed',
+		);
+	});
+
 	test('a model error fails the call and the run', async () => {
 		const spans = await traced({}, (o) =>
 			runAgent({
