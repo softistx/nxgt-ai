@@ -62,4 +62,4 @@ digits, `_`, `.`, `-` up to 100, at most 50 entries, 20 fields, 20 params), and
 `errorResult` copies them to `error.details` only when there are some. The
 result's `code` stays `TOOL_FAILED`; read `error.details?.[0]?.code` for the
 tool's reason. `@nxgt/ai-graphql` fills it for a failed operation, and
-`@nxgt/ai-memory` stores it with a failed action. `agentEventSchema` does not carry `details`: a tool-result error parsed from the wire keeps `code`, `message` and `issues` only.
+`@nxgt/ai-memory` stores it with a failed action. `agentEventSchema` keeps `details` too, cleaned again by `cleanErrorDetails`.

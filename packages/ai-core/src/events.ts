@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import type { WireErrorCode } from './errors';
+import {
+	cleanErrorDetails,
+	type ToolErrorDetail,
+	type WireErrorCode,
+} from './errors';
 import type {
 	Message,
 	ProposedActionPart,
@@ -71,6 +75,15 @@ const toolResultSchema = z.discriminatedUnion('isError', [
 			issues: z
 				.array(z.object({ path: z.string(), message: z.string() }))
 				.readonly()
+				.optional(),
+			details: z
+				.unknown()
+				.transform((raw) => {
+					const kept = cleanErrorDetails(raw);
+					return kept.length > 0
+						? (kept as readonly ToolErrorDetail[])
+						: undefined;
+				})
 				.optional(),
 		}),
 	}),

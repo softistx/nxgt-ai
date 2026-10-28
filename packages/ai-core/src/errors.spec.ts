@@ -50,3 +50,25 @@ describe('AiError details', () => {
 		expect(error.details).toEqual([{ code: 'CONFLICT' }]);
 	});
 });
+
+describe('agentEventSchema details', () => {
+	test('a tool-result error keeps cleaned details', async () => {
+		const { agentEventSchema } = await import('./events');
+		const parsed = agentEventSchema.parse({
+			type: 'tool-result',
+			result: {
+				type: 'tool-result',
+				callId: 'c',
+				name: 'n',
+				isError: true,
+				error: {
+					code: 'TOOL_FAILED',
+					message: 'x',
+					details: [{ code: 'CONFLICT', message: 'leak' }, { code: 'a b' }],
+				},
+			},
+		});
+		expect(JSON.stringify(parsed)).toContain('"details":[{"code":"CONFLICT"}]');
+		expect(JSON.stringify(parsed)).not.toContain('leak');
+	});
+});
