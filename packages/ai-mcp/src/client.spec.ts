@@ -213,6 +213,22 @@ describe('mcpTools: close', () => {
 	});
 });
 
+describe('mcpTools: connection lost during a call', () => {
+	it('answers MCP_UNAVAILABLE when the server closes while a call waits', async () => {
+		const [client, serverSide] = InMemoryTransport.createLinkedPair();
+		await createTestServer().connect(serverSide);
+		const { tools, close } = await mcpTools({
+			transport: { type: 'transport', transport: client },
+			include: ['slow'],
+		});
+		closers.push(close);
+		const pending = run(tools, 'slow');
+		setTimeout(() => void serverSide.close(), 50);
+		const out = await pending;
+		expect(JSON.stringify(out)).toContain('MCP_UNAVAILABLE');
+	});
+});
+
 describe('mcpTools: connecting', () => {
 	it('throws MCP_UNAVAILABLE when the command does not start', async () => {
 		const error = await mcpTools({

@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { McpError } from '@modelcontextprotocol/sdk/types.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import {
 	AiError,
 	type AnyTool,
@@ -234,6 +234,12 @@ export async function mcpTools(
 	}
 }
 
+/** A protocol error the server answered, not a closed pipe or a timeout. */
+const isServerAnswer = (cause: unknown): boolean =>
+	cause instanceof McpError &&
+	cause.code !== ErrorCode.ConnectionClosed &&
+	cause.code !== ErrorCode.RequestTimeout;
+
 function buildTool(
 	client: Client,
 	t: ListedTool,
@@ -269,7 +275,7 @@ function buildTool(
 					// A server error answer is the tool failing; anything else
 					// (closed pipe, timeout, HTTP failure) is the server being out.
 					throw toolFailure(
-						cause instanceof McpError ? 'MCP_TOOL_FAILED' : 'MCP_UNAVAILABLE',
+						isServerAnswer(cause) ? 'MCP_TOOL_FAILED' : 'MCP_UNAVAILABLE',
 						cause,
 					);
 				}
