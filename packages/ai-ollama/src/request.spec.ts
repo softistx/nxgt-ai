@@ -111,7 +111,7 @@ describe('buildBody', () => {
 		expect(body).toMatchObject({ format: 'json', options: { seed: 1 } });
 	});
 
-	test('providerOptions.options merge deeply and win per key', () => {
+	test('providerOptions.options merge one level and win per key', () => {
 		const body = buildBody(o, {
 			messages: [],
 			temperature: 0.2,
@@ -138,6 +138,14 @@ describe('buildBody', () => {
 			num_predict: 50,
 			num_ctx: 8192,
 		});
+	});
+
+	test('a non-object providerOptions.options replaces the mapped ones', () => {
+		const base = { messages: [], temperature: 0.2 };
+		const nul = buildBody(o, { ...base, providerOptions: { options: null } });
+		expect(nul['options']).toBeNull();
+		const arr = buildBody(o, { ...base, providerOptions: { options: [1] } });
+		expect(arr['options']).toEqual([1]);
 	});
 
 	test('numCtx maps to options.num_ctx beside the other options', () => {

@@ -43,10 +43,11 @@ const model = ollama({
 | `providerOptions`          | merged into the body, for `format`, ...; `options` merges key by key         |
 
 `providerOptions` keys replace the body's top-level keys, except `options`,
-which is merged deeply: the mapped `temperature`, `num_predict` and `num_ctx`
+which is merged one level: the mapped `temperature`, `num_predict` and `num_ctx`
 come first and `providerOptions.options` is laid over them, key by key. So
 `providerOptions: { options: { seed: 1 } }` keeps the request's temperature
-and `maxTokens`; to override one of them, name that key.
+and `maxTokens`; to override one of them, name that key. An `options` that is
+not a plain object (`null`, an array) replaces the mapped options whole.
 
 Ollama has no thinking token budget, so `budgetTokens` is ignored.
 

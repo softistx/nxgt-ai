@@ -92,6 +92,9 @@ function maxTokens(asked: number | undefined, budget: number | undefined) {
  * The JSON body of `POST /v1/messages` for `req`. With `thinking`, the API
  * allows no `temperature` and needs `max_tokens` above the budget, so the
  * former is dropped and an absent `maxTokens` leaves room for the answer.
+ * A `providerOptions.thinking` override that is not `disabled` gets the same:
+ * `temperature` is dropped, its `budget_tokens` is raised to the minimum and
+ * `max_tokens` is resized, each unless `providerOptions` names that key.
  */
 export function buildBody(
 	model: string,
@@ -123,21 +126,41 @@ export function buildBody(
 	else if (req.temperature !== undefined) body.temperature = req.temperature;
 	if (req.cache !== 'off') placeBreakpoints(body);
 	const extra = req.providerOptions;
-	const override = extra?.['thinking'];
-	// A thinking override through providerOptions resizes max_tokens as the
-	// typed option does, unless providerOptions names max_tokens itself.
-	if (
-		extra !== undefined &&
-		!('max_tokens' in extra) &&
-		typeof override === 'object' &&
-		override !== null &&
-		(override as { type?: unknown }).type === 'enabled' &&
-		typeof (override as { budget_tokens?: unknown }).budget_tokens === 'number'
-	) {
-		body.max_tokens = maxTokens(
-			req.maxTokens,
-			(override as { budget_tokens: number }).budget_tokens,
-		);
+	const over = thinkingOverride(extra);
+	if (over === undefined) return { ...body, ...extra };
+	// Temperature and max_tokens follow the override as they follow the typed
+	// option, unless providerOptions names them itself.
+	if (!('temperature' in (extra ?? {}))) delete body.temperature;
+	const merged: Record<string, unknown> = { ...body, ...extra };
+	if (over.budget !== undefined) {
+		merged['thinking'] = { ...over.thinking, budget_tokens: over.budget };
+		if (!('max_tokens' in (extra ?? {})))
+			merged['max_tokens'] = maxTokens(req.maxTokens, over.budget);
 	}
-	return { ...body, ...extra };
+	return merged;
+}
+
+/**
+ * A `providerOptions.thinking` that turns thinking on: any object whose `type`
+ * is not `'disabled'`. `budget` is its `budget_tokens` raised to the minimum,
+ * or `undefined` when it has none (such as an adaptive type).
+ */
+function thinkingOverride(
+	extra: Record<string, unknown> | undefined,
+):
+	| { thinking: Record<string, unknown>; budget: number | undefined }
+	| undefined {
+	const t = extra?.['thinking'];
+	if (typeof t !== 'object' || t === null || Array.isArray(t)) return undefined;
+	const thinking = t as Record<string, unknown>;
+	if (thinking['type'] === undefined || thinking['type'] === 'disabled')
+		return undefined;
+	const raw = thinking['budget_tokens'];
+	return {
+		thinking,
+		budget:
+			typeof raw === 'number'
+				? Math.max(raw, DEFAULT_THINKING_BUDGET)
+				: undefined,
+	};
 }

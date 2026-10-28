@@ -199,6 +199,34 @@ describe('providerOptions thinking override', () => {
 		expect(body['max_tokens']).toBe(20000);
 	});
 
+	test('temperature is dropped unless providerOptions names it', () => {
+		const req = { messages, temperature: 0.2 };
+		const dropped = buildBody('m', { ...req, providerOptions: { thinking } });
+		expect('temperature' in dropped).toBe(false);
+		const kept = buildBody('m', {
+			...req,
+			providerOptions: { thinking, temperature: 1 },
+		});
+		expect(kept['temperature']).toBe(1);
+	});
+
+	test('the budget is raised to the minimum; adaptive keeps max_tokens', () => {
+		const low = buildBody('m', {
+			messages,
+			providerOptions: { thinking: { type: 'enabled', budget_tokens: 10 } },
+		});
+		expect(low['thinking']).toEqual({ type: 'enabled', budget_tokens: 1024 });
+		expect(low['max_tokens']).toBe(4096 + 1024);
+		const adaptive = buildBody('m', {
+			messages,
+			temperature: 0.2,
+			providerOptions: { thinking: { type: 'adaptive' } },
+		});
+		expect(adaptive['thinking']).toEqual({ type: 'adaptive' });
+		expect(adaptive['max_tokens']).toBe(4096);
+		expect('temperature' in adaptive).toBe(false);
+	});
+
 	test('other thinking values leave max_tokens alone', () => {
 		const body = buildBody('m', {
 			messages,
