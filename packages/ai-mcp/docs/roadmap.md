@@ -14,6 +14,7 @@ Nothing yet.
 
 - **Resources and prompts** — read an MCP server's resources and prompt templates, not only its tools.
 - **Telemetry spans per call** — a span for each MCP call, when the other tool packages emit them.
+- **Body read failures answered as JSON-RPC errors** — a request body that cannot be read answers a JSON-RPC 400 from the `fetch` handler instead of rejecting it ([#84](https://github.com/softistx/nxgt-ai/issues/84)).
 
 ## Not planned
 
