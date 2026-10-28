@@ -75,17 +75,58 @@ for await (const event of run) console.log(event.type);
 proposed action (`confirm: true`) and runs it only after
 `runConfirmedAction`.
 
+## Codegen
+
+`@nxgt/ai-graphql/codegen` is a [GraphQL Code Generator](https://the-guild.dev/graphql/codegen)
+plugin that writes the operations for you: one `GraphqlOperation` per named query or
+mutation of your documents, each with its fragments, its description and the
+`z<Op>Variables` schema that [`@nxgt/graphql-codegen-zod`](https://www.npmjs.com/package/@nxgt/graphql-codegen-zod) wrote.
+
+```ts
+// codegen.ts
+import type { CodegenConfig } from '@graphql-codegen/cli';
+
+const config: CodegenConfig = {
+	schema: 'src/schema/**/*.graphql',
+	documents: 'src/operations/**/*.graphql',
+	generates: {
+		'src/generated/zod.ts': { plugins: ['@nxgt/graphql-codegen-zod'] },
+		'src/generated/operations.ts': {
+			plugins: ['@nxgt/ai-graphql/codegen'],
+			config: { zodImport: './zod' }, // the file written above
+		},
+	},
+};
+export default config;
+```
+
+```graphql
+# tool: List the open tickets of a customer, newest first.
+query FindTickets($customerId: ID!) { ... }
+```
+
+```ts
+import { operations } from './generated/operations';
+
+const tools = graphqlTools({ schema, operations });
+```
+
+Each operation needs a description (a graphql 17 description or the `# tool:`
+comment above it). See the [codegen guide](docs/guide/codegen.md) for the
+options, what is refused and the limits.
+
 ## Exports
 
-| Export                                           | What it is                                                                                                              |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `graphqlTools(options)`                          | Builds the tools; throws `GraphqlToolsError` on the first problem                                                       |
-| `GraphqlOperation`                               | `{ name, description, document, variables?, operationName? }`: the allow-list entry and the shape the codegen will emit |
-| `GraphqlToolsOptions`                            | `{ schema, operations, context?, forbidFields?, maxResultChars? }`                                                      |
-| `GraphqlToolsError`, `GRAPHQL_TOOLS_ERROR_CODES` | `FORBIDDEN_FIELD`, `INVALID_OPERATION`, `DUPLICATE_OPERATION`; carries `operation`, `field`, `path`                     |
-| `GraphqlToolOutput`, `ToolGraphqlError`          | What a call returns: `{ data, errors? }`, each error `{ code, path?, fields?, params? }`                                |
-| `TruncatedGraphqlOutput`                         | `{ truncated: true, originalChars, preview, note }`, returned when the result exceeds `maxResultChars`                  |
-| `DEFAULT_MAX_RESULT_CHARS`                       | 20000                                                                                                                   |
+| Export                                                           | What it is                                                                                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `graphqlTools(options)`                                          | Builds the tools; throws `GraphqlToolsError` on the first problem                                                   |
+| `GraphqlOperation`                                               | `{ name, description, document, variables?, operationName? }`: the allow-list entry and the shape the codegen emits |
+| `GraphqlToolsOptions`                                            | `{ schema, operations, context?, forbidFields?, maxResultChars? }`                                                  |
+| `GraphqlToolsError`, `GRAPHQL_TOOLS_ERROR_CODES`                 | `FORBIDDEN_FIELD`, `INVALID_OPERATION`, `DUPLICATE_OPERATION`; carries `operation`, `field`, `path`                 |
+| `GraphqlToolOutput`, `ToolGraphqlError`                          | What a call returns: `{ data, errors? }`, each error `{ code, path?, fields?, params? }`                            |
+| `TruncatedGraphqlOutput`                                         | `{ truncated: true, originalChars, preview, note }`, returned when the result exceeds `maxResultChars`              |
+| `DEFAULT_MAX_RESULT_CHARS`                                       | 20000                                                                                                               |
+| `@nxgt/ai-graphql/codegen`: `plugin`, `OperationsManifestConfig` | The codegen plugin and its `config` type                                                                            |
 
 ## Traps
 
@@ -109,7 +150,7 @@ proposed action (`confirm: true`) and runs it only after
 bun add @nxgt/ai-graphql @nxgt/ai-core graphql zod
 ```
 
-Requires `"moduleResolution": "bundler"`. This package is not published yet.
+`./codegen` also needs `@graphql-codegen/cli` (it brings `@graphql-codegen/plugin-helpers`) and `change-case`, both optional peers used by `./codegen` only, so the root export does not. Requires `"moduleResolution": "bundler"`. This package is not published yet.
 See the [guide](docs/guide/graphql-tools.md).
 
 ## Documentation
