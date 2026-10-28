@@ -24,13 +24,25 @@ key from an overloaded API. 429, 529, 5xx and network failures are retried
 twice, honouring `retry-after`.
 
 Calls stream (SSE). `thinking: { budgetTokens }` turns on extended thinking and
-keeps each block's signature for the next turn; `cache: 'auto'` (the default)
-puts prompt-cache breakpoints on the tools, the system prompt and the last
-user turn; `model.countTokens(req)` asks `/v1/messages/count_tokens`.
+keeps each block's signature for the next turn. The newest models take no
+budget: use `thinking: { mode: 'adaptive', effort: 'high' }` there. Options
+that contradict each other throw `INVALID_REQUEST` before the call; whatever a
+model refuses on its own is the API's 400 (known limits in
+`docs/troubleshooting.md`). `cache: 'auto'` (the default) puts prompt-cache
+breakpoints on the tools, the system prompt and the last user turn;
+`model.countTokens(req)` asks `/v1/messages/count_tokens`.
 
 ```ts
 const tokens = await model.countTokens?.({ messages, tools });
 ```
+
+Overriding `thinking` through `providerOptions` (`{ thinking: { type: 'enabled',
+budget_tokens: 8000 } }`) is treated like the typed option: `temperature` is
+dropped and `max_tokens` resized. Name either in `providerOptions` to set it
+yourself. The override replaces the typed `thinking` field, whatever its `mode`;
+a typed `effort` is still sent.
+
+**Warning:** a non-default `temperature` is an API 400 on the newest models (the Claude 5 family, Opus 4.7 and 4.8), with or without thinking. Leave it unset there; see the Troubleshooting entry [`Anthropic API 400`](docs/troubleshooting.md#anthropic-api-400--also-404-413-other-4xx).
 
 `bun run smoke:anthropic` in the repository tries it against the real API
 (local only, needs `ANTHROPIC_API_KEY`).

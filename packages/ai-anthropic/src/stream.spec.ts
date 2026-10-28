@@ -216,3 +216,68 @@ describe('streaming', () => {
 		]);
 	});
 });
+
+describe('streaming adaptive thinking with display omitted', () => {
+	const frame = (event: string, data: unknown) =>
+		`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+	const body =
+		frame('message_start', {
+			type: 'message_start',
+			message: { id: 'm', usage: { input_tokens: 5, output_tokens: 1 } },
+		}) +
+		frame('content_block_start', {
+			type: 'content_block_start',
+			index: 0,
+			content_block: { type: 'thinking', thinking: '', signature: '' },
+		}) +
+		frame('content_block_delta', {
+			type: 'content_block_delta',
+			index: 0,
+			delta: { type: 'signature_delta', signature: 'sigOmitted' },
+		}) +
+		frame('content_block_stop', { type: 'content_block_stop', index: 0 }) +
+		frame('content_block_start', {
+			type: 'content_block_start',
+			index: 1,
+			content_block: { type: 'text', text: '' },
+		}) +
+		frame('content_block_delta', {
+			type: 'content_block_delta',
+			index: 1,
+			delta: { type: 'text_delta', text: 'Lyon.' },
+		}) +
+		frame('content_block_stop', { type: 'content_block_stop', index: 1 }) +
+		frame('message_delta', {
+			type: 'message_delta',
+			delta: { stop_reason: 'end_turn' },
+			usage: { output_tokens: 9 },
+		}) +
+		frame('message_stop', { type: 'message_stop' });
+
+	test('an empty thinking block with only a signature still maps and folds into a signed part', async () => {
+		const { model, calls } = setup([sse(chunked(body, 40))]);
+		const adaptive = {
+			...req,
+			thinking: { mode: 'adaptive', display: 'omitted' },
+		} as ModelRequest;
+		const list = await events(model, adaptive);
+		expect(merged(list).slice(0, 2)).toEqual([
+			{
+				type: 'thinking-delta',
+				text: '',
+				signature: 'sigOmitted',
+				start: true,
+			},
+			{ type: 'text-delta', text: 'Lyon.', start: true },
+		]);
+		expect(calls[0]?.body).toMatchObject({
+			thinking: { type: 'adaptive', display: 'omitted' },
+		});
+		const result = await generate(model, adaptive);
+		expect(result.message.parts[0]).toEqual({
+			type: 'thinking',
+			text: '',
+			signature: 'sigOmitted',
+		});
+	});
+});

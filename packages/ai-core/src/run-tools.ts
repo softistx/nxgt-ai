@@ -27,6 +27,20 @@ export interface ToolRunContext {
 }
 
 /**
+ * The tool's one-line summary of a validated input. A throwing `summarize`, or
+ * one that returns no text, gives no summary: it must never stop the proposal.
+ */
+function summaryOf(tool: AnyTool, input: unknown): string | undefined {
+	if (!tool.summarize) return undefined;
+	try {
+		const text: unknown = tool.summarize(input);
+		return typeof text === 'string' && text.trim() !== '' ? text : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * A confirm-gated tool is never run by the loop: a valid call is recorded as
  * a pending proposed action and the model is told so.
  */
@@ -48,11 +62,13 @@ function propose(
 			),
 		);
 	}
+	const summary = summaryOf(tool, validation.value);
 	const action: ProposedActionPart = {
 		type: 'proposed-action',
 		id: call.id,
 		tool: tool.name,
 		input: call.input,
+		...(summary === undefined ? {} : { summary }),
 		expiresAt: run.now() + run.ttlMs,
 	};
 	run.proposals.push(action);
@@ -64,6 +80,32 @@ function propose(
 		isError: false,
 		output: { status: 'pending', actionId: action.id },
 	};
+}
+
+function abortedResult(call: ToolCallPart): ToolResultPart {
+	return errorResult(
+		call,
+		new AiError('ABORTED', `Tool "${call.name}" was aborted.`),
+	);
+}
+
+/**
+ * Resolves with an `ABORTED` result as soon as the signal aborts, so a tool
+ * that ignores its signal is no longer waited for. `release` removes the
+ * listener once the call has settled.
+ */
+function whenAborted(
+	call: ToolCallPart,
+	signal: AbortSignal,
+): { aborted: Promise<ToolResultPart>; release(): void } {
+	let release = () => {};
+	const aborted = new Promise<ToolResultPart>((resolve) => {
+		const onAbort = () => resolve(abortedResult(call));
+		if (signal.aborted) return onAbort();
+		signal.addEventListener('abort', onAbort, { once: true });
+		release = () => signal.removeEventListener('abort', onAbort);
+	});
+	return { aborted, release: () => release() };
 }
 
 async function runOne(
@@ -100,8 +142,10 @@ async function runOne(
 
 /**
  * Runs the calls in parallel and returns their results in call order. Each
- * `tool-result` event is emitted as its tool finishes. Never rejects: a tool
- * cut short by an abort answers with an `ABORTED` result.
+ * `tool-result` event is emitted as its tool finishes. Never rejects: after
+ * an abort, a tool still running answers with an `ABORTED` result at once,
+ * even when it ignores its signal; it is not waited for and whatever it
+ * returns later is dropped.
  */
 export function runToolCalls(
 	calls: readonly ToolCallPart[],
@@ -115,7 +159,12 @@ export function runToolCalls(
 				call,
 			});
 			const started = performance.now();
-			const result = await runOne(call, run);
+			// Aborted while the observers ran: neither run nor propose the call.
+			const guard = whenAborted(call, run.signal);
+			const result = run.signal.aborted
+				? abortedResult(call)
+				: await Promise.race([runOne(call, run), guard.aborted]);
+			guard.release();
 			run.emit({ type: 'tool-result', result });
 			await notify(run.observers, 'onToolCall', {
 				runId: run.runId,
@@ -123,6 +172,7 @@ export function runToolCalls(
 				call,
 				result,
 				durationMs: performance.now() - started,
+				proposed: run.proposals.some((action) => action.id === call.id),
 			});
 			return result;
 		}),

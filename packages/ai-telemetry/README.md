@@ -25,6 +25,10 @@ telemetry })`. With none, the run is untouched and nothing is emitted.
 **Prompts, tool arguments, tool results and answers are never recorded by
 default**; `aiTelemetry({ recordContent: true })` turns them on.
 
+A `confirm` tool is proposed, not run: its `ai.tool.call` span carries
+`ai.tool.proposed: true` and stays `ok`, so a dashboard can tell a pending
+action from an executed tool.
+
 An abort is recorded as cancelled, not as an error; a failed model call or tool
 call fails its span.
 

@@ -44,9 +44,12 @@ export type {
 	ModelEvent,
 	ModelRequest,
 	SystemBlock,
+	ThinkingEffort,
 	ThinkingOptions,
 } from './model';
 export {
+	type ActionOutcomeOptions,
+	actionOutcomeMessage,
 	type ConfirmContext,
 	type ConfirmOptions,
 	type ProposedAction,

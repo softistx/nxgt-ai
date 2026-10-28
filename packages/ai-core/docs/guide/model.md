@@ -36,16 +36,16 @@ const { message, usage, finishReason } = await generate(
 
 ## ModelRequest
 
-| field             | meaning                                                              |
-| ----------------- | -------------------------------------------------------------------- |
-| `system`          | blocks of `{ text }`; an adapter may cache each block                |
-| `messages`        | the conversation, see [Messages](messages.md)                        |
-| `tools`           | `ToolSpec[]`, from `toolSpec(tool)`                                  |
-| `maxTokens`       | output limit                                                         |
-| `temperature`     | sampling temperature                                                 |
-| `cache`           | `'auto'` (default) lets the adapter place cache breakpoints; `'off'` |
-| `thinking`        | `{ budgetTokens }`; ignored by a model without thinking              |
-| `providerOptions` | passed through untouched for what the port does not model            |
+| field             | meaning                                                                                                                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `system`          | blocks of `{ text }`; an adapter may cache each block                                                                                                                                                           |
+| `messages`        | the conversation, see [Messages](messages.md)                                                                                                                                                                   |
+| `tools`           | `ToolSpec[]`, from `toolSpec(tool)`                                                                                                                                                                             |
+| `maxTokens`       | output limit                                                                                                                                                                                                    |
+| `temperature`     | sampling temperature                                                                                                                                                                                            |
+| `cache`           | `'auto'` (default) lets the adapter place cache breakpoints; `'off'`                                                                                                                                            |
+| `thinking`        | `{ budgetTokens, mode, effort, display }`: a budget or adaptive thinking (`display` shows or hides its text); `effort` alone only sets the effort level and starts no thinking; ignored by a model without them |
+| `providerOptions` | passed through untouched for what the port does not model                                                                                                                                                       |
 
 ## ModelEvent
 

@@ -52,6 +52,16 @@ ollama({ model: 'llama3.1' }); // a tools-capable model
 **Why:** thinking is a per-model capability.
 **Fix:** drop `thinking` from the request, or use a model that has it.
 
+### A long prompt is cut or the model forgets the start of the conversation
+
+**When:** a long history or a large tool result, and the model ignores early messages. No error is raised.
+**Why:** Ollama truncates the prompt to the context window (`num_ctx`), which defaults to a small value.
+**Fix:** raise it with `numCtx`, or per request with `providerOptions.options.num_ctx`. Other `options` (temperature, `num_predict`) are kept.
+
+```ts
+ollama({ model: 'llama3.2', numCtx: 16384 });
+```
+
 ## HTTP errors
 
 ### `Ollama API 401: ...` (also 403)

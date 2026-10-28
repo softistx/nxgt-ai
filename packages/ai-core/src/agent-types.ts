@@ -70,6 +70,11 @@ export interface AgentObserver {
 		call: ToolCallPart;
 		result: ToolResultPart;
 		durationMs: number;
+		/**
+		 * True when the call was recorded as a pending proposed action (a
+		 * `confirm` tool): the tool did not run, `result` only says it is pending.
+		 */
+		proposed: boolean;
 	}): void | Promise<void>;
 	onRunEnd?(result: AgentResult): void | Promise<void>;
 }

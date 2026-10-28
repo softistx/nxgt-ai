@@ -1,0 +1,84 @@
+{
+	"name": "@nxgt/ai-graphql",
+	"version": "0.0.0",
+	"description": "GraphQL operations as @nxgt/ai-core tools: an allow-list run in process with graphql-js, forbidden fields rejected at build, mutations behind a confirmation",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"package.json",
+		"LICENSE"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./codegen": {
+			"types": "./dist/codegen.d.ts",
+			"import": "./dist/codegen.js",
+			"default": "./dist/codegen.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"keywords": [
+		"ai",
+		"agent",
+		"llm",
+		"graphql",
+		"tools",
+		"bun",
+		"typescript"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/softistx/nxgt-ai.git",
+		"directory": "packages/ai-graphql"
+	},
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org",
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun run ../../build.ts",
+		"test": "bun test src",
+		"typecheck": "tsc --noEmit"
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/codegen.ts"
+		]
+	},
+	"devDependencies": {
+		"@graphql-codegen/cli": "7.4.6",
+		"@graphql-codegen/plugin-helpers": "^7",
+		"@nxgt/ai-core": "workspace:^",
+		"@nxgt/ai-testing": "workspace:^",
+		"@nxgt/graphql-codegen-zod": "^0.4.0",
+		"@types/bun": "^1.4.4",
+		"graphql": "16.11.0",
+		"zod": "4.6.5"
+	},
+	"peerDependencies": {
+		"@graphql-codegen/plugin-helpers": ">=5 <8",
+		"@nxgt/ai-core": "workspace:^",
+		"@nxgt/graphql-codegen-zod": ">=0.4.0 <0.5.0",
+		"graphql": "^16.8.0 || ^17.0.0",
+		"typescript": "^6.0.3 || ^7.0.0",
+		"zod": ">=4.6.5 <5"
+	},
+	"peerDependenciesMeta": {
+		"@graphql-codegen/plugin-helpers": {
+			"optional": true
+		},
+		"@nxgt/graphql-codegen-zod": {
+			"optional": true
+		}
+	}
+}

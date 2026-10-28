@@ -21,6 +21,15 @@ calls arrive whole, and `usage` comes from `prompt_eval_count` and
 `eval_count`. **Tool support varies by model**: a model without it answers
 in text or fails with an `OllamaError`; check the tools filter on ollama.com.
 
+Set `numCtx` for the context window (`options.num_ctx`; the server default is
+small). `providerOptions.options` merges key by key over the mapped
+`temperature`, `num_predict` and `num_ctx`, so `{ options: { seed: 1 } }`
+loses nothing.
+
+```ts
+const model = ollama({ model: 'llama3.2', numCtx: 8192 });
+```
+
 Failures are `OllamaError`s (an `AiError`): `error.kind` tells a server that
 is not running (`unreachable`) from a missing model (`model-not-found`).
 There are no retries; a local server that refuses a connection will not

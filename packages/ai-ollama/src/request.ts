@@ -18,7 +18,11 @@ interface WireBody {
 	messages: WireMessage[];
 	stream: true;
 	tools?: unknown[];
-	options?: { temperature?: number; num_predict?: number };
+	options?: {
+		temperature?: number;
+		num_predict?: number;
+		num_ctx?: number;
+	};
 	think?: Think;
 	keep_alive?: string | number;
 }
@@ -27,6 +31,8 @@ export interface BodyOptions {
 	model: string;
 	keepAlive: string | number | undefined;
 	think: Think | undefined;
+	/** Context window in tokens, sent as `options.num_ctx`. */
+	numCtx?: number | undefined;
 }
 
 function resultContent(part: ToolResultPart): string {
@@ -81,7 +87,9 @@ export function toWireMessages(messages: readonly Message[]): WireMessage[] {
 /**
  * The JSON body of `POST /api/chat` for `req`. `cache` is a no-op: Ollama
  * keeps its own KV cache. `thinking` in the request turns `think` on when the
- * adapter option is unset; Ollama has no token budget for it.
+ * adapter option is unset; Ollama has no token budget for it. `providerOptions`
+ * merge shallowly into the body, except `options`, which merges key by key
+ * over the mapped `temperature`, `num_predict` and `num_ctx`.
  */
 export function buildBody(
 	o: BodyOptions,
@@ -111,9 +119,18 @@ export function buildBody(
 	const options: NonNullable<WireBody['options']> = {};
 	if (req.temperature !== undefined) options.temperature = req.temperature;
 	if (req.maxTokens !== undefined) options.num_predict = req.maxTokens;
+	if (o.numCtx !== undefined) options.num_ctx = o.numCtx;
 	if (Object.keys(options).length > 0) body.options = options;
 	const think = o.think ?? (req.thinking ? true : undefined);
 	if (think !== undefined) body.think = think;
 	if (o.keepAlive !== undefined) body.keep_alive = o.keepAlive;
-	return { ...body, ...req.providerOptions };
+	const { options: extra, ...rest } = req.providerOptions ?? {};
+	const merged: Record<string, unknown> = { ...body, ...rest };
+	if (extra !== undefined) {
+		merged['options'] =
+			typeof extra === 'object' && extra !== null && !Array.isArray(extra)
+				? { ...body.options, ...extra }
+				: extra;
+	}
+	return merged;
 }

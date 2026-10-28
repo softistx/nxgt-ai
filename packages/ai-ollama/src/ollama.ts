@@ -12,6 +12,8 @@ export interface OllamaOptions {
 	keepAlive?: string | number;
 	/** Thinking models: `true`, or a level. Default: on when a request asks. */
 	think?: Think;
+	/** Context window in tokens (`options.num_ctx`); the server default is small. */
+	numCtx?: number;
 	/** For tests: replaces the global `fetch`. */
 	fetch?: typeof fetch;
 	/** For tests: replaces the generator of tool call ids. */
@@ -37,6 +39,7 @@ export function ollama(options: OllamaOptions): ModelAdapter {
 				model: options.model,
 				keepAlive: options.keepAlive,
 				think: options.think,
+				numCtx: options.numCtx,
 			},
 			req,
 		);

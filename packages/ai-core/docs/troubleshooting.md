@@ -5,7 +5,7 @@ reported on `AgentResult.error`, on the `error` event, or in a tool result.
 
 - [Defining tools](#defining-tools): `INVALID_TOOL_DEFINITION`
 - [Tool calls](#tool-calls): `INVALID_TOOL_INPUT`, `INVALID_TOOL_OUTPUT`, `TOOL_FAILED`, `UNKNOWN_TOOL`
-- [Run limits](#run-limits): `MAX_STEPS`, `BUDGET_EXCEEDED`, `ABORTED`
+- [Run limits](#run-limits): `MAX_STEPS`, `BUDGET_EXCEEDED`, `ABORTED`, a tool that outlives the abort, a run that goes on after `break`
 - [Model](#model): `MODEL_ERROR`, `RATE_LIMITED`, `AUTHENTICATION`
 - [Proposed actions](#proposed-actions): `ACTION_NOT_PENDING`, `ACTION_EXPIRED`
 
@@ -145,6 +145,27 @@ Raise the limit, or shorten the history (see `estimateTokens`).
 if (result.error?.code === 'ABORTED') return; // cancelled
 ```
 
+### A tool kept running after the run ended `aborted`
+
+**When:** the run ended `aborted` at once, but a tool's side effect (a write, a request) still happened afterwards.
+**Why:** the loop does not wait for a tool that ignores `ToolContext.signal`. It answers `ABORTED` for it and ends the run; the tool runs to its end in the background.
+**Fix:** pass the signal to whatever the tool waits on.
+
+```ts
+execute: async (input, { signal }) => fetch(url, { signal }),
+```
+
+### The run goes on after leaving the `for await` loop
+
+**When:** you `break` out of `for await (const event of run)` and the model or tools keep being called, or a second loop over the same run misses events.
+**Why:** `AgentRun` is a single-consumer iterator; leaving the loop does not abort the run, and two loops split the events.
+**Fix:** read the run in one place and call `run.abort()` when you stop reading.
+
+```ts
+for await (const event of run) if (done(event)) break;
+run.abort();
+```
+
 ## Model
 
 ### `The model stream ended without a finish`
@@ -175,6 +196,29 @@ yield { type: 'finish', reason: 'end' };
 if (action.status === 'pending')
 	action = await runConfirmedAction(action, tools);
 ```
+
+### The model still says the action is pending
+
+**When:** the user confirmed or rejected in a later request and the model keeps waiting, or asks again.
+**Why:** its earlier `tool_result` for that call says `{ status: 'pending' }` and nothing told it the outcome.
+**Fix:** append `actionOutcomeMessage(action)` (a user text turn) to the thread before the next `runAgent`.
+
+```ts
+const done = await runConfirmedAction(action, tools);
+await store.append(threadId, ownerId, [actionOutcomeMessage(done)]);
+```
+
+### `Action "..." is still pending: it has no outcome yet.`
+
+**When:** `actionOutcomeMessage` on an action whose status is `pending` (`ACTION_NOT_PENDING`, thrown).
+**Why:** it reports an outcome, and a pending action has none.
+**Fix:** pass what `runConfirmedAction` or `rejectAction` returned, not the stored pending action.
+
+### A proposed action has no `summary`
+
+**When:** the confirmation UI shows no line although the tool has `summarize`.
+**Why:** `summarize` threw, or returned an empty or non-string value; the error is swallowed so the proposal still stands.
+**Fix:** call `summarize` in a unit test with the same input and make it return a non-empty string.
 
 ### `Action "..." has expired.`
 

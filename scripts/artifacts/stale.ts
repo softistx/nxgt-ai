@@ -38,7 +38,7 @@ async function newestMtime(dir: string, skip?: RegExp): Promise<number> {
  * as the tarball holds them; a new kind of test file belongs in both.
  */
 export const NOT_A_BUILD_INPUT =
-	/(^|\/)__snapshots__\/|\.(spec|test|fixtures)\.[cm]?[jt]sx?$/;
+	/(^|\/)__snapshots__\/|(\.(spec|test)|[.-]fixtures)\.[cm]?[jt]sx?$/;
 
 /**
  * Packages whose `dist/` is missing, or older than their own `src/`.

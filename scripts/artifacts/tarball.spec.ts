@@ -89,6 +89,12 @@ describe('testCodeProblems', () => {
 		]);
 	});
 
+	test('refuses a fixtures file with a dashed prefix', () => {
+		expect(testCodeProblems(x, ['package/dist/compact-fixtures.d.ts'])).toEqual(
+			['x: the tarball ships test code: dist/compact-fixtures.d.ts'],
+		);
+	});
+
 	test('allows a plain fixtures file: a package may ship one on purpose', () => {
 		expect(
 			testCodeProblems(x, [
