@@ -1,7 +1,6 @@
 {
 	"name": "@nxgt/ai-mcp",
 	"version": "0.0.0",
-	"private": true,
 	"description": "Model Context Protocol for @nxgt/ai-core: the tools of an MCP server as agent tools, over stdio or Streamable HTTP",
 	"license": "MIT",
 	"type": "module",
