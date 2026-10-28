@@ -67,21 +67,20 @@
         "@nxgt/ai-testing": "workspace:^",
         "@nxgt/graphql-codegen-zod": "^0.4.0",
         "@types/bun": "^1.4.4",
-        "change-case": "^5.4.4",
         "graphql": "16.11.0",
         "zod": "4.6.5",
       },
       "peerDependencies": {
         "@graphql-codegen/plugin-helpers": ">=5 <8",
         "@nxgt/ai-core": "workspace:^",
-        "change-case": "^5.4.4",
+        "@nxgt/graphql-codegen-zod": ">=0.4.0 <0.5.0",
         "graphql": "^16.8.0 || ^17.0.0",
         "typescript": "^6.0.3 || ^7.0.0",
         "zod": ">=4.6.5 <5",
       },
       "optionalPeers": [
         "@graphql-codegen/plugin-helpers",
-        "change-case",
+        "@nxgt/graphql-codegen-zod",
       ],
     },
     "packages/ai-memory": {
