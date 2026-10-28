@@ -124,7 +124,7 @@ try {
 
 ## `McpServerError` INVALID_OPTIONS
 
-**When:** `mcpServer` throws `The tool "…" is confirm: true and MCP has no confirmation step…`, `Two tools are named "…".` or `name and version are required…`.
+**When:** `mcpServer` throws `The tool "…" is confirm: true and MCP has no confirmation step…`, `Two tools are named "…".` `name and version are required…` or `timeoutMs must be a positive number of milliseconds.`
 **Why:** a served tool is `confirm: true` (a mutation) and `allowConfirmTools` is not set, two tools share a name, or `name` or `version` is empty. `error.tool` names the tool.
 **Fix:** leave the confirm tool out of `tools`, or opt in knowing that the MCP client runs it without a human confirming.
 
