@@ -1,5 +1,11 @@
 # @nxgt/ai-memory
 
+## 0.2.0
+
+### Minor Changes
+
+- [#93](https://github.com/softistx/nxgt-ai/pull/93) [`11574f5`](https://github.com/softistx/nxgt-ai/commit/11574f51b05423b7f3f53eaca5c7ab888ef610cf) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `mongoMemory` takes a `scope` (tenant fields merged into every filter and stamped on every insert, never updated; `INVALID_SCOPE` for a bad one), `scopedThreadIndexes` and `scopedMessageIndexes` lead the indexes with a `prefix`, and the docs no longer say a scoped `@nxgt/mongo` collection fits as is: pass its driver collection (`.raw`) with `scope`.
+
 ## 0.1.0
 
 ### Minor Changes

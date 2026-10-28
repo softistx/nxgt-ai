@@ -59,7 +59,7 @@
     },
     "packages/ai-graphql": {
       "name": "@nxgt/ai-graphql",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@graphql-codegen/cli": "7.4.6",
         "@graphql-codegen/plugin-helpers": "^7",
@@ -102,7 +102,7 @@
     },
     "packages/ai-memory": {
       "name": "@nxgt/ai-memory",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "devDependencies": {
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
