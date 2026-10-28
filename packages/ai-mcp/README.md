@@ -94,7 +94,7 @@ See the [server guide](docs/guide/server.md).
 - An abort cancels the request to the server; whether the server stops its work is up to it.
 - `close()` stops a stdio child process. Call it when the run is done, or the process stays up.
 - Only tools are used: resources and prompts are not (see the roadmap).
-- **Server: `confirm: true` tools are refused.** MCP has no confirmation step, so `mcpServer` throws `INVALID_OPTIONS` for one unless you pass `allowConfirmTools: true`, and then the client runs it without a human saying yes. Tools that are not `confirm` are listed with `readOnlyHint: true`, which the S18 client reads as "run directly".
+- **Server: `confirm: true` tools are refused.** MCP has no confirmation step, so `mcpServer` throws `INVALID_OPTIONS` for one unless you pass `allowConfirmTools: true`, and then the client runs it without a human saying yes. Tools that are not `confirm` are listed with `readOnlyHint: true`, which the `mcpTools` client reads as "run directly".
 - **Server: the model never reads an error message.** A failed call is `{"code":"…"}` only: no message, stack or cause.
 - **Server: `fetch` is stateless and unauthenticated.** One server per request, JSON answers, no session. Authenticate in your route before calling it, and build the tool context from the request in `context`.
 

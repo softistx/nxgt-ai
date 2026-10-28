@@ -89,6 +89,8 @@ when `tools` holds one:
 mcpServer({ tools: all.filter((tool) => !tool.confirm), name, version });
 ```
 
+A tool that is not `confirm` is advertised `readOnlyHint: true`, which other clients may treat as a promise: mark every mutation `confirm`. A tool that throws an `AiError` chooses a public code, so throw only codes you accept to show.
+
 Pass `allowConfirmTools: true` only when the client confirms by itself (it asks
 its user) or the mutation is safe to run unattended. Note that the client of
 this package decides `confirm` from `readOnlyHint`, see below.

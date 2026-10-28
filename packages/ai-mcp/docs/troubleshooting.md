@@ -33,7 +33,7 @@ await mcpTools({
 ## `McpClientError` MCP_UNAVAILABLE
 
 **When:** `mcpTools` throws `Could not connect to the MCP server.`
-**Why:** the command did not start, the child exited before the handshake, the URL refused the connection or answered an HTTP error (a missing or wrong `Authorization` header gives a 401), the `http.url` is not a valid URL,, or `signal` aborted.
+**Why:** the command did not start, the child exited before the handshake, the URL refused the connection or answered an HTTP error (a missing or wrong `Authorization` header gives a 401), the `http.url` is not a valid URL, or `signal` aborted.
 **Fix:** read `error.cause` in your logs. Check the command is on `PATH`, the URL is the server's MCP endpoint and the headers are right.
 
 ```ts
@@ -148,5 +148,5 @@ mcpServer({
 ## A client sees `{"code":"UNKNOWN_TOOL"}`
 
 **When:** a call answers `isError: true` with `{"code":"UNKNOWN_TOOL"}`.
-**Why:** the name is not served: a typo, or a `confirm: true` tool that is not served by default.
+**Why:** the name is not served: a typo, or a tool you did not pass to `mcpServer`.
 **Fix:** call a name from `tools/list`.
