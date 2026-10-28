@@ -6,7 +6,7 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 
 - **The memory port and the in-process store** — you get:
   - `MemoryStore`, scoped by owner on every call: threads, messages, a rolling summary and proposed actions.
-  - `memoryStore()`, an in-process store.
+  - `inProcessMemory()`, an in-process store.
   - `memoryStoreContract` in `@nxgt/ai-memory/testing`, to test your own stores.
 - **Compaction** — you get:
   - `compact`, which trims old tool results first, then keeps a rolling summary without splitting a tool call from its result.

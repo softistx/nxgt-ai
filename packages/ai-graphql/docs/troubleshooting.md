@@ -2,6 +2,7 @@
 
 - [`GraphqlToolsError` FORBIDDEN_FIELD](#graphqltoolserror-forbidden_field)
 - [`GraphqlToolsError` INVALID_OPERATION](#graphqltoolserror-invalid_operation)
+- [`GraphqlToolsError` INVALID_OPTIONS](#graphqltoolserror-invalid_options)
 - [`GraphqlToolsError` DUPLICATE_OPERATION](#graphqltoolserror-duplicate_operation)
 - [`INVALID_TOOL_INPUT` on a tool call](#invalid_tool_input-on-a-tool-call)
 - [`TOOL_FAILED` with `The GraphQL operation failed`](#tool_failed-with-the-graphql-operation-failed)
@@ -40,9 +41,15 @@ try {
 
 ## `GraphqlToolsError` INVALID_OPERATION
 
-**When:** `graphqlTools` throws at build with `does not parse`, `is not valid against the schema`, `is a subscription`, `set operationName`, a `forbidFields` entry that is not `Type.field`, or a bad `maxResultChars`.
+**When:** `graphqlTools` throws at build with `does not parse`, `is not valid against the schema`, `is a subscription`, or `set operationName`.
 **Why:** the document does not parse or does not validate against `schema` (an unknown field, a missing argument), is a subscription, or holds several operations.
-**Fix:** correct the document; set `operationName` when it holds several; use `Type.field` entries; give `maxResultChars` an integer of at least 100.
+**Fix:** correct the document; set `operationName` when it holds several.
+
+## `GraphqlToolsError` INVALID_OPTIONS
+
+**When:** `graphqlTools` throws `forbidFields entry "…" must look like "Type.field".` or `maxResultChars must be an integer of at least 100`.
+**Why:** an option is malformed; `operation` is `undefined` because no operation is at fault.
+**Fix:** use `Type.field` entries in `forbidFields`; give `maxResultChars` an integer of at least 100.
 
 ## `GraphqlToolsError` DUPLICATE_OPERATION
 

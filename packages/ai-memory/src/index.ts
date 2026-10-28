@@ -8,7 +8,7 @@ export {
 	MemoryError,
 	type MemoryErrorCode,
 } from './errors';
-export { type MemoryStoreOptions, memoryStore } from './memory-store';
+export { type InProcessMemoryOptions, inProcessMemory } from './in-process';
 export {
 	messageSchema,
 	storedMessageSchema,
