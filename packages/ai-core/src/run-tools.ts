@@ -27,6 +27,20 @@ export interface ToolRunContext {
 }
 
 /**
+ * The tool's one-line summary of a validated input. A throwing `summarize`, or
+ * one that returns no text, gives no summary: it must never stop the proposal.
+ */
+function summaryOf(tool: AnyTool, input: unknown): string | undefined {
+	if (!tool.summarize) return undefined;
+	try {
+		const text: unknown = tool.summarize(input);
+		return typeof text === 'string' && text.trim() !== '' ? text : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * A confirm-gated tool is never run by the loop: a valid call is recorded as
  * a pending proposed action and the model is told so.
  */
@@ -48,11 +62,13 @@ function propose(
 			),
 		);
 	}
+	const summary = summaryOf(tool, validation.value);
 	const action: ProposedActionPart = {
 		type: 'proposed-action',
 		id: call.id,
 		tool: tool.name,
 		input: call.input,
+		...(summary === undefined ? {} : { summary }),
 		expiresAt: run.now() + run.ttlMs,
 	};
 	run.proposals.push(action);
