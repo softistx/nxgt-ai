@@ -3,8 +3,8 @@ export const MCP_CLIENT_ERROR_CODES = [
 	'INVALID_OPTIONS',
 	'MCP_UNAVAILABLE',
 	'MCP_LIST_FAILED',
-	'TOOL_NOT_FOUND',
-	'INVALID_TOOL',
+	'UNKNOWN_TOOL',
+	'INVALID_TOOL_DEFINITION',
 	'DUPLICATE_TOOL',
 ] as const;
 
@@ -12,7 +12,7 @@ export const MCP_CLIENT_ERROR_CODES = [
 export type McpClientErrorCode = (typeof MCP_CLIENT_ERROR_CODES)[number];
 
 export interface McpClientErrorOptions {
-	/** The server tool at fault, for `TOOL_NOT_FOUND`, `INVALID_TOOL`, `DUPLICATE_TOOL`. */
+	/** The server tool at fault, for `UNKNOWN_TOOL`, `INVALID_TOOL_DEFINITION`, `DUPLICATE_TOOL`. */
 	tool?: string;
 	/** The underlying error. Read it in your logs; never show it to the model. */
 	cause?: unknown;

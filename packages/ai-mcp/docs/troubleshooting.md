@@ -3,8 +3,8 @@
 - [`McpClientError` INVALID_OPTIONS](#mcpclienterror-invalid_options)
 - [`McpClientError` MCP_UNAVAILABLE](#mcpclienterror-mcp_unavailable)
 - [`McpClientError` MCP_LIST_FAILED](#mcpclienterror-mcp_list_failed)
-- [`McpClientError` TOOL_NOT_FOUND](#mcpclienterror-tool_not_found)
-- [`McpClientError` INVALID_TOOL](#mcpclienterror-invalid_tool)
+- [`McpClientError` UNKNOWN_TOOL](#mcpclienterror-unknown_tool)
+- [`McpClientError` INVALID_TOOL_DEFINITION](#mcpclienterror-invalid_tool_definition)
 - [`McpClientError` DUPLICATE_TOOL](#mcpclienterror-duplicate_tool)
 - [`McpServerError` INVALID_OPTIONS](#mcpservererror-invalid_options)
 - [A client sees `{"code":"TOOL_FAILED"}`](#a-client-sees-codetool_failed)
@@ -49,10 +49,10 @@ try {
 ## `McpClientError` MCP_LIST_FAILED
 
 **When:** `mcpTools` throws `The MCP server did not list its tools.`
-**Why:** the server connected but failed `tools/list`, or it has no `tools` capability.
+**Why:** the server connected but failed `tools/list`, has no `tools` capability, or paged without end (a repeated cursor, more than 100 pages, or more than 1000 tools).
 **Fix:** read `error.cause`. Use a server that serves tools; this package uses tools only.
 
-## `McpClientError` TOOL_NOT_FOUND
+## `McpClientError` UNKNOWN_TOOL
 
 **When:** `mcpTools` throws `The MCP server lists no tool named "…"`.
 **Why:** a name in `include` is not among the server's tools (a typo, or the server changed). `error.tool` names it.
@@ -62,10 +62,10 @@ try {
 await mcpTools({ transport, include: ['search_docs'], prefix: 'docs_' });
 ```
 
-## `McpClientError` INVALID_TOOL
+## `McpClientError` INVALID_TOOL_DEFINITION
 
-**When:** `mcpTools` throws `The tool name "…" is not 1 to 64 letters, digits…` or `…has no usable object input schema.`
-**Why:** a tool, once `prefix` is added, has a name the model providers refuse (a dot, a space, over 64 characters), or its input schema is not a JSON Schema of type `object`. `error.tool` names it. Only the tools you expose are checked.
+**When:** `mcpTools` throws `The tool "…" is not named with 1 to 64 letters, digits…`, `…has a description over 2048 characters`, `…has an input schema over 32768 characters` or `…has no usable object input schema.`
+**Why:** a tool, once `prefix` is added, has a name the model providers refuse (a dot, a space, over 64 characters), its description is over 2048 characters, or its input schema is over 32 KiB serialised or not a JSON Schema of type `object`. `error.tool` names it. Only the tools you expose are checked.
 **Fix:** allow-list the tools you want with `include`, or shorten `prefix`.
 
 ## `McpClientError` DUPLICATE_TOOL
@@ -78,7 +78,7 @@ await mcpTools({ transport, include: ['search_docs'], prefix: 'docs_' });
 
 **When:** a call answers `TOOL_FAILED` with `The MCP tool failed: {"code":"MCP_TOOL_FAILED"}`.
 **Why:** the server answered with `isError: true`, or with a protocol error (unknown tool, invalid arguments). The message is never shown to the model or the client, on purpose.
-**Fix:** read `error.cause` where you run the tool (a protocol error carries it), or the server's logs. An `isError` result keeps no cause: its text is dropped.
+**Fix:** read `error.cause` where you run the tool (a protocol error carries it), or the server's logs. An `isError` result keeps no cause: its text is dropped. The one trace it keeps is `serverCode`, added to the message (`{"code":"MCP_TOOL_FAILED","serverCode":"INVALID_TOOL_INPUT"}`) when the text was exactly a bare code.
 
 ## The model sees `MCP_UNAVAILABLE`
 

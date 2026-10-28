@@ -67,29 +67,30 @@ See the [server guide](docs/guide/server.md).
 
 ## API
 
-| Export                                                           | What it is                                                                                                                           |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `mcpTools(options)`                                              | Connects, lists, returns `{ tools, close }`; throws `McpClientError`                                                                 |
-| `McpToolsOptions`                                                | `{ transport, include?, prefix?, confirm?, maxResultChars?, clientInfo?, signal? }`                                                  |
-| `McpStdioTransport`, `McpHttpTransport`                          | `{ type: 'stdio', command, args?, env?, cwd? }`, `{ type: 'http', url, headers? }`                                                   |
-| `McpCustomTransport`                                             | `{ type: 'transport', transport }`: an SDK `Transport` you built (in memory, tests)                                                  |
-| `McpClientError`, `MCP_CLIENT_ERROR_CODES`                       | `INVALID_OPTIONS`, `MCP_UNAVAILABLE`, `MCP_LIST_FAILED`, `TOOL_NOT_FOUND`, `INVALID_TOOL`, `DUPLICATE_TOOL`; carries `tool`, `cause` |
-| `McpToolsHandle`                                                 | `{ tools, close }`                                                                                                                   |
-| `McpToolOutput`, `McpContent`                                    | What a call returns: `{ source: 'mcp', notice, content, structuredContent? }`                                                        |
-| `TruncatedMcpOutput`                                             | `{ truncated: true, originalChars, preview, note }`, when the result exceeds `maxResultChars`                                        |
-| `DEFAULT_MAX_RESULT_CHARS`                                       | 20000                                                                                                                                |
-| `mcpServer(options)` (`./server`)                                | Returns a `McpServerHandle`; throws `McpServerError`                                                                                 |
-| `McpServerError`, `MCP_SERVER_ERROR_CODES`, `McpServerErrorCode` | `INVALID_OPTIONS`; carries `tool`                                                                                                    |
-| `McpServerOptions`                                               | `{ tools, name, version, context?, allowConfirmTools? }`                                                                             |
-| `McpServerHandle`                                                | `{ stdio(), fetch(request), connect(transport) }`                                                                                    |
-| `McpContextInfo`                                                 | What `context` receives: `{ request? }`, no request over stdio or `connect`                                                          |
+| Export                                                           | What it is                                                                                                                                    |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mcpTools(options)`                                              | Connects, lists, returns `{ tools, close }`; throws `McpClientError`                                                                          |
+| `McpToolsOptions`                                                | `{ transport, include?, prefix?, confirm?, maxResultChars?, clientInfo?, signal? }`                                                           |
+| `McpStdioTransport`, `McpHttpTransport`                          | `{ type: 'stdio', command, args?, env?, cwd? }`, `{ type: 'http', url, headers? }`                                                            |
+| `McpCustomTransport`                                             | `{ type: 'transport', transport }`: an SDK `Transport` you built (in memory, tests)                                                           |
+| `McpClientError`, `MCP_CLIENT_ERROR_CODES`                       | `INVALID_OPTIONS`, `MCP_UNAVAILABLE`, `MCP_LIST_FAILED`, `UNKNOWN_TOOL`, `INVALID_TOOL_DEFINITION`, `DUPLICATE_TOOL`; carries `tool`, `cause` |
+| `McpToolsHandle`                                                 | `{ tools, close }`                                                                                                                            |
+| `McpToolOutput`, `McpContent`                                    | What a call returns: `{ source: 'mcp', notice, content, structuredContent? }`                                                                 |
+| `TruncatedMcpOutput`                                             | `{ truncated: true, originalChars, preview, note }`, when the result exceeds `maxResultChars`                                                 |
+| `DEFAULT_MAX_RESULT_CHARS`                                       | 20000                                                                                                                                         |
+| `mcpServer(options)` (`./server`)                                | Returns a `McpServerHandle`; throws `McpServerError`                                                                                          |
+| `McpServerError`, `MCP_SERVER_ERROR_CODES`, `McpServerErrorCode` | `INVALID_OPTIONS`; carries `tool`                                                                                                             |
+| `McpServerOptions`                                               | `{ tools, name, version, context?, allowConfirmTools? }`                                                                                      |
+| `McpServerHandle`                                                | `{ stdio(), fetch(request), connect(transport) }`                                                                                             |
+| `McpContextInfo`                                                 | What `context` receives: `{ request? }`, no request over stdio or `connect`                                                                   |
 
 ## Traps
 
-- **The model never reads a server's error text.** A call that fails answers `TOOL_FAILED` with `MCP_TOOL_FAILED` (the server reported an error) or `MCP_UNAVAILABLE` (the connection is gone or closed) in the message. The server's own error is in the error's `cause`, for your logs only.
+- **The model never reads a server's error text.** A call that fails answers `TOOL_FAILED` with `MCP_TOOL_FAILED` (the server reported an error) or `MCP_UNAVAILABLE` (the connection is gone or closed) in the message. When the server's error text is exactly `{"code":"INVALID_TOOL_INPUT"}` (what `@nxgt/ai-mcp/server` sends), that code is added as `serverCode`; any other text is dropped. The server's own error is in the error's `cause`, for your logs only.
+- **Tool descriptions are untrusted too.** They come from the server and go to the model as the tool's own description, where a hostile server can write instructions. `mcpTools` caps a description at 2048 characters and a serialised input schema at 32 KiB (`INVALID_TOOL_DEFINITION` past either), which does not make the text safe. Expose only the tools you trust, with `include`.
 - **Tool output is untrusted data.** It is returned under `source: 'mcp'` with a `notice` saying so. That lowers the risk of prompt injection; it does not remove it. Allow-list the tools (`include`) and keep mutations behind their confirmation.
 - A tool is `confirm: true` unless the server's annotations say `readOnlyHint: true`. Annotations come from the server and are hints, not guarantees: pin the decision with `confirm: { tool_name: true }` for a server you do not control.
-- Without `include`, every tool the server lists is exposed, and one whose name (with `prefix`) is not 1 to 64 letters, digits, `_` or `-` makes `mcpTools` throw `INVALID_TOOL`. Use `include`.
+- Without `include`, every tool the server lists is exposed, and one whose name (with `prefix`) is not 1 to 64 letters, digits, `_` or `-` makes `mcpTools` throw `INVALID_TOOL_DEFINITION`. Use `include`.
 - The tool input is not validated here: the model's arguments go to the server, which validates them against the schema it published.
 - Images, audio and binary resources are not forwarded; the model reads `{ type: 'omitted', kind }` in their place.
 - `maxResultChars` is at least 100. A longer result becomes `{ truncated: true, originalChars, preview, note }`.
