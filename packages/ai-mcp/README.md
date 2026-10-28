@@ -40,6 +40,7 @@ runs it only after `runConfirmedAction`.
 | `McpStdioTransport`, `McpHttpTransport`    | `{ type: 'stdio', command, args?, env?, cwd? }`, `{ type: 'http', url, headers? }`                                                   |
 | `McpCustomTransport`                       | `{ type: 'transport', transport }`: an SDK `Transport` you built (in memory, tests)                                                  |
 | `McpClientError`, `MCP_CLIENT_ERROR_CODES` | `INVALID_OPTIONS`, `MCP_UNAVAILABLE`, `MCP_LIST_FAILED`, `TOOL_NOT_FOUND`, `INVALID_TOOL`, `DUPLICATE_TOOL`; carries `tool`, `cause` |
+| `McpToolsHandle`                           | `{ tools, close }`                                                                                                                   |
 | `McpToolOutput`, `McpContent`              | What a call returns: `{ source: 'mcp', notice, content, structuredContent? }`                                                        |
 | `TruncatedMcpOutput`                       | `{ truncated: true, originalChars, preview, note }`, when the result exceeds `maxResultChars`                                        |
 | `DEFAULT_MAX_RESULT_CHARS`                 | 20000                                                                                                                                |

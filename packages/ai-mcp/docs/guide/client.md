@@ -123,10 +123,11 @@ transport:
 
 ```ts
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { mcpTools } from '@nxgt/ai-mcp/client';
 
 const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-await myServer.connect(serverSide); // a Server or McpServer from the SDK
+// `myServer` is a Server or McpServer from the SDK, with your test tools.
+await myServer.connect(serverSide);
 const { tools, close } = await mcpTools({
 	transport: { type: 'transport', transport: clientSide },
 });

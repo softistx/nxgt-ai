@@ -5,11 +5,12 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 ## Now
 
 - **MCP client** — `@nxgt/ai-mcp/client`: use the tools of an MCP server over stdio or Streamable HTTP, with an allow-list, a name prefix, confirmation for mutations and code-only errors ([#20](https://github.com/softistx/nxgt-ai/issues/20)).
-- **MCP server** — `@nxgt/ai-mcp/server`: serve your own tools to MCP clients ([#21](https://github.com/softistx/nxgt-ai/issues/21)).
 
 ## Next
 
-Nothing yet. The package is private until its first release ([#22](https://github.com/softistx/nxgt-ai/issues/22)).
+- **MCP server** — `@nxgt/ai-mcp/server`: serve your own tools to MCP clients ([#21](https://github.com/softistx/nxgt-ai/issues/21)).
+
+The package is private until its first release ([#22](https://github.com/softistx/nxgt-ai/issues/22)).
 
 ## Later
 

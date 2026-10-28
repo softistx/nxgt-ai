@@ -29,7 +29,7 @@ await mcpTools({
 ## `McpClientError` MCP_UNAVAILABLE
 
 **When:** `mcpTools` throws `Could not connect to the MCP server.`
-**Why:** the command did not start, the child exited before the handshake, the URL refused the connection or answered an HTTP error (a missing or wrong `Authorization` header gives a 401), or `signal` aborted.
+**Why:** the command did not start, the child exited before the handshake, the URL refused the connection or answered an HTTP error (a missing or wrong `Authorization` header gives a 401), the `http.url` is not a valid URL,, or `signal` aborted.
 **Fix:** read `error.cause` in your logs. Check the command is on `PATH`, the URL is the server's MCP endpoint and the headers are right.
 
 ```ts
