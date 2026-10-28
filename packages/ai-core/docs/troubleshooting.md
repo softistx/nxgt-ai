@@ -188,7 +188,7 @@ yield { type: 'finish', reason: 'end' };
 
 ### `Action "..." is confirmed, not pending.`
 
-**When:** `runConfirmedAction` or `rejectAction` on an action whose status is not `pending` (`ACTION_NOT_PENDING`, thrown); the status in the message may be `confirmed`, `rejected`, `expired` or `failed`.
+**When:** `runConfirmedAction` on an action that is neither `pending` nor `running`, or `rejectAction` on one that is not `pending` (`ACTION_NOT_PENDING`, thrown); the status in the message may be `running`, `confirmed`, `rejected`, `expired` or `failed`. `actionOutcomeMessage` on a `pending` or `running` action throws it too.
 **Why:** an action runs once. A double click, a retry or a replay found it already settled.
 **Fix:** store the returned action and check its status before confirming.
 

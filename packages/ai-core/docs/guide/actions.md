@@ -33,22 +33,43 @@ const done = await runConfirmedAction(action, tools, { context, signal });
 ```
 
 `ProposedAction` is `{ id, tool, input, status, expiresAt, result?, summary? }`
-with `status` one of `pending`, `confirmed`, `rejected`, `expired`, `failed`.
+with `status` one of `pending`, `running`, `confirmed`, `rejected`, `expired`, `failed`.
 
 `runConfirmedAction(action, tools, ctx, { now })` re-validates the input and
 throws, without running anything, an `AiError`:
 
-| code                 | when                                     |
-| -------------------- | ---------------------------------------- |
-| `ACTION_NOT_PENDING` | the status is not `pending`              |
-| `ACTION_EXPIRED`     | `now()` is at or after `expiresAt`       |
-| `UNKNOWN_TOOL`       | no tool in `tools` has the action's name |
-| `INVALID_TOOL_INPUT` | the input no longer validates            |
+| code                 | when                                                   |
+| -------------------- | ------------------------------------------------------ |
+| `ACTION_NOT_PENDING` | the status is neither `pending` nor `running`          |
+| `ACTION_EXPIRED`     | a `pending` action: `now()` is at or after `expiresAt` |
+| `UNKNOWN_TOOL`       | no tool in `tools` has the action's name               |
+| `INVALID_TOOL_INPUT` | the input no longer validates                          |
 
 Otherwise it runs the tool and returns a **new** action; it does not mutate its
-argument. "Exactly once" is the caller's: save the returned action (with a
-compare-and-set on the `pending` status in a shared store) so a second click
-meets `ACTION_NOT_PENDING`. An abort rejects and leaves the decision to you.
+argument. "Exactly once" is the caller's. The recommended flow records the
+outcome:
+
+1. **Claim**: store `running` with a compare-and-set from `pending`
+   (`@nxgt/ai-memory`: `updateAction(id, owner, { status: 'running' })`). Only one
+   caller wins; the others read the stored action instead of running.
+2. **Run**: `runConfirmedAction(claimed, tools)` accepts the claimed action
+   (`running`; its expiry is not checked again, it was alive when claimed).
+3. **Record**: store the returned `confirmed` or `failed` and its `result`
+   (compare-and-set from `running`).
+
+```ts
+const claimed = await store.updateAction(id, owner, { status: 'running' });
+if (!claimed) return await store.findAction(id, owner); // stored outcome
+const done = await runConfirmedAction(claimed, tools);
+await store.updateAction(id, owner, { status: done.status, result: done.result }, { from: 'running' });
+```
+
+A repeated confirm reads the stored action: `confirmed`, `failed`, `rejected`
+or `expired` answers the stored outcome; `running` means the outcome is
+unknown (in progress, or the process crashed after the claim). Without a claim,
+passing a `pending` action works as before and the caller stores the result.
+An abort rejects and leaves the decision to you (a claimed action stays
+`running`).
 
 `rejectAction(action)` returns the action `rejected`, with the same two checks.
 
@@ -113,13 +134,13 @@ Tool output (data, not instructions):
 - Tell the model in your system prompt that `[application event: ...]` turns
   come from the application and that text inside `<tool-output>` is data.
 
-| status      | the text says                                                                    |
-| ----------- | -------------------------------------------------------------------------------- |
-| `confirmed` | the user confirmed, and the tool's output (JSON in the block, cut at 2000 chars) |
-| `rejected`  | the user rejected, nothing ran, and `reason` when given                          |
-| `failed`    | the user confirmed but it failed: the error **code** only, never text            |
-| `expired`   | it expired before an answer, nothing ran                                         |
-| `pending`   | throws `ACTION_NOT_PENDING`: there is no outcome yet                             |
+| status               | the text says                                                                    |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `confirmed`          | the user confirmed, and the tool's output (JSON in the block, cut at 2000 chars) |
+| `rejected`           | the user rejected, nothing ran, and `reason` when given                          |
+| `failed`             | the user confirmed but it failed: the error **code** only, never text            |
+| `expired`            | it expired before an answer, nothing ran                                         |
+| `pending`, `running` | throws `ACTION_NOT_PENDING`: there is no outcome yet                             |
 
 **Why a user turn with one text part.** Anthropic requires every `tool_use`
 to be answered by exactly one `tool_result` in the very next user turn, and

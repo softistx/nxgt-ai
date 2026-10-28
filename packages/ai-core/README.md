@@ -105,8 +105,9 @@ the user answers in a later request, append `actionOutcomeMessage(done)` (or
 `actionOutcomeMessage(rejected, { reason })`) to the thread so the model learns
 the outcome: a user text turn, with the error code only for a failed action.
 
-An expired (`ACTION_EXPIRED`) or non-pending (`ACTION_NOT_PENDING`) action is
-refused, and the input is validated again. `estimateTokens(text | messages)` is
+An expired (`ACTION_EXPIRED`) action, or one that is neither `pending` nor
+`running` (`ACTION_NOT_PENDING`), is refused (claim with `running` first to
+record the outcome, see the guide), and the input is validated again. `estimateTokens(text | messages)` is
 a characters / 4 estimate. See [Proposed actions](docs/guide/actions.md).
 
 ## Traps

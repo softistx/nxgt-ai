@@ -74,10 +74,21 @@ export interface SummaryInput {
 	tokens: number;
 }
 
-/** What may change on a pending action; `status` is where it goes next. */
+/** What may change on an action; `status` is where it goes next. */
 export interface ActionPatch {
 	status: Exclude<ProposedActionStatus, 'pending'>;
+	/** The run's outcome, kept on the action: its output, or its error when `failed`. */
 	result?: ToolResultPart;
+}
+
+/** The compare-and-set precondition of `updateAction`. */
+export interface ActionUpdateOptions {
+	/**
+	 * The status, or statuses, the action must have for the write to happen;
+	 * default `'pending'`. Every one must be allowed to move to `patch.status`
+	 * (`MemoryError('INVALID_ACTION_TRANSITION')` otherwise).
+	 */
+	from?: ProposedActionStatus | readonly ProposedActionStatus[];
 }
 
 /**
@@ -120,6 +131,7 @@ export interface MemoryStore {
 		actionId: string,
 		ownerId: string,
 		patch: ActionPatch,
+		options?: ActionUpdateOptions,
 	): Promise<ProposedAction | undefined>;
 	/** Removes the thread, its messages and its actions; false when absent. */
 	deleteThread(id: string, ownerId: string): Promise<boolean>;

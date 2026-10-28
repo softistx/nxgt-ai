@@ -39,8 +39,8 @@ export function redisMemory(options: RedisMemoryOptions): MemoryStore {
 		setSummary: (id, ownerId, input) =>
 			messages.setSummary(c, id, ownerId, input),
 		findAction: (id, ownerId) => actions.findAction(c, id, ownerId),
-		updateAction: (id, ownerId, patch) =>
-			actions.updateAction(c, id, ownerId, patch),
+		updateAction: (id, ownerId, patch, options) =>
+			actions.updateAction(c, id, ownerId, patch, options),
 		deleteThread: (id, ownerId) => threads.deleteThread(c, id, ownerId),
 	};
 }

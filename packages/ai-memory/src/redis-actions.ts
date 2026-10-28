@@ -6,7 +6,8 @@ import {
 import { assertOwner, type Ctx, evalLua, keys } from './redis-ctx';
 import { parseAction } from './redis-map';
 import { UPDATE_ACTION } from './redis-scripts';
-import type { ActionPatch } from './types';
+import { actionFrom } from './transitions';
+import type { ActionPatch, ActionUpdateOptions } from './types';
 
 /** Per message, the actions it proposes, once each within the batch. */
 export function proposedIn(list: readonly Message[]): ProposedAction[][] {
@@ -49,9 +50,11 @@ export async function updateAction(
 	actionId: string,
 	ownerId: string,
 	patch: ActionPatch,
+	options?: ActionUpdateOptions,
 ) {
 	assertOwner(ownerId);
-	// One script: it matches only while the action is still pending.
+	const from = actionFrom(patch, options);
+	// One script: it matches only while the action still has a `from` status.
 	const done = await evalLua(
 		c,
 		UPDATE_ACTION,
@@ -62,6 +65,7 @@ export async function updateAction(
 			patch.result === undefined ? '' : JSON.stringify(patch.result),
 			c.expireAt(c.now()),
 			c.prefix,
+			...from,
 		],
 	);
 	return done === null || done === undefined

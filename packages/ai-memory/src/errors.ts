@@ -6,6 +6,7 @@ export const MEMORY_ERROR_CODES = [
 	'INVALID_OWNER',
 	'EMPTY_SUMMARY',
 	'INVALID_SCOPE',
+	'INVALID_ACTION_TRANSITION',
 ] as const;
 
 /** Adding a code is not a breaking change, so switch with a default branch. */

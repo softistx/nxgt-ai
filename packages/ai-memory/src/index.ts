@@ -19,6 +19,7 @@ export { type SummarizeOptions, summarizeWith } from './summarize';
 export type { TruncatedOutput } from './truncate';
 export type {
 	ActionPatch,
+	ActionUpdateOptions,
 	CreateThreadInput,
 	LoadedThread,
 	LoadOptions,

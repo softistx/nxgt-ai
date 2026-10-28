@@ -4,7 +4,8 @@ import {
 	toProposedAction,
 } from '@nxgt/ai-core';
 import { actionKey, assertOwner, type State, type ThreadRecord } from './state';
-import type { ActionPatch } from './types';
+import { actionFrom } from './transitions';
+import type { ActionPatch, ActionUpdateOptions } from './types';
 
 /** Records the pending actions a message proposes. */
 export function keepActions(
@@ -40,11 +41,13 @@ export function updateAction(
 	actionId: string,
 	ownerId: string,
 	patch: ActionPatch,
+	options?: ActionUpdateOptions,
 ): ProposedAction | undefined {
 	assertOwner(ownerId);
+	const from = actionFrom(patch, options);
 	const record = s.actions.get(actionKey(ownerId, actionId));
 	// Synchronous from this check to the write: that is the compare-and-set.
-	if (record?.action.status !== 'pending') return undefined;
+	if (!record || !from.includes(record.action.status)) return undefined;
 	record.action = {
 		...record.action,
 		status: patch.status,

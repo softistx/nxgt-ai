@@ -70,6 +70,20 @@ describe('runConfirmedAction', () => {
 		},
 	);
 
+	test('runs a claimed (running) action, even past its expiry', async () => {
+		runs.length = 0;
+		const claimed = pending({ status: 'running' });
+		const done = await runConfirmedAction(claimed, [pay], {}, at(100));
+		expect(done.status).toBe('confirmed');
+		expect(runs).toEqual(['A1']);
+	});
+
+	test('a claimed action whose tool throws gives a failed action', async () => {
+		const claimed = pending({ status: 'running', input: { invoice: 'boom' } });
+		const done = await runConfirmedAction(claimed, [pay], {}, at(1));
+		expect(done.status).toBe('failed');
+	});
+
 	test('refuses input that no longer validates', async () => {
 		runs.length = 0;
 		const action = pending({ input: { invoice: 3 } });
@@ -197,6 +211,9 @@ describe('actionOutcomeMessage', () => {
 			text(actionOutcomeMessage(pending({ status: 'expired' }))),
 		).toContain('expired');
 		expect(() => actionOutcomeMessage(pending())).toThrow(
+			expect.objectContaining({ code: 'ACTION_NOT_PENDING' }),
+		);
+		expect(() => actionOutcomeMessage(pending({ status: 'running' }))).toThrow(
 			expect.objectContaining({ code: 'ACTION_NOT_PENDING' }),
 		);
 	});
