@@ -12,6 +12,7 @@ Bun-native AI agents SDK: a core agent loop with zod-typed tools, Anthropic and 
 | [`@nxgt/ai-testing`](packages/ai-testing)     | `fakeModel` and `collect` to test agents without a network                                   |
 | [`@nxgt/ai-memory`](packages/ai-memory)       | conversation memory: an owner-scoped store, in-process, MongoDB and Redis stores, compaction |
 | [`@nxgt/ai-graphql`](packages/ai-graphql)     | GraphQL operations as tools, with forbidden fields and confirmed mutations                   |
+| [`@nxgt/ai-mcp`](packages/ai-mcp)             | MCP client and server: MCP tools as agent tools, and your tools served over MCP              |
 | [`@nxgt/ai-alxia`](packages/ai-alxia)         | an alxia middleware (abort, language, observers) and a Server-Sent Events reply for a run    |
 | [`@nxgt/ai-telemetry`](packages/ai-telemetry) | an observer that writes a run as `@nxgt/telemetry` spans with `gen_ai.*` attributes          |
 

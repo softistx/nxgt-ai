@@ -1,0 +1,173 @@
+# Troubleshooting
+
+- [`McpClientError` INVALID_OPTIONS](#mcpclienterror-invalid_options)
+- [`McpClientError` MCP_UNAVAILABLE](#mcpclienterror-mcp_unavailable)
+- [`McpClientError` MCP_LIST_FAILED](#mcpclienterror-mcp_list_failed)
+- [`McpClientError` UNKNOWN_TOOL](#mcpclienterror-unknown_tool)
+- [`McpClientError` INVALID_TOOL_DEFINITION](#mcpclienterror-invalid_tool_definition)
+- [`McpClientError` DUPLICATE_TOOL](#mcpclienterror-duplicate_tool)
+- [`McpServerError` INVALID_OPTIONS](#mcpservererror-invalid_options)
+- [A client sees `{"code":"TOOL_FAILED"}`](#a-client-sees-codetool_failed)
+- [A client sees `{"code":"INVALID_TOOL_INPUT"}`](#a-client-sees-codeinvalid_tool_input)
+- [A client sees `{"code":"UNKNOWN_TOOL"}`](#a-client-sees-codeunknown_tool)
+- [The model sees `MCP_TOOL_FAILED`](#the-model-sees-mcp_tool_failed)
+- [The model sees `MCP_UNAVAILABLE`](#the-model-sees-mcp_unavailable)
+- [The model sees `{ truncated: true, preview }`](#the-model-sees--truncated-true-preview-)
+- [A mutation never runs](#a-mutation-never-runs)
+- [A client sees `{"code":"INVALID_TOOL_OUTPUT"}`](#a-client-sees-codeinvalid_tool_output)
+- [A client sees `{"code":"TOOL_TIMEOUT"}`](#a-client-sees-codetool_timeout)
+- [`fetch` answers 405, 400 or 413](#fetch-answers-405-400-or-413)
+- [The stdio server process stays up](#the-stdio-server-process-stays-up)
+- [An abort does not stop the server's work](#an-abort-does-not-stop-the-servers-work)
+
+## `McpClientError` INVALID_OPTIONS
+
+**When:** `mcpTools` throws `maxResultChars must be an integer of at least 100…` or `transport.type must be…`.
+**Why:** `maxResultChars` is below 100 (a truncation marker needs room) or not an integer, or `transport.type` is not `stdio`, `http` or `transport`.
+**Fix:** pass a valid value.
+
+```ts
+await mcpTools({
+	transport: { type: 'stdio', command: 'my-server' },
+	maxResultChars: 8000,
+});
+```
+
+## `McpClientError` MCP_UNAVAILABLE
+
+**When:** `mcpTools` throws `Could not connect to the MCP server.`
+**Why:** the command did not start, the child exited before the handshake, the URL refused the connection or answered an HTTP error (a missing or wrong `Authorization` header gives a 401), the `http.url` is not a valid URL, or `signal` aborted.
+**Fix:** read `error.cause` in your logs. Check the command is on `PATH`, the URL is the server's MCP endpoint and the headers are right.
+
+```ts
+try {
+	await mcpTools({ transport });
+} catch (error) {
+	if (error instanceof McpClientError && error.code === 'MCP_UNAVAILABLE') {
+		console.error(error.cause);
+	}
+}
+```
+
+## `McpClientError` MCP_LIST_FAILED
+
+**When:** `mcpTools` throws `The MCP server did not list its tools.`
+**Why:** the server connected but failed `tools/list`, has no `tools` capability, or paged without end (a repeated cursor, more than 100 pages, or more than 1000 tools).
+**Fix:** read `error.cause`. Use a server that serves tools; this package uses tools only.
+
+## `McpClientError` UNKNOWN_TOOL
+
+**When:** `mcpTools` throws `The MCP server lists no tool named "…"`.
+**Why:** a name in `include` is not among the server's tools (a typo, or the server changed). `error.tool` names it.
+**Fix:** use the server's own name, not the prefixed one.
+
+```ts
+await mcpTools({ transport, include: ['search_docs'], prefix: 'docs_' });
+```
+
+## `McpClientError` INVALID_TOOL_DEFINITION
+
+**When:** `mcpTools` throws `The tool "…" is not named with 1 to 64 letters, digits…`, `…has a description over 2048 characters`, `…has an input schema over 32768 characters` or `…has no usable object input schema.`
+**Why:** a tool, once `prefix` is added, has a name the model providers refuse (a dot, a space, over 64 characters), its description is over 2048 characters, or its input schema is over 32 KiB serialised or not a JSON Schema of type `object`. `error.tool` names it. Only the tools you expose are checked.
+**Fix:** allow-list the tools you want with `include`, or shorten `prefix`.
+
+## `McpClientError` DUPLICATE_TOOL
+
+**When:** `mcpTools` throws `Two tools are named "…".`
+**Why:** the server lists the same name twice.
+**Fix:** none on your side besides `include`; report it to the server's author.
+
+## The model sees `MCP_TOOL_FAILED`
+
+**When:** a call answers `TOOL_FAILED` with `The MCP tool failed: {"code":"MCP_TOOL_FAILED"}`.
+**Why:** the server answered with `isError: true`, or with a protocol error (unknown tool, invalid arguments). The message is never shown to the model or the client, on purpose.
+**Fix:** read `error.cause` where you run the tool (a protocol error carries it), or the server's logs. An `isError` result keeps no cause: its text is dropped. The one trace it keeps is `serverCode`, added to the message (`{"code":"MCP_TOOL_FAILED","serverCode":"INVALID_TOOL_INPUT"}`) when the text was exactly a bare code.
+
+## The model sees `MCP_UNAVAILABLE`
+
+**When:** a call answers `TOOL_FAILED` with `{"code":"MCP_UNAVAILABLE"}`.
+**Why:** the connection is gone (the stdio child exited, the HTTP server went away, a request timed out) or `close()` was already called.
+**Fix:** call `mcpTools` again for a new connection; keep `close()` for the end of the run.
+
+## The model sees `{ truncated: true, preview }`
+
+**When:** a result is a truncation marker.
+**Why:** the serialised output is longer than `maxResultChars` (default 20000).
+**Fix:** raise `maxResultChars`, or make the tool return less; the marker's note asks the model to narrow its arguments.
+
+## A mutation never runs
+
+**When:** a tool is proposed but nothing happens.
+**Why:** a tool without `readOnlyHint: true` is `confirm: true`: `runAgent` proposes it and waits for `runConfirmedAction`.
+**Fix:** confirm it, or set `confirm: { tool_name: false }` for a tool you know is safe.
+
+## The stdio server process stays up
+
+**When:** your program does not exit, or a child process is left running.
+**Why:** `close()` was not called, so the child's pipes stay open.
+**Fix:** call `close()` in a `finally`.
+
+```ts
+const { tools, close } = await mcpTools({ transport });
+try {
+	await work(tools);
+} finally {
+	await close();
+}
+```
+
+## An abort does not stop the server's work
+
+**When:** a run is aborted, but the server keeps working.
+**Why:** an abort sends a cancellation to the server and stops waiting; whether the server obeys is its choice.
+**Fix:** none from the client; make the server honour the cancellation.
+
+## `McpServerError` INVALID_OPTIONS
+
+**When:** `mcpServer` throws `The tool "…" is confirm: true and MCP has no confirmation step…`, `Two tools are named "…".` `name and version are required…` or `timeoutMs must be a positive number of milliseconds.`
+**Why:** a served tool is `confirm: true` (a mutation) and `allowConfirmTools` is not set, two tools share a name, or `name` or `version` is empty. `error.tool` names the tool.
+**Fix:** leave the confirm tool out of `tools`, or opt in knowing that the MCP client runs it without a human confirming.
+
+```ts
+mcpServer({
+	tools: allTools.filter((tool) => !tool.confirm),
+	name: 'docs',
+	version: '1.0.0',
+});
+```
+
+## A client sees `{"code":"TOOL_FAILED"}`
+
+**When:** a call answers `isError: true` with the text `{"code":"TOOL_FAILED"}`.
+**Why:** the tool threw, or `context` threw. The message, stack and cause are never sent, on purpose.
+**Fix:** log inside the tool or in `context`; to give the client a more precise code, throw an `AiError` with one of ai-core's codes (`RATE_LIMITED`, `AUTHENTICATION`, …).
+
+## A client sees `{"code":"INVALID_TOOL_INPUT"}`
+
+**When:** a call answers `isError: true` with `{"code":"INVALID_TOOL_INPUT"}`.
+**Why:** the arguments do not match the tool's schema. The server validates before the tool runs and does not send the details.
+**Fix:** send arguments that match the `inputSchema` listed by `tools/list`.
+
+## A client sees `{"code":"UNKNOWN_TOOL"}`
+
+**When:** a call answers `isError: true` with `{"code":"UNKNOWN_TOOL"}`.
+**Why:** the name is not served: a typo, or a tool you did not pass to `mcpServer`.
+**Fix:** call a name from `tools/list`.
+
+## A client sees `{"code":"INVALID_TOOL_OUTPUT"}`
+
+**When:** a call answers `isError: true` with `{"code":"INVALID_TOOL_OUTPUT"}`.
+**Why:** the tool has an `output` schema and what `execute` returned does not match it. The details stay in the process, on purpose.
+**Fix:** make `execute` return the declared shape, or correct the `output` schema. Log the value in the tool to see it.
+
+## A client sees `{"code":"TOOL_TIMEOUT"}`
+
+**When:** a call answers `isError: true` with `{"code":"TOOL_TIMEOUT"}`.
+**Why:** the tool ran longer than the `timeoutMs` passed to `mcpServer`; its signal was aborted.
+**Fix:** make the tool faster, raise `timeoutMs`, or honour `signal` so the work stops.
+
+## `fetch` answers 405, 400 or 413
+
+**When:** a client gets `405` with `Allow: POST`, `400` with a JSON-RPC error (`-32600` for a batch, `-32700` for invalid JSON), or `413`.
+**Why:** `fetch` is stateless and serves `POST` only (no SSE stream, no session to delete), and MCP 2025-06-18 dropped JSON-RPC batches, so an array body is refused. A body over 4 MiB is refused with `413`.
+**Fix:** send one JSON-RPC message per `POST`. A client that probes with `GET` can ignore the 405.
