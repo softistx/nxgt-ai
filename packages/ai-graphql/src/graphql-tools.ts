@@ -18,7 +18,6 @@ import {
 	type MapErrors,
 	mapToolErrors,
 	rootsAllNull,
-	toToolError,
 } from './result';
 
 /**
@@ -118,11 +117,11 @@ function buildTool<TContext>(
 			} catch (error) {
 				tool.signal.throwIfAborted();
 				// Never the message: it can carry internals.
-				throw failure([
+				throw failure(
 					error instanceof GraphQLError
-						? toToolError(error)
-						: { code: 'INTERNAL_ERROR' },
-				]);
+						? mapToolErrors([error], options.mapErrors, { operation: op.name })
+						: [{ code: 'INTERNAL_ERROR' }],
+				);
 			}
 			const { data, errors } = result as {
 				data?: unknown;
