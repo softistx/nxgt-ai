@@ -91,7 +91,7 @@ describe('graphqlTools: list variables', () => {
 
 	it('handles lists of lists', () => {
 		const tool = byName('matrix');
-		expect(tool.inputSchema.properties).toEqual({
+		expect(tool.inputSchema['properties']).toEqual({
 			rows: {
 				type: 'array',
 				items: { type: 'array', items: { type: 'string' } },
