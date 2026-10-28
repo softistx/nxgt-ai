@@ -47,8 +47,26 @@ export async function append(
 			...c.expiry(at),
 		}),
 	);
-	if (docs.length > 0) await c.messages.insertMany(docs);
+	if (docs.length > 0) {
+		await c.messages.insertMany(docs);
+		// A delete that ran meanwhile cannot see this batch: drop it.
+		if (!(await ownThread(c, threadId, ownerId))) {
+			await c.messages.deleteMany({ threadId, ownerId });
+			throw notFound(threadId);
+		}
+	}
+	await slide(c, threadId, ownerId, at);
 	return docs.map(toStoredMessage);
+}
+
+/**
+ * A thread expires as one unit: every write moves all its messages to the
+ * thread's `expiresAt`, so the oldest never expire first.
+ */
+async function slide(c: Ctx, threadId: string, ownerId: string, at: number) {
+	const expiry = c.expiry(at);
+	if (Object.keys(expiry).length === 0) return;
+	await c.messages.updateMany({ threadId, ownerId }, { $set: expiry });
 }
 
 export async function load(
@@ -110,5 +128,6 @@ export async function setSummary(
 		{ $set: { summary, updatedAt: at, ...c.expiry(at) } },
 	);
 	if (done.matchedCount === 0) throw notFound(threadId);
+	await slide(c, threadId, ownerId, at);
 	return summary;
 }

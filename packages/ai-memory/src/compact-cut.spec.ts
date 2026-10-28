@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import type { Message } from '@nxgt/ai-core';
-import { call, opts, result, say, stored } from './compact-fixtures';
+import { call, opts, result, say, stored } from '../test/compact-fixtures';
 import { compact, MemoryError, type StoredMessage } from './index';
 
 describe('compact pairs and truncation', () => {

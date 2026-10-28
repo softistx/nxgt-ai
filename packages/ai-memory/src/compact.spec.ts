@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 import { estimateTokens } from '@nxgt/ai-core';
 import { fakeModel } from '@nxgt/ai-testing';
-import { call, chars, opts, result, say, stored } from './compact-fixtures';
+import {
+	call,
+	chars,
+	opts,
+	result,
+	say,
+	stored,
+} from '../test/compact-fixtures';
 import {
 	compact,
 	inProcessMemory,

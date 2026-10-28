@@ -1,4 +1,4 @@
-import { MemoryError } from './errors';
+import { assertUuidCursor, pageLimit } from './paging';
 import {
 	assertOwner,
 	type Ctx,
@@ -10,10 +10,6 @@ import {
 import { toThread } from './redis-map';
 import { CREATE_THREAD, DELETE_THREAD } from './redis-scripts';
 import type { CreateThreadInput, Page, Thread, ThreadPage } from './types';
-
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 100;
-const CURSOR = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export async function createThread(
 	c: Ctx,
@@ -54,13 +50,8 @@ export async function listThreads(
 	page: Page,
 ): Promise<ThreadPage> {
 	assertOwner(ownerId);
-	const limit = Math.min(Math.max(page.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
-	if (page.cursor !== undefined && !CURSOR.test(page.cursor)) {
-		throw new MemoryError(
-			'INVALID_CURSOR',
-			`"${page.cursor}" is not a cursor this store gave.`,
-		);
-	}
+	const limit = pageLimit(page);
+	assertUuidCursor(page.cursor);
 	const items: Thread[] = [];
 	let from = page.cursor === undefined ? '+' : `(${page.cursor}`;
 	while (items.length <= limit) {

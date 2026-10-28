@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test';
 import type { Message } from '@nxgt/ai-core';
-import { text } from './contract-fixtures';
+import { text } from './contract-samples';
 import type { MemoryStore } from './types';
 
 export function contractMessages(

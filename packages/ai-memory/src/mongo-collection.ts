@@ -28,6 +28,7 @@ export interface MongoCollection {
 		filter: MongoDoc,
 		update: MongoDoc,
 	): Promise<{ matchedCount: number }>;
+	updateMany(filter: MongoDoc, update: MongoDoc): Promise<unknown>;
 	deleteOne(filter: MongoDoc): Promise<{ deletedCount: number }>;
 	deleteMany(filter: MongoDoc): Promise<unknown>;
 }

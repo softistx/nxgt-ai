@@ -1,5 +1,5 @@
 import { expect, it } from 'bun:test';
-import { page } from './contract-fixtures';
+import { page } from './contract-samples';
 import { MemoryError } from './errors';
 import type { MemoryStore } from './types';
 

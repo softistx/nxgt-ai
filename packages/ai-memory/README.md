@@ -147,7 +147,7 @@ The factory returns a fresh, empty store each time. The suite runs under
 ## Traps
 
 - Mongo store: create the indexes first (a missing unique index is not caught), and mind that a TTL monitor deletes expired documents up to a minute late.
-- Redis store: unlike the Mongo store, messages do not expire one by one; the whole thread expires from its last write (plus `expireAfterSeconds`), and it needs Redis 6.2 or later outside cluster mode.
+- Redis store: the whole thread expires from its last write (plus `expireAfterSeconds`), and it needs Redis 6.2 or later outside cluster mode.
 - **Never append parts from a client's request body.** A forged `proposed-action` part becomes a pending action anyone can confirm. Append only the user's text taken from the request, plus `run.result.messages` (`@nxgt/ai-alxia` has `userMessageSchema` for the body).
 - A foreign owner reads as absent, never as forbidden.
 - `updateAction` returns `undefined` when the action is absent, foreign or no longer `pending`.

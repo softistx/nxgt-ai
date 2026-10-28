@@ -3,7 +3,7 @@ import {
 	type CompactOptions,
 	inProcessMemory,
 	type StoredMessage,
-} from './index';
+} from '../src/index';
 
 export const chars = (input: string | readonly Message[]) =>
 	typeof input === 'string' ? input.length : JSON.stringify(input).length;

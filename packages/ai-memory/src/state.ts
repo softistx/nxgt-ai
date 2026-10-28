@@ -1,5 +1,5 @@
 import type { ProposedAction } from '@nxgt/ai-core';
-import { MemoryError } from './errors';
+import { assertOwner, notFound } from './guards';
 import type { StoredMessage, Thread } from './types';
 
 export interface ThreadRecord {
@@ -24,14 +24,7 @@ export interface State {
 	counter: number;
 }
 
-export function assertOwner(ownerId: string): void {
-	if (typeof ownerId !== 'string' || ownerId === '') {
-		throw new MemoryError(
-			'INVALID_OWNER',
-			'ownerId must be a non-empty string.',
-		);
-	}
-}
+export { assertOwner };
 
 export const actionKey = (ownerId: string, actionId: string): string =>
 	`${ownerId}\u0000${actionId}`;
@@ -54,7 +47,7 @@ export function ownOrThrow(
 ): ThreadRecord {
 	const record = own(s, id, ownerId);
 	if (!record) {
-		throw new MemoryError('THREAD_NOT_FOUND', `Thread "${id}" was not found.`);
+		throw notFound(id);
 	}
 	return record;
 }
