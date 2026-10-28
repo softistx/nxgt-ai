@@ -9,6 +9,7 @@ built, and every mutation waits for a confirmation. Peers: `@nxgt/ai-core`,
 ```ts
 import { runAgent } from '@nxgt/ai-core';
 import { graphqlTools } from '@nxgt/ai-graphql';
+import { fakeModel } from '@nxgt/ai-testing';
 import { buildSchema } from 'graphql';
 import { z } from 'zod';
 
@@ -43,6 +44,18 @@ const tools = graphqlTools<{ userId: string }>({
 	maxResultChars: 8000,
 });
 
+// A scripted model for the example; use @nxgt/ai-anthropic or @nxgt/ai-ollama in production.
+const model = fakeModel([
+	{ toolCalls: [{ name: 'find_books', input: { title: 'Dune' } }] },
+	{ text: 'Found it.' },
+]);
+const messages = [
+	{
+		role: 'user' as const,
+		parts: [{ type: 'text' as const, text: 'Is Dune in?' }],
+	},
+];
+
 const run = runAgent({ model, messages, tools, context: { userId: 'u1' } });
 ```
 
@@ -66,10 +79,14 @@ proposed action (`confirm: true`) and runs it only after
 
 - `forbidFields` is checked when the tools are built, never at run time, and only against the operations you allow: the model cannot write its own query.
 - A field forbidden on an interface is forbidden on every type that implements it, and a field forbidden on a type is caught when read through an interface or a union. Aliases do not hide it.
-- `forbidFields` stops what the model selects, not what your resolvers return: keep authorisation in the resolvers.
+- `forbidFields` stops what an operation selects. It does not guard what your resolvers return, nor arguments and variables: a filter such as `where: { phone }` can act as a lookup oracle on a hidden field. The operation author controls the arguments; keep authorisation in the resolvers.
+- Introspection fields (`__typename`, `__schema`) are metadata and are skipped by the check.
+- `@defer` and `@stream` are rejected at build (incremental results of graphql 17 are not supported).
+- `variables` must be a `z.object(...)`.
 - Subscriptions are rejected. Queries and mutations only.
 - The model sees error codes (`extensions.code`, plus `extensions.fields` and scalar `extensions.params`), never messages or stacks. An error without a code reads `INTERNAL_ERROR`.
-- When the whole operation fails (no `data`), the tool call reports `TOOL_FAILED` with the mapped errors in its message; when part of it fails, the call succeeds with `data` and `errors`.
+- A mutation that reports any error, and a query with no `data` or whose root fields are all null, make the call fail with `TOOL_FAILED` and the mapped errors in its message; a query that partly fails succeeds with `data` and `errors`. A throwing `context` builder fails the call with `INTERNAL_ERROR` and never shows its message.
+- `extensions.params` scalars are shown as the resolver set them: do not put secrets in them.
 - A result longer than `maxResultChars` becomes `{ truncated: true, originalChars, preview, note }`; make the model narrow its variables.
 - graphql-js `execute` takes no abort signal: an abort is honoured before the operation starts, not during it.
 

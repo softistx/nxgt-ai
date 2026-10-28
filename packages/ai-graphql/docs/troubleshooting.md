@@ -48,7 +48,7 @@ try {
 ## `TOOL_FAILED` with `The GraphQL operation failed`
 
 **When:** a tool result is an error whose message ends with a JSON list of `{ code, … }`.
-**Why:** the execution returned no `data`: a non-null root field failed, or execution threw.
+**Why:** a mutation reported an error, or a query returned no `data` or only null root values; or the `context` builder or serialisation failed (`INTERNAL_ERROR`).
 **Fix:** read the codes. Fix the resolver or give it an `extensions.code` for the model to act on.
 
 ## The model sees `INTERNAL_ERROR`

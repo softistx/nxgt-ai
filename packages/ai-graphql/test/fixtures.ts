@@ -20,7 +20,9 @@ export const typeDefs = /* GraphQL */ `
 		member(id: ID!): Member
 		contact(id: ID!): Contact
 	}
-	type Mutation { renewLoan(bookId: ID!): Book! }
+	type Mutation { renewLoan(bookId: ID!): Book!
+		cancelLoan(bookId: ID!): Book
+	}
 	type Subscription { bookAdded: Book }
 `;
 
@@ -67,6 +69,11 @@ export function librarySchema(): GraphQLSchema {
 	const bookResolve = field(query, 'book').resolve;
 	if (bookResolve) field(query, 'strictBook').resolve = bookResolve;
 	field(query, 'member').resolve = () => member;
+	field(mutation, 'cancelLoan').resolve = () => {
+		throw new GraphQLError('Loan row 9 is locked', {
+			extensions: { code: 'CONFLICT' },
+		});
+	};
 	field(mutation, 'renewLoan').resolve = (_s, args: { bookId: string }) => ({
 		id: args.bookId,
 		title: 'Renewed',

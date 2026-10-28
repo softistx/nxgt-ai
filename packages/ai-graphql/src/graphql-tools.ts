@@ -12,7 +12,9 @@ import {
 	Kind,
 	type OperationDefinitionNode,
 	parse,
+	print,
 	validate,
+	visit,
 } from 'graphql';
 import { z } from 'zod';
 import { GraphqlToolsError } from './errors';
@@ -36,7 +38,7 @@ export interface GraphqlOperation {
 	/** The operation, as source text or a parsed document (fragments included). */
 	document: string | DocumentNode;
 	/** A Zod object schema of the operation's variables; default: no variables. */
-	variables?: z.ZodType;
+	variables?: z.ZodObject;
 	/** Which operation of the document to run when it holds several. */
 	operationName?: string;
 }
@@ -62,9 +64,11 @@ export const DEFAULT_MAX_RESULT_CHARS = 20_000;
 const NO_VARIABLES = z.object({});
 
 function parseDocument(op: GraphqlOperation): DocumentNode {
-	if (typeof op.document !== 'string') return op.document;
 	try {
-		return parse(op.document);
+		// A caller's DocumentNode is copied, so changing it later changes nothing.
+		return parse(
+			typeof op.document === 'string' ? op.document : print(op.document),
+		);
 	} catch (cause) {
 		throw new GraphqlToolsError(
 			'INVALID_OPERATION',
@@ -106,6 +110,25 @@ function pickOperation(
 	return found;
 }
 
+function assertNoIncremental(op: GraphqlOperation, document: DocumentNode) {
+	visit(document, {
+		Directive(node) {
+			if (node.name.value === 'defer' || node.name.value === 'stream') {
+				throw new GraphqlToolsError(
+					'INVALID_OPERATION',
+					`Operation "${op.name}" uses @${node.name.value}; incremental delivery is not supported.`,
+					{ operation: op.name },
+				);
+			}
+		},
+	});
+}
+
+const rootsAllNull = (data: unknown): boolean =>
+	typeof data === 'object' &&
+	data !== null &&
+	Object.values(data).every((v) => v === null);
+
 function failure(errors: readonly ToolGraphqlError[]): AiError {
 	return new AiError(
 		'TOOL_FAILED',
@@ -121,6 +144,7 @@ function buildTool<TContext>(
 ): AnyTool {
 	const document = parseDocument(op);
 	const node = pickOperation(op, document);
+	assertNoIncremental(op, document);
 	const problems = validate(options.schema, document);
 	if (problems.length > 0) {
 		throw new GraphqlToolsError(
@@ -138,9 +162,19 @@ function buildTool<TContext>(
 		confirm: node.operation === 'mutation',
 		async execute(variables, tool: ToolContext<TContext>) {
 			tool.signal.throwIfAborted();
-			const contextValue = options.context
-				? await options.context(tool)
-				: tool.context;
+			let contextValue: unknown = tool.context;
+			if (options.context) {
+				try {
+					contextValue = await options.context(tool);
+				} catch (cause) {
+					tool.signal.throwIfAborted();
+					throw new AiError(
+						'TOOL_FAILED',
+						`The GraphQL operation failed: ${JSON.stringify([{ code: 'INTERNAL_ERROR' }])}`,
+						{ cause },
+					);
+				}
+			}
 			let result: Awaited<ReturnType<typeof execute>>;
 			try {
 				result = await execute({
@@ -164,14 +198,29 @@ function buildTool<TContext>(
 				errors?: readonly GraphQLError[];
 			};
 			const mapped = errors?.map(toToolError);
-			if (mapped?.length && (data === null || data === undefined)) {
+			if (
+				mapped?.length &&
+				(node.operation === 'mutation' ||
+					data === null ||
+					data === undefined ||
+					rootsAllNull(data))
+			) {
 				throw failure(mapped);
 			}
 			const output: GraphqlToolOutput = {
 				data,
 				...(mapped?.length ? { errors: mapped } : {}),
 			};
-			return fitOutput(output, max);
+			try {
+				return fitOutput(output, max);
+			} catch (cause) {
+				// BigInt or a cycle in the data: not serialisable.
+				throw new AiError(
+					'TOOL_FAILED',
+					`The GraphQL operation failed: ${JSON.stringify([{ code: 'INTERNAL_ERROR' }])}`,
+					{ cause },
+				);
+			}
 		},
 	});
 }
@@ -188,10 +237,10 @@ export function graphqlTools<TContext = unknown>(
 ): AnyTool[] {
 	const forbidden = parseForbidden(options.forbidFields ?? []);
 	const max = options.maxResultChars ?? DEFAULT_MAX_RESULT_CHARS;
-	if (!Number.isInteger(max) || max < 1) {
+	if (!Number.isInteger(max) || max < 100) {
 		throw new GraphqlToolsError(
 			'INVALID_OPERATION',
-			'maxResultChars must be a positive integer.',
+			'maxResultChars must be an integer of at least 100: a truncation marker needs room.',
 			{ operation: '' },
 		);
 	}

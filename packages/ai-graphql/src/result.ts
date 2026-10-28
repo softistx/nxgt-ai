@@ -45,7 +45,7 @@ export function toToolError(error: GraphQLError): ToolGraphqlError {
 	if (error.path?.length) out.path = [...error.path];
 	const fields = ext?.['fields'];
 	if (Array.isArray(fields) && fields.every((f) => typeof f === 'string')) {
-		out.fields = fields.slice(0, 20);
+		out.fields = fields.slice(0, 20).map((f) => f.slice(0, 200));
 	}
 	const params = ext?.['params'];
 	if (isRecord(params)) {
@@ -64,17 +64,38 @@ export function toToolError(error: GraphQLError): ToolGraphqlError {
 	return out;
 }
 
-/** The output as is when its JSON fits `max`, else a truncation marker. */
+const NOTE_FULL =
+	'Ask again with narrower variables (a filter, a smaller limit or page) or fewer fields.';
+
+/**
+ * The output as is when its JSON fits `max`, else a truncation marker whose
+ * own JSON also fits `max` (the preview shrinks to make room, escaping
+ * included; a tiny `max` drops the note, then the preview). Throws when the
+ * output cannot be serialised.
+ */
 export function fitOutput(
 	output: GraphqlToolOutput,
 	max: number,
 ): GraphqlToolOutput | TruncatedGraphqlOutput {
 	const json = JSON.stringify(output) ?? '';
 	if (json.length <= max) return output;
-	return {
+	const marker = (preview: string, note: string): TruncatedGraphqlOutput => ({
 		truncated: true,
 		originalChars: json.length,
-		preview: json.slice(0, max),
-		note: `The result was cut to ${max} of ${json.length} characters. Ask again with narrower variables (a filter, a smaller limit or page) or fewer fields.`,
-	};
+		preview,
+		note,
+	});
+	const size = (m: TruncatedGraphqlOutput) => JSON.stringify(m).length;
+	for (const note of [`Result cut. ${NOTE_FULL}`, 'Result cut.', '']) {
+		if (size(marker('', note)) > max) continue;
+		let lo = 0;
+		let hi = Math.min(max, json.length);
+		while (lo < hi) {
+			const mid = Math.ceil((lo + hi) / 2);
+			if (size(marker(json.slice(0, mid), note)) <= max) lo = mid;
+			else hi = mid - 1;
+		}
+		return marker(json.slice(0, lo), note);
+	}
+	return marker('', '');
 }

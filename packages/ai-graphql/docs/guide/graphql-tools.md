@@ -49,7 +49,8 @@ This is the whole shape on purpose: a manifest of
 will emit, and it can be passed as `operations` as is.
 
 Each operation is parsed and validated against the schema when `graphqlTools`
-is called. A subscription, an unparsable or invalid document, or a duplicate
+is called. A `DocumentNode` is copied (printed and parsed again) at that moment,
+so changing it later changes nothing. `@defer` and `@stream` are rejected. A subscription, an unparsable or invalid document, or a duplicate
 name throws a `GraphqlToolsError` (`INVALID_OPERATION`, `DUPLICATE_OPERATION`).
 
 When the model sends input the Zod schema refuses, the call answers
@@ -101,6 +102,8 @@ Rules:
 - A field forbidden on an object type is caught when read through an interface or union it belongs to.
 - Aliases do not hide a field, and `__typename` is ignored.
 - It guards what the allow-listed operations select. It does not filter what a resolver returns; authorise in resolvers.
+- It does not look at arguments or variables. A filter such as `where: { phone: $p }` lets the model test values of a hidden field. The operation author controls the arguments; do not expose such filters, and authorise in resolvers.
+- Introspection fields (`__typename`, `__schema`) are metadata and are skipped.
 
 ## Queries and mutations
 
@@ -131,8 +134,11 @@ The model never gets a GraphQL message or a stack, only codes.
 
 Two outcomes:
 
-- **Part of the result failed** (`data` is not null): the call succeeds with `{ data, errors: [{ code, path, fields?, params? }] }`.
-- **Nothing came back** (`data` is null, as when a non-null root field fails): the call is an error, `TOOL_FAILED`, whose message is `The GraphQL operation failed: [{"code":"NOT_FOUND","fields":["id"]}]`. For a confirmed mutation the action becomes `failed`.
+- **A query that partly failed** (some root value is not null): the call succeeds with `{ data, errors: [{ code, path, fields?, params? }] }`.
+- **Everything failed, or any mutation error** (`data` is null, every root value is null, or the operation is a mutation with any error): the call is an error, `TOOL_FAILED`, whose message is `The GraphQL operation failed: [{"code":"NOT_FOUND","fields":["id"]}]`. A confirmed mutation becomes `failed`.
+- **A throwing `context` builder** fails the call the same way with `INTERNAL_ERROR`; its message and stack are never shown (an abort is rethrown as is).
+
+`fields` strings are cut to 200 characters. `params` scalars are shown as the resolver set them, so keep secrets out of them.
 
 Throw errors with codes in your resolvers so the model can act on them:
 
@@ -144,8 +150,10 @@ throw new GraphQLError('Ticket row 42 not found', {
 
 ## Result size
 
-The result is serialised (`{ data, errors? }`) and cut to `maxResultChars`
-(default 20000):
+The result is serialised (`{ data, errors? }`) and cut so that the marker below,
+serialised, is at most `maxResultChars` characters (default 20000). With a very
+small limit the note, then the preview, are dropped. Data JSON cannot hold (a
+BigInt, a cycle) fails the call with `INTERNAL_ERROR`:
 
 ```json
 {
