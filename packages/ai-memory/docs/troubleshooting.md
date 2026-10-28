@@ -22,7 +22,7 @@
 ## `MemoryError` THREAD_NOT_FOUND
 
 **When:** `append` or `setSummary` throws `Thread "…" was not found.`
-**Why:** the thread does not exist, was deleted, or belongs to another owner; the store does not tell these apart.
+**Why:** the thread does not exist, was deleted, or belongs to another owner; the store does not tell these apart. A Mongo `append` racing a `deleteThread` also throws it and removes its own batch; this is expected, so do not retry.
 **Fix:** check the `ownerId` is the one that created the thread.
 
 ```ts

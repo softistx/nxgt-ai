@@ -242,10 +242,13 @@ leaves a gap in `seq`; `load` still orders by it.
 #### Deleting
 
 `deleteThread` deletes the messages, then the thread, then the messages again.
-It returns `false` for a foreign or absent owner. A crash in between leaves an
-empty thread, which a retry removes. An `append` racing a delete checks the
-thread after its insert and removes its own batch, throwing
-`THREAD_NOT_FOUND`; for a moment its messages can still be read by id.
+It returns `false` for a foreign or absent owner. A crash after the first sweep
+but before the thread delete leaves an empty thread, which a retry removes. A
+crash after the thread delete can leave messages nobody can reach: a retry
+returns `false`, and the TTL (`expiresAt`) removes them when expiry is on. An
+`append` racing a delete checks the thread after its insert and removes its own
+batch, throwing `THREAD_NOT_FOUND`; for a moment a pending action of that batch
+can still be found by `findAction` or `updateAction`.
 
 ## Redis store
 
@@ -286,9 +289,8 @@ that shares a Redis its own.
 `expireAfterSeconds` sets an expiry on a thread's keys at every write that
 touches the thread (`append`, `setSummary`): the thread, its messages and its
 indexes go together, that long after the last write, and so do its
-proposed actions (`updateAction` slides them too). Unlike the Mongo store,
-messages do not expire one by one: the whole thread expires from its last
-write, so a thread you keep writing to never expires and an idle one
+proposed actions (`updateAction` slides them too). The whole thread expires
+from its last write, so a thread you keep writing to never expires and an idle one
 disappears whole. The `now` option is the clock the expiry is computed from.
 
 Redis deletes an expired key on access or in the background; a read after
