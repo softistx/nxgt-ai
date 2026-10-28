@@ -1,5 +1,11 @@
 # @nxgt/ai-alxia
 
+## 0.1.2
+
+### Patch Changes
+
+- [#100](https://github.com/softistx/nxgt-ai/pull/100) [`c7676b5`](https://github.com/softistx/nxgt-ai/commit/c7676b58a2141d589a2c8b594a364d6cd948fdf1) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Accept `@alxia/core` 0.17: the peer range is now `>=0.16.0 <0.18.0`.
+
 ## 0.1.1
 
 ### Patch Changes
