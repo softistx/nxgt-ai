@@ -1,5 +1,12 @@
 # @nxgt/ai-ollama
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`62fac94`](https://github.com/softistx/nxgt-ai/commit/62fac94e52e4cc8a4c5dd5379b2968b5af3ff611)]:
+  - @nxgt/ai-core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes
