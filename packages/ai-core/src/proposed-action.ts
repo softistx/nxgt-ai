@@ -1,6 +1,6 @@
 import { AiError } from './errors';
 import { executeTool } from './execute-tool';
-import type { ProposedActionPart, ToolResultPart } from './message';
+import type { Message, ProposedActionPart, ToolResultPart } from './message';
 import type { AnyTool } from './tool';
 
 /** How long a proposed action can be confirmed unless the run says otherwise. */
@@ -108,4 +108,79 @@ export function rejectAction(
 ): ProposedAction {
 	assertPending(action, (options.now ?? Date.now)());
 	return { ...action, status: 'rejected' };
+}
+
+export interface ActionOutcomeOptions {
+	/** Why the user said no; only read for a `rejected` action. */
+	reason?: string;
+}
+
+const MAX_OUTPUT_CHARS = 2_000;
+
+function describeOutput(output: unknown): string {
+	let text: string | undefined;
+	try {
+		text = JSON.stringify(output);
+	} catch {
+		// Cycle or BigInt: nothing readable to give.
+	}
+	if (text === undefined) return 'It ran and returned no data.';
+	const cut =
+		text.length > MAX_OUTPUT_CHARS
+			? `${text.slice(0, MAX_OUTPUT_CHARS)}... (cut)`
+			: text;
+	return `It ran and returned: ${cut}`;
+}
+
+function outcomeText(action: ProposedAction, options: ActionOutcomeOptions) {
+	const what = action.summary
+		? `"${action.summary}" (tool ${action.tool}, action ${action.id})`
+		: `tool ${action.tool}, action ${action.id}`;
+	switch (action.status) {
+		case 'confirmed':
+			return `The user confirmed the action ${what}. ${
+				action.result && !action.result.isError
+					? describeOutput(action.result.output)
+					: 'It ran.'
+			}`;
+		case 'rejected': {
+			const reason = options.reason?.trim();
+			return `The user rejected the action ${what}. Nothing ran.${reason ? ` Reason given by the user: ${reason}` : ''}`;
+		}
+		case 'failed':
+			return `The user confirmed the action ${what}, but it failed${
+				action.result?.isError
+					? ` (error code ${action.result.error.code})`
+					: ''
+			}. Nothing was changed that you can rely on; do not assume it happened.`;
+		case 'expired':
+			return `The action ${what} expired before the user answered. Nothing ran.`;
+		case 'pending':
+			throw new AiError(
+				'ACTION_NOT_PENDING',
+				`Action "${action.id}" is still pending: it has no outcome yet.`,
+			);
+	}
+}
+
+/**
+ * The message that tells the model how an action it proposed ended, for the
+ * next run when the user answered in a later request: the model's earlier
+ * `tool_result` for that call still says `pending`. Append it to the thread
+ * (a `user` turn with one text part: a late second `tool_result` for the same
+ * call would be refused by Anthropic and misread by Ollama) before `runAgent`.
+ *
+ * It takes the action `runConfirmedAction` or `rejectAction` returned, and
+ * names `confirmed` (with the tool's output, cut to 2000 characters), `rejected`
+ * (with `options.reason`), `failed` (the error code only, never the error text)
+ * or `expired`. A `pending` action throws `ACTION_NOT_PENDING`.
+ */
+export function actionOutcomeMessage(
+	action: ProposedAction,
+	options: ActionOutcomeOptions = {},
+): Message {
+	return {
+		role: 'user',
+		parts: [{ type: 'text', text: outcomeText(action, options) }],
+	};
 }

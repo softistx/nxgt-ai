@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 import { AiError } from './errors';
 import {
+	actionOutcomeMessage,
 	type ProposedAction,
 	rejectAction,
 	runConfirmedAction,
@@ -144,5 +145,73 @@ describe('rejectAction and toProposedAction', () => {
 			status: 'pending',
 			expiresAt: 5,
 		});
+	});
+});
+
+describe('actionOutcomeMessage', () => {
+	const text = (m: ReturnType<typeof actionOutcomeMessage>) =>
+		m.parts[0]?.type === 'text' ? m.parts[0].text : '';
+
+	test('a confirmed action reports its output in a user text turn', async () => {
+		const done = await runConfirmedAction(pending(), [pay], {}, at(50));
+		const message = actionOutcomeMessage(done);
+		expect(message.role).toBe('user');
+		expect(message.parts).toHaveLength(1);
+		expect(text(message)).toContain('confirmed');
+		expect(text(message)).toContain('{"paid":"A1"}');
+	});
+
+	test('names the summary when there is one', () => {
+		const rejected = rejectAction(
+			pending({ summary: 'Pay invoice A1' }),
+			at(5),
+		);
+		expect(text(actionOutcomeMessage(rejected))).toContain('Pay invoice A1');
+	});
+
+	test('a rejected action carries the optional reason', () => {
+		const rejected = rejectAction(pending(), at(5));
+		expect(text(actionOutcomeMessage(rejected))).toContain('rejected');
+		expect(
+			text(actionOutcomeMessage(rejected, { reason: 'wrong invoice' })),
+		).toContain('Reason given by the user: wrong invoice');
+		expect(text(actionOutcomeMessage(rejected))).not.toContain('Reason');
+	});
+
+	test('a failed action gives the error code, never the error text', async () => {
+		const failed = await runConfirmedAction(
+			pending({ input: { invoice: 'boom' } }),
+			[pay],
+			{},
+			at(50),
+		);
+		expect(failed.status).toBe('failed');
+		const out = text(actionOutcomeMessage(failed));
+		expect(out).toContain('failed');
+		expect(out).toContain('TOOL_FAILED');
+		expect(out).not.toContain('bank down');
+	});
+
+	test('an expired action is reported, a pending one refused', () => {
+		expect(
+			text(actionOutcomeMessage(pending({ status: 'expired' }))),
+		).toContain('expired');
+		expect(() => actionOutcomeMessage(pending())).toThrow(
+			expect.objectContaining({ code: 'ACTION_NOT_PENDING' }),
+		);
+	});
+
+	test('a long output is cut', () => {
+		const big = pending({
+			status: 'confirmed',
+			result: {
+				type: 'tool-result',
+				callId: 'p1',
+				name: 'pay',
+				isError: false,
+				output: 'x'.repeat(5_000),
+			},
+		});
+		expect(text(actionOutcomeMessage(big)).length).toBeLessThan(2_200);
 	});
 });

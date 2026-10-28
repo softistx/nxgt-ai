@@ -52,6 +52,69 @@ meets `ACTION_NOT_PENDING`. An abort rejects and leaves the decision to you.
 
 `rejectAction(action)` returns the action `rejected`, with the same two checks.
 
+## Summarizing what is proposed
+
+`summarize(input)` on `defineTool` (and `jsonSchemaTool`) is a short line for
+the confirmation UI. It receives the **validated** input and fills
+`ProposedActionPart.summary` (and `ProposedAction.summary`):
+
+```ts
+const pay = defineTool({
+	name: 'pay',
+	description: 'Pays an invoice',
+	input: z.object({ invoice: z.string(), amount: z.number() }),
+	confirm: true,
+	summarize: ({ invoice, amount }) => `Pay ${amount} for invoice ${invoice}`,
+	execute: async ({ invoice }) => ({ paid: invoice }),
+});
+```
+
+It is synchronous and only called when the tool is proposed. A tool without it
+proposes with no summary, as before. **Fallback:** a `summarize` that throws,
+or returns an empty or non-string value, leaves the summary out and the
+proposal stands; the run never fails because of it. The error is swallowed, so
+keep the function pure and test it yourself. The summary is also shown to the
+model in `actionOutcomeMessage`, so write it for both readers and put no secret
+in it.
+
+## Telling the model the outcome
+
+The user often answers in a later request. The model's earlier `tool_result`
+for that call still says `{ status: 'pending' }`, and its history never learns
+that the action ran. `actionOutcomeMessage(action, { reason? })` turns the
+action `runConfirmedAction` or `rejectAction` returned into one message:
+
+```ts
+const done = await runConfirmedAction(action, tools, { context });
+await store.append(threadId, ownerId, [actionOutcomeMessage(done)]);
+// the next runAgent loads the thread and the model sees the outcome
+
+const no = rejectAction(action);
+const note = actionOutcomeMessage(no, { reason: 'wrong invoice' });
+```
+
+| status      | the text says                                                         |
+| ----------- | --------------------------------------------------------------------- |
+| `confirmed` | the user confirmed, and the tool's output (JSON, cut at 2000 chars)   |
+| `rejected`  | the user rejected, nothing ran, and `reason` when given               |
+| `failed`    | the user confirmed but it failed: the error **code** only, never text |
+| `expired`   | it expired before an answer, nothing ran                              |
+| `pending`   | throws `ACTION_NOT_PENDING`: there is no outcome yet                  |
+
+**Why a user turn with one text part.** Anthropic requires every `tool_use`
+to be answered by exactly one `tool_result` in the very next user turn, and
+refuses a second result for an id that already has one. Ollama's `tool`
+messages are matched by position and tool name, not by id, so a late one reads
+as the answer to whatever call came last. A plain user text turn is accepted by
+both after a finished tool call and result pair, needs no id, and needs no
+change in the adapters. It is not a message from the person, so word your
+system prompt to treat "The user confirmed the action ..." lines as
+application events. Appending it after the assistant's last turn keeps the
+roles alternating.
+
+Never put raw exception text in it: a failed action reports its code (for
+example `TOOL_FAILED`), as every tool error does.
+
 ## estimateTokens
 
 `estimateTokens(text | messages)` returns `ceil(characters / 4)`, counting the

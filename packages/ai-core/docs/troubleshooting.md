@@ -176,6 +176,29 @@ if (action.status === 'pending')
 	action = await runConfirmedAction(action, tools);
 ```
 
+### The model still says the action is pending
+
+**When:** the user confirmed or rejected in a later request and the model keeps waiting, or asks again.
+**Why:** its earlier `tool_result` for that call says `{ status: 'pending' }` and nothing told it the outcome.
+**Fix:** append `actionOutcomeMessage(action)` (a user text turn) to the thread before the next `runAgent`.
+
+```ts
+const done = await runConfirmedAction(action, tools);
+await store.append(threadId, ownerId, [actionOutcomeMessage(done)]);
+```
+
+### `Action "..." is still pending: it has no outcome yet.`
+
+**When:** `actionOutcomeMessage` on an action whose status is `pending` (`ACTION_NOT_PENDING`, thrown).
+**Why:** it reports an outcome, and a pending action has none.
+**Fix:** pass what `runConfirmedAction` or `rejectAction` returned, not the stored pending action.
+
+### A proposed action has no `summary`
+
+**When:** the confirmation UI shows no line although the tool has `summarize`.
+**Why:** `summarize` threw, or returned an empty or non-string value; the error is swallowed so the proposal still stands.
+**Fix:** call `summarize` in a unit test with the same input and make it return a non-empty string.
+
 ### `Action "..." has expired.`
 
 **When:** confirming or rejecting after `expiresAt` (`ACTION_EXPIRED`, thrown).
