@@ -47,9 +47,10 @@ export function variablesJsonSchema(
 	operation: string,
 ): ToolInputSchema {
 	const stray = new Set<unknown>();
-	let json: JsonSchema;
-	try {
-		json = z.toJSONSchema(schema, {
+	// Shared by the inner conversion of a list's items, so the item schema keeps
+	// the guarantee (an unrepresentable item throws) and nested lists resolve.
+	const convert = (target: z.ZodType): JsonSchema =>
+		z.toJSONSchema(target, {
 			io: 'input',
 			unrepresentable: ({ zodSchema, message }) => {
 				if (defOf(zodSchema).type !== 'custom') throw new Error(message);
@@ -60,16 +61,18 @@ export function variablesJsonSchema(
 				const customs = coercionCustoms(ctx.zodSchema);
 				if (!customs) return;
 				for (const custom of customs) stray.delete(custom);
-				const { $schema: _s, ...items } = z.toJSONSchema(
-					(ctx.zodSchema as unknown as { _zod: { def: { out: z.ZodType } } })
-						._zod.def.out,
-					{ io: 'input', unrepresentable: 'any' },
-				) as JsonSchema;
-				for (const key of Object.keys(ctx.jsonSchema))
+				const { $schema: _s, ...items } = convert(
+					defOf(ctx.zodSchema)['out'] as z.ZodType,
+				);
+				for (const key of Object.keys(ctx.jsonSchema)) {
 					delete ctx.jsonSchema[key];
+				}
 				Object.assign(ctx.jsonSchema, items);
 			},
 		}) as JsonSchema;
+	let json: JsonSchema;
+	try {
+		json = convert(schema);
 	} catch (cause) {
 		throw new GraphqlToolsError(
 			'INVALID_OPERATION',

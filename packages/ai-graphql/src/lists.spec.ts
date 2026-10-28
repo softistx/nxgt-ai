@@ -6,6 +6,7 @@ import * as zodPlugin from '@nxgt/graphql-codegen-zod';
 import { buildSchema, parse } from 'graphql';
 import { z } from 'zod';
 import {
+	zDateList,
 	zMatrixVariables,
 	zTagMutationVariables,
 	zThingsQueryVariables,
@@ -64,9 +65,9 @@ describe('graphqlTools: list variables', () => {
 		const schemaOf = byName('things').inputSchema as unknown as {
 			properties: { ids: unknown };
 		};
-		expect(JSON.stringify(schemaOf.properties.ids)).toContain('"array"');
-		expect(JSON.stringify(schemaOf.properties.ids)).not.toContain('"items":{}');
-		expect(JSON.stringify(schemaOf.properties.ids)).toContain('"string"');
+		expect(schemaOf.properties.ids).toEqual({
+			anyOf: [{ type: 'array', items: { type: 'string' } }, { type: 'null' }],
+		});
 	});
 
 	it('validates the items of the array', () => {
@@ -90,6 +91,12 @@ describe('graphqlTools: list variables', () => {
 
 	it('handles lists of lists', () => {
 		const tool = byName('matrix');
+		expect(tool.inputSchema.properties).toEqual({
+			rows: {
+				type: 'array',
+				items: { type: 'array', items: { type: 'string' } },
+			},
+		});
 		expect(tool.validate({ rows: [['a'], ['b']] }).ok).toBe(true);
 		expect(tool.validate({ rows: [[1]] }).ok).toBe(false);
 	});
@@ -116,7 +123,23 @@ describe('graphqlTools: list variables', () => {
 					},
 				],
 			}),
-		).toThrow();
+		).toThrow(expect.objectContaining({ code: 'INVALID_OPERATION' }));
+	});
+
+	it('refuses an unrepresentable item inside a list', () => {
+		expect(() =>
+			graphqlTools({
+				schema,
+				operations: [
+					{
+						name: 'bad',
+						description: 'Bad',
+						document: '{ m(rows: []) }',
+						variables: z.object({ d: zDateList }),
+					},
+				],
+			}),
+		).toThrow(expect.objectContaining({ code: 'INVALID_OPERATION' }));
 	});
 
 	it('refuses a custom schema that is not a list coercion', () => {
@@ -132,7 +155,7 @@ describe('graphqlTools: list variables', () => {
 					},
 				],
 			}),
-		).toThrow();
+		).toThrow(expect.objectContaining({ code: 'INVALID_OPERATION' }));
 	});
 });
 

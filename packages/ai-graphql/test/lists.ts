@@ -32,3 +32,5 @@ export const zTagMutationVariables = z.object({
 export const zMatrixVariables = z.object({
 	rows: list(list(z.string())),
 });
+
+export const zDateList = list(z.date());
