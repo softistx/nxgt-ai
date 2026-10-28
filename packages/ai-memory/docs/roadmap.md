@@ -4,7 +4,7 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 
 ## Now
 
-Nothing in progress.
+- **Collections shared by several tenants** — a `scope` option for `mongoMemory`, plus `scopedThreadIndexes` / `scopedMessageIndexes`, so every read and write stays inside one tenant ([#87](https://github.com/softistx/nxgt-ai/issues/87)).
 
 ## Next
 

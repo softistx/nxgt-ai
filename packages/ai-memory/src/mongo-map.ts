@@ -3,8 +3,9 @@ import type { MongoDoc } from './mongo-collection';
 import type { StoredMessage, Thread } from './types';
 
 /** A thread document as the application reads it: no storage-only field. */
-export function toThread(doc: MongoDoc): Thread {
+export function toThread(doc: MongoDoc, scope: MongoDoc = {}): Thread {
 	const { _id, expiresAt: _expiresAt, ...rest } = doc;
+	for (const key of Object.keys(scope)) delete rest[key];
 	return { id: _id, ...rest } as Thread;
 }
 

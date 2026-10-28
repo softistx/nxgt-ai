@@ -5,6 +5,7 @@ export const MEMORY_ERROR_CODES = [
 	'INVALID_CURSOR',
 	'INVALID_OWNER',
 	'EMPTY_SUMMARY',
+	'INVALID_SCOPE',
 ] as const;
 
 /** Adding a code is not a breaking change, so switch with a default branch. */

@@ -1,5 +1,5 @@
 import type { MongoDoc } from './mongo-collection';
-import { assertOwner, type Ctx, ownThread } from './mongo-ctx';
+import { assertOwner, type Ctx, ownThread, scoped } from './mongo-ctx';
 import { toThread } from './mongo-map';
 import { assertUuidCursor, pageLimit } from './paging';
 import type { CreateThreadInput, Page, Thread, ThreadPage } from './types';
@@ -19,14 +19,15 @@ export async function createThread(
 		createdAt: at,
 		updatedAt: at,
 		...c.expiry(at),
+		...c.scope,
 	};
 	await c.threads.insertOne(doc);
-	return toThread(doc);
+	return toThread(doc, c.scope);
 }
 
 export async function getThread(c: Ctx, id: string, ownerId: string) {
 	const doc = await ownThread(c, id, ownerId);
-	return doc ? toThread(doc) : undefined;
+	return doc ? toThread(doc, c.scope) : undefined;
 }
 
 export async function listThreads(
@@ -38,17 +39,19 @@ export async function listThreads(
 	const limit = pageLimit(page);
 	assertUuidCursor(page.cursor);
 	const docs = await c.threads
-		.find({
-			ownerId,
-			...(page.cursor === undefined ? {} : { _id: { $lt: page.cursor } }),
-		})
+		.find(
+			scoped(c, {
+				ownerId,
+				...(page.cursor === undefined ? {} : { _id: { $lt: page.cursor } }),
+			}),
+		)
 		.sort({ _id: -1 })
 		.limit(limit + 1)
 		.toArray();
 	const items = docs.slice(0, limit);
 	const last = items[items.length - 1];
 	return {
-		items: items.map(toThread),
+		items: items.map((d) => toThread(d, c.scope)),
 		...(docs.length > limit && last
 			? { nextCursor: last['_id'] as string }
 			: {}),
@@ -63,8 +66,8 @@ export async function listThreads(
  */
 export async function deleteThread(c: Ctx, id: string, ownerId: string) {
 	if (!(await ownThread(c, id, ownerId))) return false;
-	await c.messages.deleteMany({ threadId: id, ownerId });
-	await c.threads.deleteOne({ _id: id, ownerId });
-	await c.messages.deleteMany({ threadId: id, ownerId });
+	await c.messages.deleteMany(scoped(c, { threadId: id, ownerId }));
+	await c.threads.deleteOne(scoped(c, { _id: id, ownerId }));
+	await c.messages.deleteMany(scoped(c, { threadId: id, ownerId }));
 	return true;
 }

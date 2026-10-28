@@ -3,7 +3,7 @@ import {
 	type ProposedAction,
 	toProposedAction,
 } from '@nxgt/ai-core';
-import { assertOwner, type Ctx } from './mongo-ctx';
+import { assertOwner, type Ctx, scoped } from './mongo-ctx';
 import { pickAction } from './mongo-map';
 import type { ActionPatch } from './types';
 
@@ -20,10 +20,9 @@ export async function newActions(
 		for (const part of message.parts) {
 			if (part.type !== 'proposed-action' || seen.has(part.id)) continue;
 			seen.add(part.id);
-			const known = await c.messages.findOne({
-				ownerId,
-				'actions.id': part.id,
-			});
+			const known = await c.messages.findOne(
+				scoped(c, { ownerId, 'actions.id': part.id }),
+			);
 			if (!known) fresh.push(toProposedAction(part));
 		}
 		result.push(fresh);
@@ -33,7 +32,9 @@ export async function newActions(
 
 export async function findAction(c: Ctx, actionId: string, ownerId: string) {
 	assertOwner(ownerId);
-	const doc = await c.messages.findOne({ ownerId, 'actions.id': actionId });
+	const doc = await c.messages.findOne(
+		scoped(c, { ownerId, 'actions.id': actionId }),
+	);
 	return pickAction(doc, actionId);
 }
 
@@ -46,7 +47,10 @@ export async function updateAction(
 	assertOwner(ownerId);
 	// One atomic write: it matches only while the action is still pending.
 	const doc = await c.messages.findOneAndUpdate(
-		{ ownerId, actions: { $elemMatch: { id: actionId, status: 'pending' } } },
+		scoped(c, {
+			ownerId,
+			actions: { $elemMatch: { id: actionId, status: 'pending' } },
+		}),
 		{
 			$set: {
 				'actions.$.status': patch.status,

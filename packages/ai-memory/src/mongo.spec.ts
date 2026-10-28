@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import type { Db } from 'mongodb';
+import { type Db, ObjectId } from 'mongodb';
 import { startMongo, type TestMongo } from '../test/mongo';
 import {
 	expiresAtIndex,
@@ -7,6 +7,8 @@ import {
 	messageFields,
 	messageIndexes,
 	mongoMemory,
+	scopedMessageIndexes,
+	scopedThreadIndexes,
 	threadFields,
 	threadIndexes,
 } from './mongo';
@@ -45,6 +47,37 @@ async function setup(expireAfterSeconds?: number) {
 }
 
 memoryStoreContract(async (): Promise<MemoryStore> => (await setup()).store);
+
+/** One shared pair of collections, a store per tenant. */
+async function tenants() {
+	const db = await mongo.fresh();
+	await indexed(
+		db,
+		'threads',
+		scopedThreadIndexes({ prefix: { tenantId: 1 } }),
+	);
+	await indexed(
+		db,
+		'messages',
+		scopedMessageIndexes({ prefix: { tenantId: 1 } }),
+	);
+	const threads = db.collection('threads');
+	const messages = db.collection('messages');
+	const store = (tenantId: string) =>
+		mongoMemory({ threads, messages, scope: { tenantId } });
+	return { db, threads, messages, store };
+}
+
+// The whole contract, in a collection another tenant also writes to.
+memoryStoreContract(async (): Promise<MemoryStore> => {
+	const { store } = await tenants();
+	const other = store('other');
+	const t = await other.createThread({ ownerId: 'owner-a' });
+	await other.append(t.id, 'owner-a', [
+		{ role: 'user', parts: [{ type: 'text', text: 'noise' }] },
+	]);
+	return store('t1');
+});
 
 const user = (t: string) => ({
 	role: 'user' as const,
@@ -216,5 +249,175 @@ describe('mongoMemory', () => {
 		expect(await wrapped.deleteThread(t.id, 'a')).toBe(true);
 		expect(order).toEqual(['messages', 'threads', 'messages']);
 		expect(await messages.countDocuments({})).toBe(0);
+	});
+});
+
+const proposal = {
+	role: 'assistant' as const,
+	parts: [
+		{
+			type: 'proposed-action' as const,
+			id: 'same-id',
+			tool: 'x',
+			input: {},
+			expiresAt: 9,
+		},
+	],
+};
+
+describe('mongoMemory scope', () => {
+	it('keeps two tenants with the same ownerId and ids apart', async () => {
+		const { store, threads, messages } = await tenants();
+		const a = store('a');
+		const b = store('b');
+		const ta = await a.createThread({ ownerId: 'u' });
+		const tb = await b.createThread({ ownerId: 'u' });
+		await a.append(ta.id, 'u', [user('from a'), proposal]);
+		await b.append(tb.id, 'u', [user('from b'), proposal]);
+
+		// Same ownerId and the other tenant's thread id: invisible.
+		expect(await a.getThread(tb.id, 'u')).toBeUndefined();
+		expect(await a.load(tb.id, 'u', { sinceSummary: false })).toBeUndefined();
+		expect((await a.listThreads('u')).items.map((t) => t.id)).toEqual([ta.id]);
+		expect((await b.listThreads('u')).items.map((t) => t.id)).toEqual([tb.id]);
+		await expect(a.append(tb.id, 'u', [user('x')])).rejects.toMatchObject({
+			code: 'THREAD_NOT_FOUND',
+		});
+		expect(await a.deleteThread(tb.id, 'u')).toBe(false);
+		expect(await a.getThread(ta.id, 'u')).not.toHaveProperty('tenantId');
+
+		// The same action id is recorded and settled once per tenant.
+		expect(await messages.countDocuments({ 'actions.id': 'same-id' })).toBe(2);
+		expect(
+			await a.updateAction('same-id', 'u', { status: 'confirmed' }),
+		).toMatchObject({
+			status: 'confirmed',
+		});
+		expect((await b.findAction('same-id', 'u'))?.status).toBe('pending');
+
+		// A summary cannot point at the other tenant's message.
+		const [mb] =
+			(await b.load(tb.id, 'u', { sinceSummary: false }))?.messages ?? [];
+		await expect(
+			a.setSummary(ta.id, 'u', {
+				text: 's',
+				throughMessageId: mb?.id ?? '',
+				tokens: 1,
+			}),
+		).rejects.toMatchObject({ code: 'MESSAGE_NOT_FOUND' });
+
+		// Deleting in a leaves b untouched.
+		expect(await a.deleteThread(ta.id, 'u')).toBe(true);
+		expect(await threads.countDocuments({ tenantId: 'b' })).toBe(1);
+		expect(await messages.countDocuments({ tenantId: 'b' })).toBe(2);
+		expect(await messages.countDocuments({ tenantId: 'a' })).toBe(0);
+	});
+
+	it('stamps the scope on every insert', async () => {
+		const { store, threads, messages } = await tenants();
+		const s = store('a');
+		const t = await s.createThread({ ownerId: 'u' });
+		await s.append(t.id, 'u', [user('x')]);
+		expect(await threads.countDocuments({ tenantId: 'a' })).toBe(1);
+		expect(await messages.countDocuments({ tenantId: 'a' })).toBe(1);
+	});
+
+	it('never lets an update change the scope', async () => {
+		const { store, threads, messages } = await tenants();
+		const s = store('a');
+		// Caller data named like the scope stays in meta and cannot reach it.
+		const t = await s.createThread({
+			ownerId: 'u',
+			meta: { tenantId: 'b' },
+		});
+		const [m] = await s.append(t.id, 'u', [user('x'), proposal]);
+		await s.setSummary(t.id, 'u', {
+			text: 's',
+			throughMessageId: m?.id ?? '',
+			tokens: 1,
+		});
+		await s.updateAction('same-id', 'u', {
+			status: 'confirmed',
+			result: { tenantId: 'b' } as never,
+		});
+		for (const doc of [
+			...(await threads.find({}).toArray()),
+			...(await messages.find({}).toArray()),
+		]) {
+			expect(doc['tenantId']).toBe('a');
+		}
+		expect(await store('b').getThread(t.id, 'u')).toBeUndefined();
+	});
+
+	it('refuses a scope that could be overridden or turned into an operator', () => {
+		const make = (scope: never) => () =>
+			mongoMemory({ threads: {} as never, messages: {} as never, scope });
+		for (const scope of [
+			{ ownerId: 'x' },
+			{ _id: 'x' },
+			{ meta: 'x' },
+			{ $or: 'x' },
+			{ 'a.b': 'x' },
+			{ '': 'x' },
+			JSON.parse('{"__proto__":{"_bsontype":"x"}}'),
+			{ tenantId: { $ne: 'a' } },
+			{ tenantId: ['a'] },
+			{ tenantId: null },
+			{ tenantId: undefined },
+			{ tenantId: Number.NaN },
+		]) {
+			expect(make(scope as never)).toThrow(
+				expect.objectContaining({ code: 'INVALID_SCOPE' }),
+			);
+		}
+		expect(
+			make({ tenantId: new ObjectId(), n: 1, on: true } as never),
+		).not.toThrow();
+	});
+
+	it('works with an ObjectId scope value', async () => {
+		const db = await mongo.fresh();
+		const threads = db.collection('threads');
+		const messages = db.collection('messages');
+		const a = mongoMemory({
+			threads,
+			messages,
+			scope: { org: new ObjectId() },
+		});
+		const b = mongoMemory({
+			threads,
+			messages,
+			scope: { org: new ObjectId() },
+		});
+		const t = await a.createThread({ ownerId: 'u' });
+		expect(await a.getThread(t.id, 'u')).toBeDefined();
+		expect(await b.getThread(t.id, 'u')).toBeUndefined();
+	});
+
+	it('leads every index with the prefix, and leaves the TTL index alone', async () => {
+		const prefix = { tenantId: 1, region: -1 } as const;
+		expect(scopedThreadIndexes({ prefix })).toEqual([
+			{ key: { tenantId: 1, region: -1, ownerId: 1, _id: -1 } },
+		]);
+		expect(scopedMessageIndexes({ prefix })).toEqual([
+			{
+				key: { tenantId: 1, region: -1, ownerId: 1, threadId: 1, seq: 1 },
+				unique: true,
+			},
+			{ key: { tenantId: 1, region: -1, ownerId: 1, 'actions.id': 1 } },
+		]);
+		expect(() => scopedThreadIndexes({ prefix: { ownerId: 1 } })).toThrow(
+			expect.objectContaining({ code: 'INVALID_SCOPE' }),
+		);
+		// The unprefixed exports are untouched.
+		expect(threadIndexes).toEqual([{ key: { ownerId: 1, _id: -1 } }]);
+		const { db } = await tenants();
+		const keys = (await db.collection('messages').indexes()).map((i) =>
+			Object.keys(i.key).join(','),
+		);
+		expect(keys).toContain('tenantId,ownerId,threadId,seq');
+		expect(
+			(await db.collection('messages').indexes()).find((i) => i.unique),
+		).toBeDefined();
 	});
 });
