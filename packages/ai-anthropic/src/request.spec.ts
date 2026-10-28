@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Message } from '@nxgt/ai-core';
+import { AiError, type Message, type ModelRequest } from '@nxgt/ai-core';
 import { buildBody } from './request';
 import { events, fixture, json, setup } from './test-helpers';
 
@@ -210,5 +210,147 @@ describe('headers and response', () => {
 			input: { city: 'Lyon' },
 		});
 		expect(out.at(-1)).toEqual({ type: 'finish', reason: 'tool-use' });
+	});
+});
+
+describe('buildBody thinking modes', () => {
+	const messages: Message[] = [
+		{ role: 'user', parts: [{ type: 'text', text: 'hi' }] },
+	];
+	const build = (model: string, thinking: ModelRequest['thinking']) =>
+		buildBody(model, {
+			cache: 'off',
+			messages,
+			temperature: 0.3,
+			...(thinking && { thinking }),
+		});
+	const refused = (model: string, thinking: ModelRequest['thinking']) => {
+		try {
+			build(model, thinking);
+		} catch (e) {
+			return e;
+		}
+		throw new Error('expected a refusal');
+	};
+
+	test('budgetTokens keeps sending an enabled budget on a model that takes one', () => {
+		const body = build('claude-sonnet-4-6', { budgetTokens: 2000 });
+		expect(body['thinking']).toEqual({ type: 'enabled', budget_tokens: 2000 });
+		expect(body['max_tokens']).toBe(6096);
+		expect(body['temperature']).toBeUndefined();
+		expect(body['output_config']).toBeUndefined();
+	});
+
+	test('adaptive sends type adaptive, no budget, no temperature, the plain max_tokens', () => {
+		const body = build('claude-haiku-5-5', { mode: 'adaptive' });
+		expect(body['thinking']).toEqual({ type: 'adaptive' });
+		expect(body['max_tokens']).toBe(4096);
+		expect(body['temperature']).toBeUndefined();
+		expect(body['output_config']).toBeUndefined();
+	});
+
+	test('adaptive with effort and display', () => {
+		const body = buildBody('claude-opus-5-5', {
+			cache: 'off',
+			messages,
+			maxTokens: 9000,
+			thinking: { mode: 'adaptive', effort: 'xhigh', display: 'summarized' },
+		});
+		expect(body['thinking']).toEqual({
+			type: 'adaptive',
+			display: 'summarized',
+		});
+		expect(body['output_config']).toEqual({ effort: 'xhigh' });
+		expect(body['max_tokens']).toBe(9000);
+	});
+
+	test('effort alone sends only output_config and keeps temperature', () => {
+		const body = build('claude-sonnet-5-5', { effort: 'low' });
+		expect(body['thinking']).toBeUndefined();
+		expect(body['output_config']).toEqual({ effort: 'low' });
+		expect(body['temperature']).toBe(0.3);
+	});
+
+	test('effort works with a budget on a model that has both', () => {
+		const body = build('claude-opus-4-6', {
+			budgetTokens: 1024,
+			effort: 'high',
+		});
+		expect(body['thinking']).toEqual({ type: 'enabled', budget_tokens: 1024 });
+		expect(body['output_config']).toEqual({ effort: 'high' });
+	});
+
+	test('an unknown model id is never refused', () => {
+		const body = build('my-gateway-model', { mode: 'adaptive', effort: 'max' });
+		expect(body['thinking']).toEqual({ type: 'adaptive' });
+	});
+
+	test('refuses budgetTokens together with adaptive', () => {
+		expect(
+			refused('claude-sonnet-4-6', { mode: 'adaptive', budgetTokens: 2000 }),
+		).toMatchObject({ code: 'INVALID_REQUEST' });
+	});
+
+	test.each([
+		'claude-haiku-5-5',
+		'claude-sonnet-5-5',
+		'claude-opus-5-5',
+		'claude-opus-4-8',
+		'claude-opus-4-7',
+		'claude-fable-5-1',
+	])('refuses a budget on %s', (model) => {
+		const e = refused(model, { budgetTokens: 2000 });
+		expect(e).toBeInstanceOf(AiError);
+		expect(e).toMatchObject({ code: 'INVALID_REQUEST' });
+		expect((e as Error).message).toContain('adaptive');
+		// a bare `thinking: {}` means the default budget, refused the same way
+		expect(refused(model, {})).toMatchObject({ code: 'INVALID_REQUEST' });
+	});
+
+	test('refuses adaptive before Claude 4.6', () => {
+		expect(refused('claude-haiku-4-5', { mode: 'adaptive' })).toMatchObject({
+			code: 'INVALID_REQUEST',
+		});
+		expect(
+			refused('claude-sonnet-4-5-20250929', { mode: 'adaptive' }),
+		).toMatchObject({
+			code: 'INVALID_REQUEST',
+		});
+	});
+
+	test('refuses effort where the model has none or not that level', () => {
+		expect(
+			refused('claude-haiku-4-5', { budgetTokens: 1024, effort: 'low' }),
+		).toMatchObject({
+			code: 'INVALID_REQUEST',
+		});
+		expect(
+			refused('claude-opus-4-6', { mode: 'adaptive', effort: 'xhigh' }),
+		).toMatchObject({
+			code: 'INVALID_REQUEST',
+		});
+		expect(
+			refused('claude-opus-4-5', { budgetTokens: 1024, effort: 'max' }),
+		).toMatchObject({
+			code: 'INVALID_REQUEST',
+		});
+	});
+
+	test('refuses display with effort alone', () => {
+		expect(
+			refused('claude-opus-5-5', { effort: 'low', display: 'omitted' }),
+		).toMatchObject({
+			code: 'INVALID_REQUEST',
+		});
+	});
+
+	test('providerOptions still win over the mapped fields', () => {
+		const body = buildBody('claude-opus-5-5', {
+			cache: 'off',
+			messages,
+			thinking: { mode: 'adaptive' },
+			providerOptions: { thinking: { type: 'adaptive', display: 'omitted' } },
+		});
+		expect(body['thinking']).toEqual({ type: 'adaptive', display: 'omitted' });
 	});
 });

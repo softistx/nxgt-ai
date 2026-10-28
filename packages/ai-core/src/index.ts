@@ -44,6 +44,7 @@ export type {
 	ModelEvent,
 	ModelRequest,
 	SystemBlock,
+	ThinkingEffort,
 	ThinkingOptions,
 } from './model';
 export {

@@ -7,6 +7,7 @@ and network failures are retried `maxRetries` times (default 2) before they
 reach you.
 
 - [Authentication and requests](#authentication-and-requests): `Anthropic API 401`, `Anthropic API 400`
+- [Thinking options](#thinking-options): `Anthropic thinking: ...`
 - [Capacity](#capacity): `Anthropic API 429`, `Anthropic API 529`, `Anthropic API 500`
 - [Network and stream](#network-and-stream): `Anthropic request failed`, `Anthropic stream ended before message_stop`, stream errors
 - [Malformed responses](#malformed-responses)
@@ -41,6 +42,25 @@ anthropic({ apiKey, model: 'claude-sonnet-4-5' }); // check the model id spellin
 ```
 
 Not retried.
+
+## Thinking options
+
+### `Anthropic thinking: <model> rejects budgetTokens; ...` (also adaptive, effort, display)
+
+**When:** `thinking` asks for something the model's API refuses. Thrown by the adapter before any call, as an `AiError` with code `INVALID_REQUEST` (not an `AnthropicError`, not retried).
+**Why:** Claude Fable 5, Sonnet 5 / 5.5, Opus 5 / 5.5 / 4.7 / 4.8 and Haiku 5.5 take no `budget_tokens`; models before Claude 4.6 have no adaptive thinking; Haiku 4.5 and Sonnet 4.5 have no `effort`; `xhigh` and `max` are not on every model; `display` needs a thinking mode.
+**Fix:** use the form the model takes.
+
+```ts
+thinking: { mode: 'adaptive', effort: 'high' }; // Claude 4.6+ and the 5 family
+thinking: { budgetTokens: 2048 }; // Haiku 4.5, Sonnet 4.5, Opus 4.5
+```
+
+### Thinking blocks arrive with an empty text
+
+**When:** adaptive thinking on the newest models.
+**Why:** `display` defaults to `'omitted'`; the block still carries its `signature`.
+**Fix:** `thinking: { mode: 'adaptive', display: 'summarized' }` to read a summary. Keep the block in `messages` either way.
 
 ## Capacity
 

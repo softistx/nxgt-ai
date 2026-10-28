@@ -13,6 +13,7 @@ export const AI_ERROR_CODES = [
 	'BUDGET_EXCEEDED',
 	'ACTION_EXPIRED',
 	'ACTION_NOT_PENDING',
+	'INVALID_REQUEST',
 ] as const;
 
 /**

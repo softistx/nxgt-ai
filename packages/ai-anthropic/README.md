@@ -24,7 +24,9 @@ key from an overloaded API. 429, 529, 5xx and network failures are retried
 twice, honouring `retry-after`.
 
 Calls stream (SSE). `thinking: { budgetTokens }` turns on extended thinking and
-keeps each block's signature for the next turn; `cache: 'auto'` (the default)
+keeps each block's signature for the next turn. Claude 4.7 and later reject a
+budget: use `thinking: { mode: 'adaptive', effort: 'high' }` there. A
+combination the API refuses is thrown as `INVALID_REQUEST` before the call; `cache: 'auto'` (the default)
 puts prompt-cache breakpoints on the tools, the system prompt and the last
 user turn; `model.countTokens(req)` asks `/v1/messages/count_tokens`.
 

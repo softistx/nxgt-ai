@@ -11,9 +11,22 @@ export interface SystemBlock {
 
 /** Extended thinking; an adapter ignores it when its model has none. */
 export interface ThinkingOptions {
-	/** Tokens the model may spend thinking. */
+	/** Tokens the model may spend thinking (a fixed budget). */
 	budgetTokens?: number;
+	/**
+	 * `'budget'` thinks within `budgetTokens`; `'adaptive'` lets the model
+	 * decide when and how much to think. Default: `'budget'`, or no thinking
+	 * switch at all when only `effort` is set.
+	 */
+	mode?: 'budget' | 'adaptive';
+	/** How much the model works: thinking depth and overall token spend. */
+	effort?: ThinkingEffort;
+	/** `'summarized'` returns a readable summary of the thinking, `'omitted'` returns none. */
+	display?: 'summarized' | 'omitted';
 }
+
+/** The effort levels of a model that has them. */
+export type ThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface ModelRequest {
 	system?: readonly SystemBlock[];

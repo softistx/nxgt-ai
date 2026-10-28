@@ -141,6 +141,48 @@ The budget is at least 1024 (the API's minimum) and defaults to it. With
 thinking on, `temperature` is not sent (the API refuses it) and an absent
 `maxTokens` becomes `4096 + budget`; an explicit `maxTokens` not above the budget is raised to `budget + 1`, since `max_tokens` must exceed the budget.
 
+### Adaptive thinking and effort
+
+Recent models decide for themselves when and how much to think, and take an
+`effort` instead of a budget:
+
+```ts
+await generate(model, {
+	messages,
+	thinking: { mode: 'adaptive', effort: 'high', display: 'summarized' },
+});
+```
+
+| `ThinkingOptions`      | Sent                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `{ budgetTokens }`     | `thinking: { type: 'enabled', budget_tokens }` (as above)                                   |
+| `{ mode: 'adaptive' }` | `thinking: { type: 'adaptive' }`; no `temperature`, `max_tokens` as asked (default 4096)    |
+| `effort`               | `output_config: { effort }`, beside either mode or alone (effort alone sends no `thinking`) |
+| `display`              | `thinking.display`: `'summarized'` returns a summary, `'omitted'` returns empty text        |
+
+`effort` is `low`, `medium`, `high`, `xhigh` or `max`. The API's default is
+`high`, except `medium` on Claude Opus 5.5 and Claude Haiku 5.5, so set it
+explicitly where it matters. `display` defaults to `'omitted'` on the newest
+models: the thinking block then has an empty text and only a `signature`, which
+arrives as a `thinking-delta` with `text: ''` (set `display: 'summarized'` to
+stream the reasoning to a UI). Keep that block in `messages` all the same.
+
+With adaptive thinking `max_tokens` is not raised for you: thinking counts
+against it, so pass a `maxTokens` generous enough for thinking and the answer.
+
+Refused before the call, as an `AiError` with code
+`INVALID_REQUEST` (the model id decides; an unknown id is never refused):
+
+- `budgetTokens` (or a bare `thinking: {}`) on Claude Fable 5, Mythos 5, Sonnet 5 / 5.5,
+  Opus 5 / 5.5 / 4.7 / 4.8 and Haiku 5.5: the API answers 400; use `mode: 'adaptive'`.
+- `mode: 'adaptive'` together with `budgetTokens`.
+- `mode: 'adaptive'` on a model before Claude 4.6 (Haiku 4.5, Sonnet 4.5, Opus 4.5).
+- `effort` on Haiku 4.5 and Sonnet 4.5; `xhigh` on Opus 4.5 / 4.6 and Sonnet 4.6; `max` on Opus 4.5.
+- `display` with `effort` alone.
+
+Source: the Claude API documentation (Messages API thinking and effort
+parameters, model migration notes).
+
 The model's thinking arrives as `thinking-delta` events; `generate` folds them
 into a `thinking` part that keeps its `signature`. Put that assistant message
 back in `messages` on the next turn and the part is sent as it came: the API

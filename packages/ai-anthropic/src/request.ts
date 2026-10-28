@@ -1,8 +1,10 @@
-import type {
-	Message,
-	ModelRequest,
-	Part,
-	ToolResultPart,
+import {
+	AiError,
+	type Message,
+	type ModelRequest,
+	type Part,
+	type ThinkingOptions,
+	type ToolResultPart,
 } from '@nxgt/ai-core';
 
 import { type Block, placeBreakpoints } from './cache';
@@ -18,7 +20,10 @@ interface WireBody {
 	system?: Block[];
 	tools?: Block[];
 	temperature?: number;
-	thinking?: { type: 'enabled'; budget_tokens: number };
+	thinking?:
+		| { type: 'enabled'; budget_tokens: number; display?: string }
+		| { type: 'adaptive'; display?: string };
+	output_config?: { effort: string };
 }
 interface WireMessage {
 	role: 'user' | 'assistant';
@@ -82,27 +87,91 @@ export function toWireMessages(messages: readonly Message[]): WireMessage[] {
 	return out;
 }
 
-/** `max_tokens` must exceed the thinking budget, so it is raised to fit. */
+/** `max_tokens` must exceed the thinking budget, so it is raised to fit (adaptive and effort-only have none). */
 function maxTokens(asked: number | undefined, budget: number | undefined) {
 	if (budget === undefined) return asked ?? DEFAULT_MAX_TOKENS;
 	return Math.max(asked ?? DEFAULT_MAX_TOKENS + budget, budget + 1);
 }
 
+const family = (...ids: string[]) =>
+	new RegExp(`^claude-(?:${ids.join('|')})(?:[-@]|$)`);
+/** Models whose API rejects `budget_tokens` with a 400 (adaptive only). */
+const NO_BUDGET = family(
+	'fable-5',
+	'mythos-5',
+	'sonnet-5',
+	'opus-5',
+	'opus-4-7',
+	'opus-4-8',
+	'haiku-5',
+);
+/** Models before adaptive thinking (Claude 4.6). */
+const NO_ADAPTIVE = family('haiku-4-5', 'sonnet-4-5', 'opus-4-5', 'opus-4-1');
+/** Models without the effort parameter. */
+const NO_EFFORT = family('haiku-4-5', 'sonnet-4-5');
+/** Models whose effort stops at `high` (`max` on 4.6; `xhigh` came with 4.7). */
+const NO_XHIGH = family('opus-4-5', 'opus-4-6', 'sonnet-4-6');
+
+const invalid = (message: string) =>
+	new AiError('INVALID_REQUEST', `Anthropic thinking: ${message}`);
+
+type Resolved =
+	| { mode: 'budget'; budget: number }
+	| { mode: 'adaptive' }
+	| { mode: 'none' };
+
+/**
+ * Refuses, before any call, the combinations the API rejects with a 400 and
+ * that the model id lets us know. An unknown model id is never refused.
+ */
+function resolveThinking(model: string, t: ThinkingOptions): Resolved {
+	const mode =
+		t.mode ??
+		(t.budgetTokens === undefined && t.effort !== undefined
+			? 'none'
+			: 'budget');
+	if (mode === 'adaptive' && t.budgetTokens !== undefined)
+		throw invalid('`budgetTokens` cannot be used with `mode: "adaptive"`');
+	if (mode === 'none' && t.display !== undefined)
+		throw invalid('`display` needs `mode: "adaptive"` or `budgetTokens`');
+	if (mode === 'budget' && NO_BUDGET.test(model))
+		throw invalid(
+			`${model} rejects \`budgetTokens\`; use \`mode: "adaptive"\` with \`effort\``,
+		);
+	if (mode === 'adaptive' && NO_ADAPTIVE.test(model))
+		throw invalid(
+			`${model} has no adaptive thinking; use \`budgetTokens\` instead`,
+		);
+	if (t.effort !== undefined) {
+		if (NO_EFFORT.test(model))
+			throw invalid(`${model} has no \`effort\` parameter`);
+		if (t.effort === 'xhigh' && NO_XHIGH.test(model))
+			throw invalid(`${model} does not support effort "xhigh"`);
+		if (t.effort === 'max' && family('opus-4-5').test(model))
+			throw invalid(`${model} does not support effort "max"`);
+	}
+	if (mode === 'budget')
+		return {
+			mode,
+			budget: Math.max(
+				t.budgetTokens ?? DEFAULT_THINKING_BUDGET,
+				DEFAULT_THINKING_BUDGET,
+			),
+		};
+	return { mode };
+}
+
 /**
  * The JSON body of `POST /v1/messages` for `req`. With `thinking`, the API
- * allows no `temperature` and needs `max_tokens` above the budget, so the
- * former is dropped and an absent `maxTokens` leaves room for the answer.
+ * allows no `temperature` (adaptive too) and needs `max_tokens` above a
+ * budget, so the former is dropped and an absent `maxTokens` leaves room for the answer.
  */
 export function buildBody(
 	model: string,
 	req: ModelRequest,
 ): Record<string, unknown> {
-	const budget = req.thinking
-		? Math.max(
-				req.thinking.budgetTokens ?? DEFAULT_THINKING_BUDGET,
-				DEFAULT_THINKING_BUDGET,
-			)
-		: undefined;
+	const thinking = req.thinking && resolveThinking(model, req.thinking);
+	const budget = thinking?.mode === 'budget' ? thinking.budget : undefined;
 	const body: WireBody = {
 		model,
 		max_tokens: maxTokens(req.maxTokens, budget),
@@ -118,9 +187,19 @@ export function buildBody(
 			input_schema: t.inputSchema,
 		}));
 	}
-	if (budget !== undefined)
-		body.thinking = { type: 'enabled', budget_tokens: budget };
-	else if (req.temperature !== undefined) body.temperature = req.temperature;
+	const display = req.thinking?.display;
+	if (thinking?.mode === 'budget')
+		body.thinking = {
+			type: 'enabled',
+			budget_tokens: thinking.budget,
+			...(display && { display }),
+		};
+	else if (thinking?.mode === 'adaptive')
+		body.thinking = { type: 'adaptive', ...(display && { display }) };
+	if (req.thinking?.effort !== undefined)
+		body.output_config = { effort: req.thinking.effort };
+	if (body.thinking === undefined && req.temperature !== undefined)
+		body.temperature = req.temperature;
 	if (req.cache !== 'off') placeBreakpoints(body);
 	return { ...body, ...req.providerOptions };
 }

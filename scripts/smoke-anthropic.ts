@@ -8,14 +8,25 @@ import { anthropic } from '../packages/ai-anthropic/src';
  *
  *   ANTHROPIC_API_KEY=sk-ant-... bun run smoke:anthropic
  *   ANTHROPIC_MODEL=claude-sonnet-4-5 bun run smoke:anthropic
+ *   ANTHROPIC_MODEL=claude-haiku-5-5 ANTHROPIC_THINKING=adaptive bun run smoke:anthropic
  */
-import { generate, type Message, type ToolSpec } from '../packages/ai-core/src';
+import {
+	generate,
+	type Message,
+	type ThinkingOptions,
+	type ToolSpec,
+} from '../packages/ai-core/src';
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) {
 	console.error('Set ANTHROPIC_API_KEY to run the smoke test.');
 	process.exit(1);
 }
+/** `ANTHROPIC_THINKING=adaptive` for Claude 4.7+ models, which reject a budget. */
+const thinking: ThinkingOptions =
+	process.env.ANTHROPIC_THINKING === 'adaptive'
+		? { mode: 'adaptive', display: 'summarized' }
+		: { budgetTokens: 1024 };
 const model = anthropic({
 	apiKey,
 	model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5',
@@ -46,7 +57,7 @@ const turn1 = [ask('What is the weather in Lyon? Use the tool.')];
 const first = await generate(model, {
 	messages: turn1,
 	tools: [weather],
-	thinking: { budgetTokens: 1024 },
+	thinking,
 	maxTokens: 2000,
 });
 const call = first.message.parts.find((p) => p.type === 'tool-call');
@@ -78,7 +89,7 @@ if (call?.type === 'tool-call') {
 			},
 		],
 		tools: [weather],
-		thinking: { budgetTokens: 1024 },
+		thinking,
 		maxTokens: 2000,
 	});
 	console.log(
