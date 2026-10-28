@@ -150,7 +150,7 @@ options, what is refused and the limits.
 bun add @nxgt/ai-graphql @nxgt/ai-core graphql zod
 ```
 
-`./codegen` also needs `@graphql-codegen/cli` (it brings `@graphql-codegen/plugin-helpers`) and `change-case`, both optional peers used by `./codegen` only, so the root export does not. Requires `"moduleResolution": "bundler"`. This package is not published yet.
+`./codegen` also needs `@graphql-codegen/cli` (it brings `@graphql-codegen/plugin-helpers`) and `@nxgt/graphql-codegen-zod` 0.4 (which you install to generate the zod schemas), both optional peers used by `./codegen` only, so the root export does not. Requires `"moduleResolution": "bundler"`. This package is not published yet.
 See the [guide](docs/guide/graphql-tools.md).
 
 ## Documentation
