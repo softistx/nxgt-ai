@@ -17,15 +17,15 @@
       "name": "@nxgt/ai-alxia",
       "version": "0.1.1",
       "devDependencies": {
-        "@alxia/core": "^0.16.0",
-        "@alxia/language": "^0.3.12",
+        "@alxia/core": "^0.17.0",
+        "@alxia/language": "^0.3.13",
         "@nxgt/ai-core": "workspace:^",
         "@nxgt/ai-testing": "workspace:^",
         "@types/bun": "^1.4.4",
         "zod": "4.6.5",
       },
       "peerDependencies": {
-        "@alxia/core": ">=0.16.0 <0.17.0",
+        "@alxia/core": ">=0.16.0 <0.18.0",
         "@nxgt/ai-core": "workspace:^",
         "typescript": "^6.0.3 || ^7.0.0",
         "zod": ">=4.6.5 <5",
@@ -165,9 +165,9 @@
     "typescript": "~6.0.3",
   },
   "packages": {
-    "@alxia/core": ["@alxia/core@0.16.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-9ZHNLXum6f5VDVvoodtgIQmRYH4qmOn4EJGJU9V9fIqeKY4bgGoWTKPR25NXCJwtL8jODZDWbMErmokzW96Ilw=="],
+    "@alxia/core": ["@alxia/core@0.17.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-FzASRI4Wi7iN56xAHgyhnPFvorcE8ixvL3wZo7uT/CbczIUpRPx9u7SRZ5C36rTH/wMlhqyNsLHfH0Tezc6KxQ=="],
 
-    "@alxia/language": ["@alxia/language@0.3.12", "", { "peerDependencies": { "@alxia/core": "^0.16.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-j79YZuv33IDxJ7Beastu/uKQ4F9xpJB1Uf8k4izkSLcdD0eyFTdq7iyukey4DEuHddh3qDGQG5v7RyBJixHK2g=="],
+    "@alxia/language": ["@alxia/language@0.3.13", "", { "peerDependencies": { "@alxia/core": "^0.17.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-H5LXN5tDdLR6MeBoGVin7SQySuMGcWTDwk82ZHcqxSISw37wrG8r2tmXUI09+Ukd5wPVJsLAy3TqgEhIvofBPg=="],
 
     "@ardatan/relay-compiler": ["@ardatan/relay-compiler@13.0.2", "", { "dependencies": { "@babel/runtime": "^8.0.0", "immutable": "^5.1.9", "invariant": "^2.2.4" }, "peerDependencies": { "graphql": "*" } }, "sha512-VFpv9UP820SiwDUPYtq7PmD3jifzZlevkQ26bhbSzFeruSTys0eHzQCZyKg+IhgmZzwPI9AFjPe26ABNjGeIKg=="],
 
