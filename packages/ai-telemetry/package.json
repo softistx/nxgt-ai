@@ -1,6 +1,6 @@
 {
 	"name": "@nxgt/ai-telemetry",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "An @nxgt/ai-core agent observer that writes runs, model calls and tool calls as @nxgt/telemetry spans with gen_ai.* attributes",
 	"license": "MIT",
 	"type": "module",

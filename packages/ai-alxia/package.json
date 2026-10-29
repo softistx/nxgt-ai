@@ -1,6 +1,6 @@
 {
 	"name": "@nxgt/ai-alxia",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"description": "alxia glue for @nxgt/ai-core: a request middleware (abort signal, language, observers) and a Server-Sent Events reply that streams an agent run",
 	"license": "MIT",
 	"type": "module",
