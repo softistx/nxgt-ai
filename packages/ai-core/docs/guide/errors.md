@@ -21,6 +21,7 @@ try {
 class AiError extends Error {
 	readonly code: AiErrorCode;
 	readonly issues: readonly { path: string; message: string }[]; // [] unless input was invalid
+	readonly details: readonly ToolErrorDetail[]; // [] unless the tool gave its own reasons
 	readonly cause?: unknown;
 }
 ```
@@ -49,4 +50,16 @@ same for `done.reason`. Keep a `default` branch when you switch on them. The
 thrown `AiError.code` stays strictly `AiErrorCode`.
 
 In a tool result the same information is plain data, `{ code, message,
-issues? }`, because it is sent to the model and stored with the conversation.
+issues?, details? }`, because it is sent to the model and stored with the
+conversation.
+
+**`details`** is how a tool reports its own reasons without the SDK parsing a
+message: `new AiError('TOOL_FAILED', message, { details: [{ code:
+'auth.errors.forbidden', fields: ['id'], params: { max: 5 } }] })`. Each entry
+is a `ToolErrorDetail` (`code`, and optionally `path`, `fields`, scalar
+`params`). The error cleans them (`cleanErrorDetails`: plain codes of letters,
+digits, `_`, `.`, `-` up to 100, at most 50 entries, 20 fields, 20 params), and
+`errorResult` copies them to `error.details` only when there are some. The
+result's `code` stays `TOOL_FAILED`; read `error.details?.[0]?.code` for the
+tool's reason. `@nxgt/ai-graphql` fills it for a failed operation, and
+`@nxgt/ai-memory` stores it with a failed action. `agentEventSchema` keeps `details` too, cleaned again by `cleanErrorDetails`.

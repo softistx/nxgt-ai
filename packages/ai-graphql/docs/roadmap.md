@@ -4,7 +4,7 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 
 ## Now
 
-Nothing in progress.
+- **Operation codes on a failed call** — a failed operation's error codes are on the result's `error.details`, not only in the message ([#102](https://github.com/softistx/nxgt-ai/issues/102)).
 
 ## Next
 

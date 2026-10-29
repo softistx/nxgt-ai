@@ -1,4 +1,8 @@
-import type { ProposedActionStatus, ToolResultPart } from '@nxgt/ai-core';
+import {
+	cleanErrorDetails,
+	type ProposedActionStatus,
+	type ToolResultPart,
+} from '@nxgt/ai-core';
 import { MemoryError } from './errors';
 import type { ActionPatch, ActionUpdateOptions } from './types';
 
@@ -44,20 +48,26 @@ export function actionFrom(
 
 /**
  * The result a store keeps, or `undefined` when the patch has none. An error
- * result keeps its code only: the message and the issues are dropped (the
- * `message` stays as an empty string, the field being required), because apps
- * may expose a stored `result` to clients. The single point where the three
- * stores write an outcome.
+ * result keeps its code and its `details` (the tool's own structured
+ * reasons, cleaned by `cleanErrorDetails`): the message and the issues are
+ * dropped (the `message` stays as an empty string, the field being required),
+ * because apps may expose a stored `result` to clients. The single point
+ * where the three stores write an outcome.
  */
 export function storedResult(patch: ActionPatch): ToolResultPart | undefined {
 	const result = patch.result;
 	if (result === undefined) return undefined;
 	if (!result.isError) return structuredClone(result);
+	const details = cleanErrorDetails(result.error.details);
 	return {
 		type: 'tool-result',
 		callId: result.callId,
 		name: result.name,
 		isError: true,
-		error: { code: result.error.code, message: '' },
+		error: {
+			code: result.error.code,
+			message: '',
+			...(details.length > 0 ? { details } : {}),
+		},
 	};
 }

@@ -26,7 +26,7 @@ Another owner's thread is invisible: `getThread` and `load` return
 `from` status (default `pending`): of two concurrent claims of one proposed
 action, one gets the action back and the other gets `undefined`. Claim with
 `running`, run, then record `confirmed` or `failed` with the tool `result`
-(`{ from: 'running' }`; a failed result keeps its error code only, never the message); a repeated confirm reads the stored outcome:
+(`{ from: 'running' }`; a failed result keeps its error code and its `details`, never the message); a repeated confirm reads the stored outcome:
 
 ```ts
 const claimed = await store.updateAction(id, 'u1', { status: 'running' });

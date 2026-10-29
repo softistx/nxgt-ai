@@ -4,7 +4,7 @@ A direction, not a commitment. See the [repository roadmap](../../../docs/roadma
 
 ## Now
 
-Nothing in progress.
+- **Tool failure details** — `AiError` `details` and `ToolErrorInfo.details` carry a tool's own error codes as data, with `cleanErrorDetails` ([#102](https://github.com/softistx/nxgt-ai/issues/102)).
 
 ## Next
 

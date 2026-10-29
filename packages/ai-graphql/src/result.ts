@@ -1,4 +1,4 @@
-import { AiError } from '@nxgt/ai-core';
+import { AiError, cleanErrorDetails } from '@nxgt/ai-core';
 import type { GraphQLError } from 'graphql';
 
 /** One GraphQL error as the model reads it: a code, never a stack or a message. */
@@ -49,58 +49,18 @@ export type MapErrors = (
 	info: MapErrorsInfo,
 ) => readonly ToolGraphqlError[] | undefined;
 
-function keepFields(fields: unknown): string[] | undefined {
-	if (Array.isArray(fields) && fields.every((f) => typeof f === 'string')) {
-		return fields.slice(0, 20).map((f) => f.slice(0, 200));
-	}
-	return undefined;
-}
-
-function keepParams(
-	params: unknown,
-): Record<string, string | number | boolean> | undefined {
-	if (!isRecord(params)) return undefined;
-	const kept: Record<string, string | number | boolean> = {};
-	for (const [k, v] of Object.entries(params).slice(0, 20)) {
-		if (
-			typeof v === 'number' ||
-			typeof v === 'boolean' ||
-			(typeof v === 'string' && v.length <= 200)
-		) {
-			kept[k] = v;
-		}
-	}
-	return Object.keys(kept).length ? kept : undefined;
-}
-
-function keepPath(path: unknown): (string | number)[] | undefined {
-	if (
-		Array.isArray(path) &&
-		path.length > 0 &&
-		path.every(
-			(p) =>
-				typeof p === 'number' || (typeof p === 'string' && p.length <= 200),
-		)
-	) {
-		return path.slice(0, 20);
-	}
-	return undefined;
-}
-
 function build(
 	code: string,
 	path: unknown,
 	fields: unknown,
 	params: unknown,
 ): ToolGraphqlError {
-	const out: ToolGraphqlError = { code };
-	const p = keepPath(path);
-	if (p) out.path = p;
-	const f = keepFields(fields);
-	if (f) out.fields = f;
-	const q = keepParams(params);
-	if (q) out.params = q;
-	return out;
+	// The one cleaning rule of ai-core, so the model, the wire and the stores agree.
+	return (
+		cleanErrorDetails([{ code, path, fields, params }])[0] ?? {
+			code: 'INTERNAL_ERROR',
+		}
+	);
 }
 
 /** Maps a GraphQL error to the part of it the model may see. */
@@ -188,6 +148,7 @@ export function failure(errors: readonly ToolGraphqlError[]): AiError {
 	return new AiError(
 		'TOOL_FAILED',
 		`The GraphQL operation failed: ${JSON.stringify(errors)}`,
+		{ details: errors },
 	);
 }
 
@@ -198,6 +159,6 @@ export function internalFailure(cause: unknown): AiError {
 	return new AiError(
 		'TOOL_FAILED',
 		`The GraphQL operation failed: ${JSON.stringify(INTERNAL)}`,
-		{ cause },
+		{ cause, details: INTERNAL },
 	);
 }

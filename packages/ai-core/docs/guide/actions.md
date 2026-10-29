@@ -64,7 +64,7 @@ const done = await runConfirmedAction(claimed, tools);
 await store.updateAction(id, owner, { status: done.status, result: done.result }, { from: 'running' });
 ```
 
-`@nxgt/ai-memory` stores a failed result with its error code only (the message is dropped). A repeated confirm reads the stored action: `confirmed`, `failed`, `rejected`
+`@nxgt/ai-memory` stores a failed result with its error code and its `details` (the tool's own codes, for example a GraphQL operation's `auth.errors.forbidden`); the message is dropped. A repeated confirm reads the stored action: `confirmed`, `failed`, `rejected`
 or `expired` answers the stored outcome; `running` means the outcome is
 unknown (in progress, or the process crashed after the claim). Without a claim,
 passing a `pending` action works as before and the caller stores the result.

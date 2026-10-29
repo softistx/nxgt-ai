@@ -151,6 +151,28 @@ describe('graphqlTools: application codes and mapErrors', () => {
 		expect(text).not.toContain('app.ts');
 	});
 
+	it('carries the operation codes as structured details, never the message', async () => {
+		const out = await run('dotted');
+		if (!out.isError) throw new Error('expected an error');
+		expect(out.error.code).toBe('TOOL_FAILED');
+		expect(out.error.details).toEqual([
+			expect.objectContaining({ code: 'auth.errors.forbidden' }),
+		]);
+		expect(JSON.stringify(out.error.details)).not.toContain('u-77');
+	});
+
+	it('carries fields and params in the details', async () => {
+		const out = await run('missing');
+		if (!out.isError) throw new Error('expected an error');
+		expect(out.error.details).toEqual([
+			expect.objectContaining({
+				code: 'NOT_FOUND',
+				fields: ['id'],
+				params: { id: 'missing' },
+			}),
+		]);
+	});
+
 	it('still hides a code with spaces or markup', async () => {
 		const text = JSON.stringify(await run('bad-code'));
 		expect(text).toContain('INTERNAL_ERROR');

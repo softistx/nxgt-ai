@@ -1,3 +1,4 @@
+import { cleanErrorDetails, type ToolErrorDetail } from '@nxgt/ai-core';
 import { z } from 'zod';
 
 const textPart = z.object({ type: z.literal('text'), text: z.string() });
@@ -37,6 +38,15 @@ const toolResultPart = z.discriminatedUnion('isError', [
 			issues: z
 				.array(z.object({ path: z.string(), message: z.string() }))
 				.readonly()
+				.optional(),
+			details: z
+				.unknown()
+				.transform((raw) => {
+					const kept = cleanErrorDetails(raw);
+					return kept.length > 0
+						? (kept as readonly ToolErrorDetail[])
+						: undefined;
+				})
 				.optional(),
 		}),
 	}),

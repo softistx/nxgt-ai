@@ -140,6 +140,7 @@ options, what is refused and the limits.
 - `variables` must be a `z.object(...)`.
 - Subscriptions are rejected. Queries and mutations only.
 - The model sees error codes (`extensions.code`, plus `extensions.fields` and scalar `extensions.params`), never messages or stacks. A code is letters, digits, `_`, `.` and `-` (at most 100), so `auth.errors.forbidden` passes; an error without a code, or with another one, reads `INTERNAL_ERROR`. Pass `mapErrors` to choose what the model reads (see the [guide](docs/guide/graphql-tools.md#mapping-errors-with-maperrors)).
+- A failed call also carries them as data, `error.details` (`{ code, path?, fields?, params? }[]`), which `@nxgt/ai-memory` keeps on a failed action.
 - A mutation that reports any error, and a query with no `data` or whose root fields are all null, make the call fail with `TOOL_FAILED` and the mapped errors in its message; a query that partly fails succeeds with `data` and `errors`. A throwing `context` builder fails the call with `INTERNAL_ERROR` and never shows its message.
 - `extensions.params` scalars are shown as the resolver set them: do not put secrets in them.
 - `maxResultChars` is at least 100. A result longer than it becomes `{ truncated: true, originalChars, preview, note }`; make the model narrow its variables.

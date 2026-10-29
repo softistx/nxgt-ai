@@ -5,6 +5,7 @@ A direction, not a commitment. See the [repository roadmap](https://github.com/s
 ## Now
 
 - **Collections shared by several tenants** — a `scope` option for `mongoMemory`, plus `scopedThreadIndexes` / `scopedMessageIndexes`, so every read and write stays inside one tenant ([#87](https://github.com/softistx/nxgt-ai/issues/87)).
+- **Error details kept on a failed action** — the stored outcome keeps the tool's `details` (a GraphQL operation's codes), message still dropped ([#102](https://github.com/softistx/nxgt-ai/issues/102)).
 
 ## Next
 

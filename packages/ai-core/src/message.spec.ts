@@ -118,6 +118,27 @@ describe('AiError', () => {
 		expect(new AiError('ABORTED', 'x').issues).toEqual([]);
 	});
 
+	test('errorResult carries the error details, and omits empty ones', () => {
+		const withDetails = errorResult(
+			{ id: 'c', name: 'n' },
+			new AiError('TOOL_FAILED', 'x', {
+				details: [{ code: 'auth.errors.forbidden', params: { n: 2 } }],
+			}),
+		);
+		expect(withDetails).toMatchObject({
+			error: {
+				code: 'TOOL_FAILED',
+				details: [{ code: 'auth.errors.forbidden', params: { n: 2 } }],
+			},
+		});
+		const without = errorResult(
+			{ id: 'c', name: 'n' },
+			new AiError('TOOL_FAILED', 'x'),
+		);
+		if (!without.isError) throw new Error('expected an error');
+		expect('details' in without.error).toBe(false);
+	});
+
 	test('errorResult omits empty issues', () => {
 		expect(
 			errorResult({ id: 'c', name: 'n' }, new AiError('TOOL_FAILED', 'x')),
