@@ -1,5 +1,16 @@
 # @nxgt/ai-graphql
 
+## 0.4.0
+
+### Minor Changes
+
+- [#103](https://github.com/softistx/nxgt-ai/pull/103) [`dd47345`](https://github.com/softistx/nxgt-ai/commit/dd4734537df298af38c5e1aa4158b60b169e11c0) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A failed operation's error codes, paths, fields and scalar params are on the tool failure's `error.details`, not only inside the message text.
+
+### Patch Changes
+
+- Updated dependencies [[`dd47345`](https://github.com/softistx/nxgt-ai/commit/dd4734537df298af38c5e1aa4158b60b169e11c0)]:
+  - @nxgt/ai-core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @nxgt/ai-core
 
+## 0.4.0
+
+### Minor Changes
+
+- [#103](https://github.com/softistx/nxgt-ai/pull/103) [`dd47345`](https://github.com/softistx/nxgt-ai/commit/dd4734537df298af38c5e1aa4158b60b169e11c0) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `AiError` `details`, `ToolErrorInfo.details`, `ToolErrorDetail` and `cleanErrorDetails`: a tool reports its own error codes as structured data, and `errorResult` carries them.
+
 ## 0.3.0
 
 ### Minor Changes

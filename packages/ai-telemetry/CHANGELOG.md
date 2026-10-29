@@ -1,5 +1,12 @@
 # @nxgt/ai-telemetry
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [[`dd47345`](https://github.com/softistx/nxgt-ai/commit/dd4734537df298af38c5e1aa4158b60b169e11c0)]:
+  - @nxgt/ai-core@0.4.0
+
 ## 0.2.1
 
 ### Patch Changes
